@@ -1,0 +1,13 @@
+{
+  "name": "bloom-journal-pwa",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @bloom/web",
+    "dev:mobile": "npm run start -w bloom-journal",
+    "build:web": "npm run build -w @bloom/web"
+  }
+}

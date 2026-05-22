@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "module": "ESNext",
+    "target": "ES2017",
+    "downlevelIteration": true,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}
