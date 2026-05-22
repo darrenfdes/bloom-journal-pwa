@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --cream: #faf6f0;
+  --cream-dark: #f0e8dc;
+  --parchment: #ede4d6;
+  --ink: #3d3832;
+  --ink-soft: #6b6358;
+  --ink-muted: #9a9088;
+  --blush: #e8d4c8;
+  --sage: #8fa88a;
+  --sage-dark: #6d8a68;
+  --danger: #c47070;
+  --success: #7a9e72;
+  --overlay: rgba(61, 56, 50, 0.45);
+  --mood-joyful: #f4c840;
+  --mood-peaceful: #86b98b;
+  --mood-dreamy: #a88ec8;
+  --mood-loved: #d88080;
+  --mood-melancholy: #6b90be;
+  --mood-energized: #e47054;
+  --mood-grateful: #e0a567;
+  --mood-anxious: #9b8faf;
+}
+
+@theme inline {
+  --color-cream: var(--cream);
+  --color-cream-dark: var(--cream-dark);
+  --color-parchment: var(--parchment);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-blush: var(--blush);
+  --color-sage: var(--sage);
+  --color-sage-dark: var(--sage-dark);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+body {
+  background-color: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}

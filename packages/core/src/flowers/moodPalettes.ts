@@ -1,0 +1,88 @@
+/**
+ * Six mood-locked botanical palettes. Each palette exposes five petal
+ * tiers (light highlight → deepest), a center color, pollen color, stem
+ * and leaf colors. The bloom renderers consume these directly via
+ * multi-stop SVG gradients.
+ */
+export type BloomMood = 'joy' | 'calm' | 'love' | 'wistful' | 'restless' | 'hopeful';
+
+export interface BloomPalette {
+  petalHighlight: string;
+  petalMid: string;
+  petalWash: string;
+  petalDark: string;
+  petalDeepest: string;
+  center: string;
+  pollen: string;
+  stem: string;
+  leaf: string;
+}
+
+export const BLOOM_PALETTES: Record<BloomMood, BloomPalette> = {
+  joy: {
+    petalHighlight: '#FFF4C2',
+    petalMid: '#FFD964',
+    petalWash: '#FFE8A3',
+    petalDark: '#E8A93D',
+    petalDeepest: '#B57820',
+    center: '#7A4F12',
+    pollen: '#FFC93C',
+    stem: '#6B8A4E',
+    leaf: '#8FB068',
+  },
+  calm: {
+    petalHighlight: '#EDE3F5',
+    petalMid: '#B8A4D8',
+    petalWash: '#D4C4E8',
+    petalDark: '#8A6FB0',
+    petalDeepest: '#5B4480',
+    center: '#4A3868',
+    pollen: '#F2E8FA',
+    stem: '#7A8A6B',
+    leaf: '#94A582',
+  },
+  love: {
+    petalHighlight: '#FFE0E4',
+    petalMid: '#F0A5B4',
+    petalWash: '#FAC5CE',
+    petalDark: '#D26B82',
+    petalDeepest: '#9A3F58',
+    center: '#7A2E44',
+    pollen: '#FFF0F2',
+    stem: '#7E6868',
+    leaf: '#A88787',
+  },
+  wistful: {
+    petalHighlight: '#E3ECF5',
+    petalMid: '#8FA6BE',
+    petalWash: '#B8C8D8',
+    petalDark: '#5F7894',
+    petalDeepest: '#3D5470',
+    center: '#2E4258',
+    pollen: '#F0F5FA',
+    stem: '#6E7C82',
+    leaf: '#88959B',
+  },
+  restless: {
+    petalHighlight: '#FFDCC2',
+    petalMid: '#F08858',
+    petalWash: '#FAB088',
+    petalDark: '#C85530',
+    petalDeepest: '#8C3318',
+    center: '#5E220F',
+    pollen: '#FFE0B8',
+    stem: '#7A5A40',
+    leaf: '#A4845C',
+  },
+  hopeful: {
+    petalHighlight: '#E8F0DC',
+    petalMid: '#A8C088',
+    petalWash: '#C8D8A8',
+    petalDark: '#728E5A',
+    petalDeepest: '#48623A',
+    center: '#34492A',
+    pollen: '#F0F5DC',
+    stem: '#5E7A48',
+    leaf: '#8AA670',
+  },
+};

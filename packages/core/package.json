@@ -1,0 +1,22 @@
+{
+  "name": "@bloom/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./id": "./src/id.ts",
+    "./flowers/*": "./src/flowers/*.ts",
+    "./garden/*": "./src/garden/*.ts",
+    "./sentiment/*": "./src/sentiment/*.ts",
+    "./constants/*": "./src/constants/*.ts",
+    "./theme/*": "./src/theme/*.ts"
+  },
+  "dependencies": {
+    "date-fns": "^4.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}
