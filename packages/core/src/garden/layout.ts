@@ -181,13 +181,14 @@ export function getMonthClusters(
   const clusters: MonthCluster[] = [];
   const groundY = getGardenGroundY(bounds);
   const monthKeys = [...new Set(layout.map((p) => p.monthKey))].sort();
+  const paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
 
   for (const key of monthKeys) {
     if (seen.has(key)) continue;
     seen.add(key);
     const monthIndex = monthKeys.indexOf(key);
     const inMonth = layout.filter((x) => x.monthKey === key);
-    const columnLeft = monthColumnLeft(monthIndex);
+    const columnLeft = monthColumnLeft(monthIndex, paddingLeft);
     const centerX =
       inMonth.reduce((s, x) => s + x.position.x, 0) / Math.max(inMonth.length, 1);
 
