@@ -24,11 +24,10 @@ import { computeGroundVariant } from '@bloom/core/garden/ground';
 import {
   GARDEN_CLUSTER_BAND_WIDTH,
   GARDEN_CLUSTER_GAP,
-  GARDEN_PADDING_LEFT,
-  GARDEN_PADDING_RIGHT,
   computeGardenLayout,
   getGardenContentWidth,
   getGardenGroundY,
+  getGardenHorizontalPadding,
   getMonthClusters,
 } from '@bloom/core/garden/layout';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
@@ -86,9 +85,13 @@ export function GardenScene({ meta, entries }: Props) {
     [layout]
   );
   const clusters = useMemo(() => getMonthClusters(filtered, bounds), [filtered, bounds]);
+  const horizontalPadding = useMemo(
+    () => getGardenHorizontalPadding(bounds, clusters.length),
+    [bounds, clusters.length]
+  );
   const contentWidth = useMemo(
-    () => getGardenContentWidth(clusters.length),
-    [clusters.length]
+    () => getGardenContentWidth(clusters.length, width),
+    [clusters.length, width]
   );
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;
@@ -122,14 +125,23 @@ export function GardenScene({ meta, entries }: Props) {
     estimateSize: () => COLUMN_SIZE,
     horizontal: true,
     overscan: 2,
-    paddingStart: GARDEN_PADDING_LEFT,
-    paddingEnd: GARDEN_PADDING_RIGHT,
+    paddingStart: horizontalPadding.paddingLeft,
+    paddingEnd: horizontalPadding.paddingRight,
     scrollMargin: 0,
   });
 
   useLayoutEffect(() => {
     columnVirtualizer.measure();
-  }, [columnVirtualizer, clusters.length, contentWidth, width, sceneHeight]);
+  }, [columnVirtualizer, clusters.length, contentWidth, width, sceneHeight, horizontalPadding]);
+
+  useLayoutEffect(() => {
+    if (!scrollRef.current || width <= 0 || clusters.length === 0 || highlightId) return;
+    const focus = clusters[clusters.length - 1];
+    if (!focus) return;
+    const maxScroll = Math.max(0, contentWidth - width);
+    const target = Math.min(Math.max(0, focus.centerX - width / 2), maxScroll);
+    scrollRef.current.scrollLeft = target;
+  }, [clusters, contentWidth, width, highlightId]);
 
   React.useEffect(() => {
     if (!highlightId || sortedLayout.length === 0) return;
@@ -140,7 +152,10 @@ export function GardenScene({ meta, entries }: Props) {
     setActiveHighlightId(highlightId);
     setHighlightEntryId(highlightId);
 
-    const scrollX = Math.max(0, plot.position.x - width * 0.35);
+    const scrollX = Math.min(
+      Math.max(0, plot.position.x - width / 2),
+      Math.max(0, contentWidth - width)
+    );
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ left: scrollX, behavior: 'smooth' });
     });
@@ -154,7 +169,7 @@ export function GardenScene({ meta, entries }: Props) {
     }, 3000);
 
     return () => clearTimeout(clearTimer);
-  }, [highlightId, bloomParam, sortedLayout, setHighlightEntryId, router, width]);
+  }, [highlightId, bloomParam, sortedLayout, setHighlightEntryId, router, width, contentWidth]);
 
   const openFilterMenu = useCallback((entry: EntryRecord, monthKey: string) => {
     setFilterMenu({ entryId: entry.id, mood: entry.mood, monthKey });
@@ -206,7 +221,7 @@ export function GardenScene({ meta, entries }: Props) {
       groundVariant={groundVariant}
       groundSeed={groundSeed}
       width={width}
-      viewportHeight={windowHeight}
+      viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
     >
       <header className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-2 pt-[calc(1rem+var(--safe-top))]">
         <h1 className="font-display text-3xl font-semibold text-ink drop-shadow-sm">Your Garden</h1>

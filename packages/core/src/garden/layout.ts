@@ -1,4 +1,5 @@
 import { SeededRNG, hashString } from '../flowers/seeded-rng';
+import { getGardenGroundLineY } from '../garden/scene-layout';
 import { scatterInCluster } from '../garden/scatter';
 import type { EntryRecord, GardenPosition } from '../types';
 import { format, parseISO } from 'date-fns';
@@ -54,27 +55,53 @@ function depthScale(z: number, maxZ: number): number {
 
 /** Shared stem-base Y for all flowers on the horizontal timeline. */
 export function getGardenGroundY(bounds: LayoutBounds): number {
-  return bounds.height * 0.72;
+  return getGardenGroundLineY(bounds.height);
+}
+
+function monthBandContentWidth(monthCount: number): number {
+  if (monthCount <= 0) return GARDEN_CLUSTER_BAND_WIDTH;
+  return (
+    monthCount * GARDEN_CLUSTER_BAND_WIDTH +
+    Math.max(0, monthCount - 1) * GARDEN_CLUSTER_GAP
+  );
+}
+
+export interface GardenHorizontalPadding {
+  paddingLeft: number;
+  paddingRight: number;
+}
+
+/** Side padding — centers a single month column when the pan is wider than the band. */
+export function getGardenHorizontalPadding(
+  bounds: LayoutBounds,
+  monthCount: number
+): GardenHorizontalPadding {
+  const bandContent = monthBandContentWidth(monthCount);
+  if (monthCount <= 1 && bounds.width > bandContent) {
+    const side = Math.max(16, (bounds.width - bandContent) / 2);
+    return { paddingLeft: side, paddingRight: side };
+  }
+  return { paddingLeft: GARDEN_PADDING_LEFT, paddingRight: GARDEN_PADDING_RIGHT };
+}
+
+export function getGardenPaddingLeft(bounds: LayoutBounds, monthCount: number): number {
+  return getGardenHorizontalPadding(bounds, monthCount).paddingLeft;
 }
 
 /** Total world width for the horizontal garden canvas. */
-export function getGardenContentWidth(monthCount: number): number {
+export function getGardenContentWidth(monthCount: number, viewportWidth = 0): number {
+  const bandContent = monthBandContentWidth(monthCount);
+  if (monthCount <= 1 && viewportWidth > bandContent) {
+    return viewportWidth;
+  }
   if (monthCount <= 0) {
     return GARDEN_PADDING_LEFT + GARDEN_PADDING_RIGHT + GARDEN_CLUSTER_BAND_WIDTH;
   }
-  return (
-    GARDEN_PADDING_LEFT +
-    monthCount * GARDEN_CLUSTER_BAND_WIDTH +
-    Math.max(0, monthCount - 1) * GARDEN_CLUSTER_GAP +
-    GARDEN_PADDING_RIGHT
-  );
+  return GARDEN_PADDING_LEFT + bandContent + GARDEN_PADDING_RIGHT;
 }
 
-function monthColumnLeft(monthIndex: number): number {
-  return (
-    GARDEN_PADDING_LEFT +
-    monthIndex * (GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP)
-  );
+function monthColumnLeft(monthIndex: number, paddingLeft: number): number {
+  return paddingLeft + monthIndex * (GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP);
 }
 
 /**
@@ -101,13 +128,14 @@ export function computeGardenLayout(
   const monthKeys = [...byMonth.keys()].sort();
   const placed: PlacedFlower[] = [];
   const groundY = getGardenGroundY(bounds);
+  const paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
   const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
   const radiusY = 48;
   const maxMonthIndex = Math.max(monthKeys.length - 1, 0);
 
   monthKeys.forEach((key, monthIndex) => {
     const clusterEntries = byMonth.get(key) ?? [];
-    const columnLeft = monthColumnLeft(monthIndex);
+    const columnLeft = monthColumnLeft(monthIndex, paddingLeft);
     const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
     const centerY = clusterCenterY(monthIndex, groundY);
 
@@ -204,8 +232,9 @@ export function assignPositionForNewEntry(
   const sameMonth = layout.filter((p) => p.monthKey === key);
   const monthKeys = [...new Set(layout.map((p) => p.monthKey))].sort();
   const monthIndex = monthKeys.indexOf(key);
+  const paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
   const columnLeft =
-    monthIndex >= 0 ? monthColumnLeft(monthIndex) : GARDEN_PADDING_LEFT;
+    monthIndex >= 0 ? monthColumnLeft(monthIndex, paddingLeft) : paddingLeft;
   const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
   const centerY =
     monthIndex >= 0 ? clusterCenterY(monthIndex, groundY) : groundY;
