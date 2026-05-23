@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { Cormorant_Garamond, Nunito } from 'next/font/google';
 
-import { BloomProvider } from '@/components/BloomProvider';
-import { AppNav } from '@/components/nav/AppNav';
-import { Toaster } from '@/components/ui/sonner';
+import { AppShell } from '@/components/layout/AppShell';
 
 import './globals.css';
 
@@ -30,15 +28,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} h-full`}>
-      <body className="flex min-h-full flex-col bg-cream text-ink antialiased">
-        <BloomProvider>
-          <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-6">
-            {children}
-          </main>
-          <AppNav />
-          <Toaster />
-        </BloomProvider>
+    <html lang="en" className={`${display.variable} ${body.variable} h-full min-h-dvh`}>
+      <body className="flex min-h-dvh flex-col bg-cream text-ink antialiased">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

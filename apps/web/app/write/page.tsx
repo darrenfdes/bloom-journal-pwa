@@ -53,70 +53,81 @@ export default function WritePage() {
   const resolved = resolveMood(draft.mood, draft.content);
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <div className="flex items-center justify-between">
-        {meta?.hasPlantedFirst ? (
-          <Link href="/garden" className="text-sm text-ink-soft hover:text-ink">
-            ← Garden
+    <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-6 pb-24">
+        <div className="flex items-center justify-between">
+          {meta?.hasPlantedFirst ? (
+            <Link href="/garden" className="text-sm text-ink-soft hover:text-ink">
+              ← Garden
+            </Link>
+          ) : (
+            <span />
+          )}
+          <Link href="/settings" className="text-sm text-ink-soft hover:text-ink">
+            Settings
           </Link>
-        ) : (
-          <span />
-        )}
-        <Link href="/settings" className="text-sm text-ink-soft hover:text-ink">
-          Settings
-        </Link>
+        </div>
+
+        <header>
+          <h1 className="font-display text-3xl font-semibold text-ink">
+            {isFirstOpen ? 'Start your garden' : 'Plant a memory'}
+          </h1>
+          {isFirstOpen ? (
+            <p className="mt-2 text-sm text-ink-muted">{FIRST_OPEN_TAGLINE}</p>
+          ) : (
+            <button
+              type="button"
+              onClick={applyPrompt}
+              className="mt-2 text-left text-sm text-ink-muted hover:text-ink-soft"
+            >
+              Prompt: {prompt}
+            </button>
+          )}
+        </header>
+
+        <div className="space-y-2">
+          <Label htmlFor="title">Title (optional)</Label>
+          <Input
+            id="title"
+            value={draft.title}
+            onChange={(e) => setDraft({ title: e.target.value })}
+            placeholder="Title (optional)"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="content">Your thoughts</Label>
+          <Textarea
+            id="content"
+            value={draft.content}
+            onChange={(e) => setDraft({ content: e.target.value })}
+            placeholder="Write freely..."
+            rows={10}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Mood</Label>
+          <MoodPicker value={draft.mood} onChange={(mood) => setDraft({ mood })} />
+          {!draft.mood && draft.content.trim().length > 12 && (
+            <p className="text-xs text-ink-muted">Tone inferred: {resolved.mood}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Tags</Label>
+          <TagInput tags={draft.tags} onChange={(tags) => setDraft({ tags })} />
+        </div>
       </div>
 
-      <header>
-        <h1 className="font-display text-3xl font-semibold text-ink">
-          {isFirstOpen ? 'Start your garden' : 'Plant a memory'}
-        </h1>
-        {isFirstOpen ? (
-          <p className="mt-2 text-sm text-ink-muted">{FIRST_OPEN_TAGLINE}</p>
-        ) : (
-          <button type="button" onClick={applyPrompt} className="mt-2 text-left text-sm text-ink-muted hover:text-ink-soft">
-            Prompt: {prompt}
-          </button>
-        )}
-      </header>
-
-      <div className="space-y-2">
-        <Label htmlFor="title">Title (optional)</Label>
-        <Input
-          id="title"
-          value={draft.title}
-          onChange={(e) => setDraft({ title: e.target.value })}
-          placeholder="Title (optional)"
-        />
+      <div
+        className="sticky bottom-0 -mx-4 border-t border-parchment bg-cream/95 px-4 py-4 backdrop-blur-sm"
+        style={{ paddingBottom: 'calc(1rem + var(--safe-bottom))' }}
+      >
+        <Button size="lg" className="w-full" disabled={!canPlant} onClick={handlePlant}>
+          Plant it
+        </Button>
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="content">Your thoughts</Label>
-        <Textarea
-          id="content"
-          value={draft.content}
-          onChange={(e) => setDraft({ content: e.target.value })}
-          placeholder="Write freely..."
-          rows={10}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Mood</Label>
-        <MoodPicker value={draft.mood} onChange={(mood) => setDraft({ mood })} />
-        {!draft.mood && draft.content.trim().length > 12 && (
-          <p className="text-xs text-ink-muted">Tone inferred: {resolved.mood}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagInput tags={draft.tags} onChange={(tags) => setDraft({ tags })} />
-      </div>
-
-      <Button size="lg" disabled={!canPlant} onClick={handlePlant}>
-        Plant it
-      </Button>
     </div>
   );
 }

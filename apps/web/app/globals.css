@@ -21,6 +21,8 @@
   --mood-energized: #e47054;
   --mood-grateful: #e0a567;
   --mood-anxious: #9b8faf;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
 @theme inline {
@@ -39,6 +41,19 @@
   --font-body: var(--font-body);
 }
 
+html,
+body {
+  min-height: 100dvh;
+}
+
+html.garden-route,
+html.garden-route body {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   background-color: var(--cream);
   color: var(--ink);
@@ -47,4 +62,116 @@ body {
 
 .font-display {
   font-family: var(--font-display), Georgia, serif;
+}
+
+@keyframes pollen-float {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--pollen-drift), -80px);
+  }
+}
+
+.pollen-sparkle {
+  animation: pollen-float var(--pollen-duration) var(--pollen-delay) ease-out infinite;
+}
+
+@keyframes flower-sway {
+  0%,
+  100% {
+    transform: rotate(var(--sway-min)) scale(var(--fav-scale, 1));
+  }
+  50% {
+    transform: rotate(var(--sway-max)) scale(var(--fav-scale, 1));
+  }
+}
+
+.flower-sway {
+  transform-origin: center bottom;
+  animation: flower-sway 2.8s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes flower-bloom-in {
+  from {
+    transform: scale(0.12) rotate(var(--sway-base, 0deg));
+  }
+  to {
+    transform: scale(var(--fav-scale, 1)) rotate(var(--sway-base, 0deg));
+  }
+}
+
+.flower-bloom-in {
+  transform-origin: center bottom;
+  animation: flower-bloom-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--cloud-drift));
+  }
+}
+
+.ambient-cloud {
+  animation: cloud-drift var(--cloud-duration) var(--cloud-delay) linear infinite;
+  will-change: transform;
+}
+
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.ambient-sun {
+  animation: sun-pulse 7.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.garden-flower {
+  content-visibility: auto;
+  contain-intrinsic-size: 160px 160px;
+  contain: layout style paint;
+}
+
+.garden-pan {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+
+.garden-pan::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pollen-sparkle,
+  .flower-sway,
+  .flower-bloom-in,
+  .ambient-cloud,
+  .ambient-sun {
+    animation: none !important;
+  }
+
+  .flower-bloom-in {
+    transform: scale(var(--fav-scale, 1)) rotate(var(--sway-base, 0deg));
+  }
 }

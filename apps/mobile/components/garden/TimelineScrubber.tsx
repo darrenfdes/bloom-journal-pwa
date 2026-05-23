@@ -6,7 +6,7 @@ import { fonts, palette } from '@/lib/theme';
 
 type Props = {
   clusters: MonthCluster[];
-  onJump: (scrollY: number) => void;
+  onJump: (scrollX: number) => void;
 };
 
 export function TimelineScrubber({ clusters, onJump }: Props) {
@@ -23,7 +23,7 @@ export function TimelineScrubber({ clusters, onJump }: Props) {
         <Pressable
           key={c.monthKey}
           style={styles.chip}
-          onPress={() => onJump(Math.max(0, c.groundY - 80))}
+          onPress={() => onJump(Math.max(0, c.groundX - 40))}
         >
           <Text style={styles.chipText}>{c.label}</Text>
         </Pressable>

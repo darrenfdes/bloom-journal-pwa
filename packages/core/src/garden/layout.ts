@@ -3,8 +3,14 @@ import { scatterInCluster } from '../garden/scatter';
 import type { EntryRecord, GardenPosition } from '../types';
 import { format, parseISO } from 'date-fns';
 
+export const GARDEN_CLUSTER_BAND_WIDTH = 320;
+export const GARDEN_CLUSTER_GAP = 60;
+export const GARDEN_PADDING_LEFT = 200;
+export const GARDEN_PADDING_RIGHT = 200;
+
 export interface LayoutBounds {
   width: number;
+  /** Viewport height — used to place the shared ground line. */
   height: number;
 }
 
@@ -17,8 +23,12 @@ export interface PlacedFlower {
 export interface MonthCluster {
   monthKey: string;
   label: string;
-  groundY: number;
+  /** Left edge of the month column (scrubber jump target). */
+  groundX: number;
+  /** Horizontal center of the month column. */
   centerX: number;
+  /** Shared horizon Y for labels and ground overlays. */
+  groundY: number;
 }
 
 function monthKey(dateIso: string): string {
@@ -31,9 +41,10 @@ function monthLabel(key: string): string {
   return format(new Date(y!, m! - 1, 1), 'MMM yyyy');
 }
 
-function clusterCenterX(monthIndex: number, width: number): number {
+function clusterCenterY(monthIndex: number, groundY: number): number {
   const slots = [0.25, 0.5, 0.75];
-  return width * slots[monthIndex % 3]!;
+  const spread = 56;
+  return groundY - spread * slots[monthIndex % 3]!;
 }
 
 function depthScale(z: number, maxZ: number): number {
@@ -41,9 +52,34 @@ function depthScale(z: number, maxZ: number): number {
   return 0.72 + (z / maxZ) * 0.35;
 }
 
+/** Shared stem-base Y for all flowers on the horizontal timeline. */
+export function getGardenGroundY(bounds: LayoutBounds): number {
+  return bounds.height * 0.72;
+}
+
+/** Total world width for the horizontal garden canvas. */
+export function getGardenContentWidth(monthCount: number): number {
+  if (monthCount <= 0) {
+    return GARDEN_PADDING_LEFT + GARDEN_PADDING_RIGHT + GARDEN_CLUSTER_BAND_WIDTH;
+  }
+  return (
+    GARDEN_PADDING_LEFT +
+    monthCount * GARDEN_CLUSTER_BAND_WIDTH +
+    Math.max(0, monthCount - 1) * GARDEN_CLUSTER_GAP +
+    GARDEN_PADDING_RIGHT
+  );
+}
+
+function monthColumnLeft(monthIndex: number): number {
+  return (
+    GARDEN_PADDING_LEFT +
+    monthIndex * (GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP)
+  );
+}
+
 /**
  * Deterministic layout — ignores stale DB coords for display.
- * x/y = stem base on scroll canvas.
+ * Oldest months on the left, newest on the right; x/y = stem base on world canvas.
  */
 export function computeGardenLayout(
   entries: EntryRecord[],
@@ -64,23 +100,22 @@ export function computeGardenLayout(
 
   const monthKeys = [...byMonth.keys()].sort();
   const placed: PlacedFlower[] = [];
-  const paddingTop = 200;
-  const clusterBandHeight = 280;
-  let cursorY = paddingTop;
+  const groundY = getGardenGroundY(bounds);
+  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
+  const radiusY = 48;
   const maxMonthIndex = Math.max(monthKeys.length - 1, 0);
 
   monthKeys.forEach((key, monthIndex) => {
     const clusterEntries = byMonth.get(key) ?? [];
-    const centerX = clusterCenterX(monthIndex, bounds.width);
-    const groundY = cursorY + clusterBandHeight * 0.55;
-    const radiusX = Math.min(bounds.width * 0.4, 180);
-    const radiusY = 90;
+    const columnLeft = monthColumnLeft(monthIndex);
+    const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
+    const centerY = clusterCenterY(monthIndex, groundY);
 
     const scatterSeed = hashString(key + String(clusterEntries.length));
     const points = scatterInCluster(
       clusterEntries.length,
       centerX,
-      groundY,
+      centerY,
       radiusX,
       radiusY,
       scatterSeed,
@@ -88,7 +123,7 @@ export function computeGardenLayout(
     );
 
     clusterEntries.forEach((entry, index) => {
-      const pt = points[index] ?? { x: centerX, y: groundY };
+      const pt = points[index] ?? { x: centerX, y: centerY };
       const rng = new SeededRNG(hashString(entry.id + key));
       const z = monthIndex * 100 + index;
       const maxZ = maxMonthIndex * 100 + clusterEntries.length;
@@ -96,7 +131,7 @@ export function computeGardenLayout(
 
       const position: GardenPosition = {
         x: pt.x + rng.range(-6, 6),
-        y: pt.y,
+        y: pt.y + rng.range(-4, 4),
         z,
         rotation: rng.range(-22, 22),
         scale,
@@ -104,8 +139,6 @@ export function computeGardenLayout(
 
       placed.push({ entry, position, monthKey: key });
     });
-
-    cursorY += clusterBandHeight + 60;
   });
 
   return placed;
@@ -118,23 +151,28 @@ export function getMonthClusters(
   const layout = computeGardenLayout(entries, bounds);
   const seen = new Set<string>();
   const clusters: MonthCluster[] = [];
+  const groundY = getGardenGroundY(bounds);
+  const monthKeys = [...new Set(layout.map((p) => p.monthKey))].sort();
 
-  for (const p of layout) {
-    if (seen.has(p.monthKey)) continue;
-    seen.add(p.monthKey);
-    const inMonth = layout.filter((x) => x.monthKey === p.monthKey);
-    const groundY = Math.min(...inMonth.map((x) => x.position.y));
+  for (const key of monthKeys) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const monthIndex = monthKeys.indexOf(key);
+    const inMonth = layout.filter((x) => x.monthKey === key);
+    const columnLeft = monthColumnLeft(monthIndex);
     const centerX =
       inMonth.reduce((s, x) => s + x.position.x, 0) / Math.max(inMonth.length, 1);
+
     clusters.push({
-      monthKey: p.monthKey,
-      label: monthLabel(p.monthKey),
-      groundY: groundY - 48,
+      monthKey: key,
+      label: monthLabel(key),
+      groundX: columnLeft,
       centerX,
+      groundY: groundY - 48,
     });
   }
 
-  return clusters.sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+  return clusters;
 }
 
 export function assignPositionForNewEntry(
@@ -146,6 +184,7 @@ export function assignPositionForNewEntry(
 ): GardenPosition {
   const key = monthKey(createdAt);
   const rng = new SeededRNG(hashString(newEntryId));
+  const groundY = getGardenGroundY(bounds);
 
   if (revisitOf) {
     const layout = computeGardenLayout(entries, bounds);
@@ -165,18 +204,22 @@ export function assignPositionForNewEntry(
   const sameMonth = layout.filter((p) => p.monthKey === key);
   const monthKeys = [...new Set(layout.map((p) => p.monthKey))].sort();
   const monthIndex = monthKeys.indexOf(key);
-  const centerX =
-    monthIndex >= 0 ? clusterCenterX(monthIndex, bounds.width) : bounds.width * 0.5;
-
-  const groundY =
-    sameMonth.length > 0
-      ? Math.max(...sameMonth.map((p) => p.position.y)) + 64
-      : layout.length > 0
-        ? Math.max(...layout.map((p) => p.position.y)) + 120
-        : 200;
+  const columnLeft =
+    monthIndex >= 0 ? monthColumnLeft(monthIndex) : GARDEN_PADDING_LEFT;
+  const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
+  const centerY =
+    monthIndex >= 0 ? clusterCenterY(monthIndex, groundY) : groundY;
 
   const scatterSeed = hashString(key + newEntryId + String(sameMonth.length));
-  const [pt] = scatterInCluster(1, centerX, groundY, 80, 50, scatterSeed, 40);
+  const [pt] = scatterInCluster(
+    1,
+    centerX,
+    centerY,
+    80,
+    40,
+    scatterSeed,
+    40
+  );
 
   const z =
     (monthIndex >= 0 ? monthIndex : monthKeys.length) * 100 + sameMonth.length;
@@ -184,7 +227,7 @@ export function assignPositionForNewEntry(
 
   return {
     x: pt?.x ?? centerX,
-    y: pt?.y ?? groundY,
+    y: pt?.y ?? centerY,
     z,
     rotation: rng.range(-18, 18),
     scale: depthScale(z, maxZ),

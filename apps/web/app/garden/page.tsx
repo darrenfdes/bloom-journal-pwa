@@ -1,36 +1,60 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
 
-import { GardenScene } from '@/components/garden/GardenScene';
-import { Button } from '@/components/ui/button';
 import { useBloomStore } from '@/stores/useBloomStore';
 
-export default function GardenPage() {
+const GardenScene = dynamic(
+  () => import('@/components/garden/GardenScene').then((m) => m.GardenScene),
+  {
+    loading: () => (
+      <div className="flex min-h-dvh flex-1 items-center justify-center">
+        <p className="text-ink-muted">Loading garden…</p>
+      </div>
+    ),
+  }
+);
+
+function GardenContent() {
   const router = useRouter();
   const ready = useBloomStore((s) => s.ready);
   const meta = useBloomStore((s) => s.gardenMeta);
   const entries = useBloomStore((s) => s.entries);
 
+  useEffect(() => {
+    if (!ready || !meta) return;
+    if (!meta.hasPlantedFirst) {
+      router.replace('/write');
+    }
+  }, [ready, meta, router]);
+
   if (!ready) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex min-h-dvh flex-1 items-center justify-center">
         <p className="text-ink-muted">Loading garden…</p>
       </div>
     );
   }
 
   if (!meta?.hasPlantedFirst) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <h1 className="font-display text-3xl font-semibold text-ink">Your garden awaits</h1>
-        <p className="max-w-sm text-sm text-ink-muted">
-          Plant your first memory to see flowers bloom here.
-        </p>
-        <Button onClick={() => router.push('/write')}>Start writing</Button>
-      </div>
-    );
+    return null;
   }
 
   return <GardenScene meta={meta} entries={entries} />;
+}
+
+export default function GardenPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh flex-1 items-center justify-center">
+          <p className="text-ink-muted">Loading garden…</p>
+        </div>
+      }
+    >
+      <GardenContent />
+    </Suspense>
+  );
 }

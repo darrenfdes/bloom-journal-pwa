@@ -22,6 +22,7 @@ export default function PlantConfirmPage() {
   const setGardenMeta = useBloomStore((s) => s.setGardenMeta);
   const setEntries = useBloomStore((s) => s.setEntries);
   const resetDraft = useBloomStore((s) => s.resetDraft);
+  const setHighlightEntryId = useBloomStore((s) => s.setHighlightEntryId);
   const meta = useBloomStore((s) => s.gardenMeta);
   const [planting, setPlanting] = useState(false);
 
@@ -69,7 +70,7 @@ export default function PlantConfirmPage() {
         width: typeof window !== 'undefined' ? window.innerWidth : 390,
         height: typeof window !== 'undefined' ? window.innerHeight : 800,
       };
-      await plantEntry(pending, bounds);
+      const entry = await plantEntry(pending, bounds);
       await clearWriteDraft();
 
       const { listEntries } = await import('@/lib/db/repositories/entries');
@@ -82,8 +83,10 @@ export default function PlantConfirmPage() {
       resetDraft();
 
       toast.success('Planted in your garden');
+      setHighlightEntryId(entry.id);
+
       if (!meta?.hasPlantedFirst) {
-        router.replace('/garden');
+        router.replace(`/garden?bloom=${entry.id}`);
       } else {
         router.replace('/garden');
       }
@@ -94,25 +97,29 @@ export default function PlantConfirmPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-6 py-8 text-center">
-      <h1 className="font-display text-2xl font-semibold text-ink">Ready to plant this?</h1>
+    <div className="flex w-full max-w-sm flex-col items-center gap-6 px-7 text-center">
+      <h1 className="font-display text-3xl font-semibold text-ink">Ready to plant this?</h1>
 
       <div className="flex items-center justify-center py-4">
         <FlowerSvg entry={previewEntry} size={220} animateBloom genomeOverride={genome} />
       </div>
 
-      <p className="text-sm text-ink-muted">
+      <p className="text-sm text-ink-soft">
         {new Date(previewEntry.createdAt).toLocaleDateString(undefined, {
           weekday: 'long',
           month: 'long',
           day: 'numeric',
         })}
       </p>
-      <p className="text-sm font-medium text-ink-soft">{moodLabel}</p>
+      <p className="text-sm font-semibold uppercase tracking-wide text-sage">{moodLabel}</p>
 
-      <div className="flex w-full max-w-xs flex-col gap-3">
+      <p className="text-sm italic text-ink-muted">
+        Every entry grows a flower — no two alike.
+      </p>
+
+      <div className="flex w-full flex-col gap-3">
         <Button size="lg" disabled={planting} onClick={() => void confirmPlant()}>
-          {planting ? 'Planting…' : 'Plant in garden'}
+          {planting ? 'Planting…' : 'Plant this memory'}
         </Button>
         <Button variant="outline" onClick={() => router.back()}>
           Keep editing

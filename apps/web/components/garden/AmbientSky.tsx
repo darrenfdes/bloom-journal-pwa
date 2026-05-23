@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import React from 'react';
 
 import { getSeason } from '@bloom/core/theme/seasons';
@@ -14,21 +13,28 @@ type CloudProps = {
   drift: number;
 };
 
-function AnimatedCloud({ x, y, scale, duration, delay, drift }: CloudProps) {
+function DriftingCloud({ x, y, scale, duration, delay, drift }: CloudProps) {
   return (
-    <motion.div
-      className="pointer-events-none absolute"
-      style={{ left: x, top: y, scale }}
-      initial={{ x: 0 }}
-      animate={{ x: drift }}
-      transition={{ duration: duration / 1000, delay: delay / 1000, repeat: Infinity, ease: 'linear' }}
+    <div
+      className="ambient-cloud pointer-events-none absolute"
+      style={
+        {
+          left: x,
+          top: y,
+          scale,
+          '--cloud-drift': `${drift}px`,
+          '--cloud-duration': `${duration}ms`,
+          '--cloud-delay': `${delay}ms`,
+        } as React.CSSProperties
+      }
+      aria-hidden
     >
       <svg width={120} height={50} viewBox="0 0 120 50">
         <ellipse cx="35" cy="32" rx="28" ry="14" fill="rgba(255,255,255,0.72)" />
         <ellipse cx="65" cy="24" rx="34" ry="18" fill="rgba(255,255,255,0.82)" />
         <ellipse cx="92" cy="32" rx="22" ry="12" fill="rgba(255,255,255,0.68)" />
       </svg>
-    </motion.div>
+    </div>
   );
 }
 
@@ -41,11 +47,10 @@ export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month
 
   return (
     <div className="pointer-events-none absolute left-0 right-0 top-0 h-[260px] overflow-hidden">
-      <motion.div
-        className="absolute"
+      <div
+        className="ambient-sun absolute"
         style={{ left: sunX - sunR, top: sunY - sunR }}
-        animate={{ scale: [1, 1.05, 0.95, 1] }}
-        transition={{ duration: 7.2, repeat: Infinity, ease: 'easeInOut' }}
+        aria-hidden
       >
         <svg width={sunR * 2} height={sunR * 2}>
           <defs>
@@ -64,7 +69,7 @@ export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month
             fillOpacity={0.8}
           />
         </svg>
-      </motion.div>
+      </div>
 
       <svg
         className="absolute bottom-0 left-0 right-0 opacity-95"
@@ -83,10 +88,10 @@ export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month
         />
       </svg>
 
-      <AnimatedCloud x={width * 0.05} y={40} scale={1.1} duration={120000} delay={0} drift={48} />
-      <AnimatedCloud x={width * 0.4} y={78} scale={0.85} duration={140000} delay={8000} drift={40} />
-      <AnimatedCloud x={width * 0.58} y={115} scale={0.95} duration={160000} delay={15000} drift={52} />
-      <AnimatedCloud x={width * 0.15} y={148} scale={0.7} duration={130000} delay={22000} drift={36} />
+      <DriftingCloud x={width * 0.05} y={40} scale={1.1} duration={120000} delay={0} drift={48} />
+      <DriftingCloud x={width * 0.4} y={78} scale={0.85} duration={140000} delay={8000} drift={40} />
+      <DriftingCloud x={width * 0.58} y={115} scale={0.95} duration={160000} delay={15000} drift={52} />
+      <DriftingCloud x={width * 0.15} y={148} scale={0.7} duration={130000} delay={22000} drift={36} />
     </div>
   );
 }
