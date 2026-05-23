@@ -5,6 +5,7 @@ import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { AmbientSky } from '@/components/garden/AmbientSky';
 import { computeGroundVariant } from '@/lib/garden/ground';
 import { getHorizonGlow } from '@bloom/core/garden/season-hills';
+import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeasonPalette } from '@/lib/theme/seasons';
 import type { GroundVariant } from '@/lib/types';
 
@@ -25,7 +26,7 @@ export function SeasonBackground({
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
   const { sky, season } = getSeasonPalette(month);
   const { width, height } = Dimensions.get('window');
-  const skyH = height * 0.5;
+  const skyH = getGardenSkyHeight(height);
   const horizonGlow = getHorizonGlow(variant, season);
 
   return (

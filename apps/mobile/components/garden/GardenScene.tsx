@@ -74,8 +74,8 @@ export function GardenScene({ meta, entries }: Props) {
   );
   const clusters = useMemo(() => getMonthClusters(filtered, bounds), [filtered, bounds]);
   const contentWidth = useMemo(
-    () => getGardenContentWidth(clusters.length),
-    [clusters.length]
+    () => getGardenContentWidth(clusters.length, width),
+    [clusters.length, width]
   );
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;

@@ -3,6 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { buildHillPaths } from '@bloom/core/garden/season-hills';
+import {
+  getGardenHillSvgHeight,
+  getGardenHillTop,
+} from '@bloom/core/garden/scene-layout';
 import { computeGroundVariant, getGroundStyle } from '@/lib/garden/ground';
 import type { GroundVariant } from '@/lib/types';
 
@@ -44,7 +48,7 @@ export function RepeatingSeasonGround({
             key={tileIndex}
             width={tileWidth}
             height={groundSvgH}
-            style={[styles.tile, { left: x, top: skyH * 0.7 }]}
+            style={[styles.tile, { left: x, top: hillTop }]}
             viewBox={`0 0 ${tileWidth} ${groundSvgH}`}
             preserveAspectRatio="none"
           >

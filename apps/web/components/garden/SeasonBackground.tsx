@@ -5,6 +5,7 @@ import React from 'react';
 import { AmbientSky } from '@/components/garden/AmbientSky';
 import { computeGroundVariant } from '@bloom/core/garden/ground';
 import { getHorizonGlow } from '@bloom/core/garden/season-hills';
+import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeasonPalette } from '@bloom/core/theme/seasons';
 import type { GroundVariant } from '@bloom/core';
 
@@ -28,7 +29,7 @@ export function SeasonBackground({
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
   const { sky, season } = getSeasonPalette(month);
-  const skyH = viewportHeight * 0.5;
+  const skyH = getGardenSkyHeight(viewportHeight);
   const horizonGlow = getHorizonGlow(variant, season);
 
   return (

@@ -4,6 +4,10 @@ import React, { useMemo } from 'react';
 
 import { buildHillPaths } from '@bloom/core/garden/season-hills';
 import { computeGroundVariant, getGroundStyle } from '@bloom/core/garden/ground';
+import {
+  getGardenHillSvgHeight,
+  getGardenHillTop,
+} from '@bloom/core/garden/scene-layout';
 import type { GroundVariant } from '@bloom/core';
 
 type Props = {
@@ -30,8 +34,8 @@ export function RepeatingSeasonGround({
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
   const groundStyle = getGroundStyle(variant);
-  const groundSvgH = viewportHeight * 0.7;
-  const skyH = viewportHeight * 0.5;
+  const hillTop = getGardenHillTop(viewportHeight);
+  const groundSvgH = getGardenHillSvgHeight(viewportHeight);
   const hills = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
   const offset = tileWidth > 0 ? scrollLeft % tileWidth : 0;
@@ -60,7 +64,7 @@ export function RepeatingSeasonGround({
           <svg
             key={tileIndex}
             className="absolute top-0"
-            style={{ left: x, top: skyH * 0.7 }}
+            style={{ left: x, top: hillTop }}
             width={tileWidth}
             height={groundSvgH}
             viewBox={`0 0 ${tileWidth} ${groundSvgH}`}
