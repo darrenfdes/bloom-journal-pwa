@@ -16,6 +16,14 @@
   "dependencies": {
     "date-fns": "^4.2.1"
   },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "typescript": "^5"
   }

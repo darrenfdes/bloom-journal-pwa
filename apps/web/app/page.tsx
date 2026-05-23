@@ -19,9 +19,13 @@ export default function HomePage() {
     }
   }, [ready, meta, router]);
 
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <p className="font-display text-lg text-ink-muted">Opening your garden…</p>
-    </div>
-  );
+  if (!ready) {
+    return (
+      <div className="flex min-h-dvh flex-1 items-center justify-center bg-cream">
+        <p className="font-display text-lg text-ink-muted">Opening your garden…</p>
+      </div>
+    );
+  }
+
+  return null;
 }

@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,11 +17,19 @@ import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { GrassLayer } from '@/components/garden/GrassLayer';
 import { GroundTexture } from '@/components/garden/GroundTexture';
 import { PollenSparkles } from '@/components/garden/PollenSparkles';
+import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
-import { computeGroundVariant } from '@/lib/garden/ground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
+import { computeGroundVariant } from '@/lib/garden/ground';
 import { applyGardenFilter } from '@/lib/garden/filters';
-import { computeGardenLayout, getMonthClusters } from '@/lib/garden/layout';
+import {
+  GARDEN_CLUSTER_BAND_WIDTH,
+  computeGardenLayout,
+  getGardenContentWidth,
+  getGardenGroundY,
+  getMonthClusters,
+} from '@/lib/garden/layout';
+import { isXRangeVisible } from '@/lib/garden/visibility';
 import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
 import { isAnniversaryBlossom } from '@/lib/garden/anniversary';
 import { MOODS } from '@/lib/constants/moods';
@@ -31,6 +41,8 @@ type Props = {
   meta: GardenMeta;
   entries: EntryRecord[];
 };
+
+const VIEWPORT_BUFFER = 320;
 
 function flowerSizeForEntry(entry: EntryRecord): number {
   if (entry.isFavourited) return 156;
@@ -44,15 +56,16 @@ export function GardenScene({ meta, entries }: Props) {
   const filter = useBloomStore((s) => s.gardenFilter);
   const setGardenFilter = useBloomStore((s) => s.setGardenFilter);
   const scrollRef = useRef<ScrollView>(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
   const [filterMenu, setFilterMenu] = useState<{
     entryId: string;
     mood: Mood | null;
     monthKey: string;
   } | null>(null);
 
-  const width = Dimensions.get('window').width;
+  const { width, height: viewportHeight } = Dimensions.get('window');
   const filtered = useMemo(() => applyGardenFilter(entries, filter), [entries, filter]);
-  const bounds = useMemo(() => ({ width, height: 2400 }), [width]);
+  const bounds = useMemo(() => ({ width, height: viewportHeight }), [width, viewportHeight]);
 
   const layout = useMemo(() => computeGardenLayout(filtered, bounds), [filtered, bounds]);
   const sortedLayout = useMemo(
@@ -60,6 +73,12 @@ export function GardenScene({ meta, entries }: Props) {
     [layout]
   );
   const clusters = useMemo(() => getMonthClusters(filtered, bounds), [filtered, bounds]);
+  const contentWidth = useMemo(
+    () => getGardenContentWidth(clusters.length),
+    [clusters.length]
+  );
+  const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
+  const clusterGroundY = groundY + 4;
 
   const daysSince = daysSinceLastEntry(meta.lastEntryAt);
   const wilted = isGardenWilted(meta.lastEntryAt);
@@ -70,27 +89,21 @@ export function GardenScene({ meta, entries }: Props) {
   const groundSeed = meta.id.charCodeAt(0) + meta.id.charCodeAt(meta.id.length - 1);
   const groundVariant = computeGroundVariant(gardenMonth, groundSeed);
 
-  const contentHeight = Math.max(
-    700,
-    ...sortedLayout.map((p) => p.position.y + 140),
-    500
-  );
-
-  const clusterLabels = useMemo(() => {
-    const labels: { monthKey: string; label: string; x: number; y: number }[] = [];
-    const seen = new Set<string>();
+  const visibleClusterKeys = useMemo(() => {
+    const keys = new Set<string>();
     for (const c of clusters) {
-      if (seen.has(c.monthKey)) continue;
-      seen.add(c.monthKey);
-      labels.push({
-        monthKey: c.monthKey,
-        label: c.label,
-        x: c.centerX,
-        y: c.groundY,
-      });
+      const left = c.groundX;
+      const right = c.groundX + GARDEN_CLUSTER_BAND_WIDTH;
+      if (isXRangeVisible(left, right, scrollLeft, width, VIEWPORT_BUFFER)) {
+        keys.add(c.monthKey);
+      }
     }
-    return labels;
-  }, [clusters]);
+    return keys;
+  }, [clusters, scrollLeft, width]);
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setScrollLeft(e.nativeEvent.contentOffset.x);
+  };
 
   const handleLongPress = (entry: EntryRecord, monthKey: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -129,97 +142,120 @@ export function GardenScene({ meta, entries }: Props) {
         <Text style={styles.wiltHint}>Your garden misses you — write to refresh it</Text>
       ) : null}
 
-      <TimelineScrubber clusters={clusters} onJump={(y) => scrollRef.current?.scrollTo({ y, animated: true })} />
+      <TimelineScrubber
+        clusters={clusters}
+        onJump={(x) => scrollRef.current?.scrollTo({ x, animated: true })}
+      />
 
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{ height: contentHeight, width }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Grass tufts under each cluster */}
-        {clusters.map((c) => {
-          const clusterMonth = new Date(`${c.monthKey}-01`).getMonth() + 1;
-          const clusterSeed =
-            c.monthKey.charCodeAt(0) * 31 + c.monthKey.charCodeAt(c.monthKey.length - 1);
-          const clusterGround = computeGroundVariant(clusterMonth, clusterSeed);
-          const clusterGroundY = c.groundY + 100;
+      <View style={styles.panWrap}>
+        <PollenSparkles width={width} height={viewportHeight} count={Math.min(20, Math.max(8, sortedLayout.length))} />
 
-          return (
-            <React.Fragment key={`ground-${c.monthKey}`}>
-              <GroundTexture
-                width={width}
-                height={180}
-                groundY={clusterGroundY}
-                variant={clusterGround}
-                seed={clusterSeed}
-              />
-              <GrassLayer
-                width={width}
-                height={180}
-                groundY={clusterGroundY}
-                month={clusterMonth}
-                seed={clusterSeed}
-                density={28}
-                groundVariant={clusterGround}
-              />
-            </React.Fragment>
-          );
-        })}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ width: contentWidth, height: viewportHeight }}
+        >
+          <RepeatingSeasonGround
+            scrollLeft={scrollLeft}
+            tileWidth={width}
+            viewportHeight={viewportHeight}
+            month={gardenMonth}
+            groundVariant={groundVariant}
+            groundSeed={groundSeed}
+          />
 
-        {/* Ambient pollen */}
-        <PollenSparkles width={width} height={contentHeight} count={Math.min(20, Math.max(8, sortedLayout.length))} />
+          {clusters.map((c) => {
+            if (!visibleClusterKeys.has(c.monthKey)) return null;
 
-        {clusterLabels.map((c) => (
-          <Text
-            key={`label-${c.monthKey}`}
-            style={[
-              styles.clusterLabel,
-              { left: c.x - 60, top: c.y },
-            ]}
-          >
-            {c.label}
-          </Text>
-        ))}
+            const clusterMonth = new Date(`${c.monthKey}-01`).getMonth() + 1;
+            const clusterSeed =
+              c.monthKey.charCodeAt(0) * 31 + c.monthKey.charCodeAt(c.monthKey.length - 1);
+            const clusterGround = computeGroundVariant(clusterMonth, clusterSeed);
 
-        {sortedLayout.map(({ entry, position }, index) => {
-          const flowerSize = flowerSizeForEntry(entry);
-          const plotHeight = flowerSize * 1.15;
+            return (
+              <React.Fragment key={`ground-${c.monthKey}`}>
+                <View style={{ position: 'absolute', left: c.groundX, width: GARDEN_CLUSTER_BAND_WIDTH }}>
+                  <GroundTexture
+                    width={GARDEN_CLUSTER_BAND_WIDTH}
+                    height={180}
+                    groundY={clusterGroundY}
+                    variant={clusterGround}
+                    seed={clusterSeed}
+                  />
+                  <GrassLayer
+                    width={GARDEN_CLUSTER_BAND_WIDTH}
+                    height={180}
+                    groundY={clusterGroundY}
+                    month={clusterMonth}
+                    seed={clusterSeed}
+                    density={28}
+                    groundVariant={clusterGround}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.clusterLabel,
+                    { left: c.centerX - 60, top: c.groundY },
+                  ]}
+                >
+                  {c.label}
+                </Text>
+              </React.Fragment>
+            );
+          })}
 
-          return (
-            <Pressable
-              key={entry.id}
-              onPress={() => router.push(`/entry/${entry.id}`)}
-              onLongPress={() => handleLongPress(entry, formatMonth(entry.createdAt))}
-              style={[
-                styles.flowerPlot,
-                {
-                  left: position.x - flowerSize / 2,
-                  top: position.y - plotHeight,
-                  width: flowerSize,
-                  height: plotHeight,
-                  zIndex: position.z,
-                  transform: [
-                    { rotate: `${position.rotation}deg` },
-                    { scale: position.scale },
-                  ],
-                },
-              ]}
-            >
-              <FlowerSvg
-                entry={entry}
-                size={flowerSize}
-                animateSway
-                daysSinceLastEntry={daysSince}
-                entryIndex={index}
-                totalEntries={filtered.length}
-              />
-              {isAnniversaryBlossom(entry.createdAt) ? (
-                <Text style={styles.anniversary}>✦ anniversary</Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+          {sortedLayout.map(({ entry, position }, index) => {
+            const flowerSize = flowerSizeForEntry(entry);
+            const plotHeight = flowerSize * 1.15;
+            const plotLeft = position.x - flowerSize / 2;
+            const plotRight = position.x + flowerSize / 2;
+
+            if (
+              !isXRangeVisible(plotLeft, plotRight, scrollLeft, width, VIEWPORT_BUFFER)
+            ) {
+              return null;
+            }
+
+            return (
+              <Pressable
+                key={entry.id}
+                onPress={() => router.push(`/entry/${entry.id}`)}
+                onLongPress={() => handleLongPress(entry, formatMonth(entry.createdAt))}
+                style={[
+                  styles.flowerPlot,
+                  {
+                    left: plotLeft,
+                    top: position.y - plotHeight,
+                    width: flowerSize,
+                    height: plotHeight,
+                    zIndex: position.z,
+                    transform: [
+                      { rotate: `${position.rotation}deg` },
+                      { scale: position.scale },
+                    ],
+                  },
+                ]}
+              >
+                <FlowerSvg
+                  entry={entry}
+                  size={flowerSize}
+                  animateSway
+                  daysSinceLastEntry={daysSince}
+                  entryIndex={index}
+                  totalEntries={filtered.length}
+                />
+                {isAnniversaryBlossom(entry.createdAt) ? (
+                  <Text style={styles.anniversary}>✦ anniversary</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       <Pressable
         style={[styles.fab, { bottom: insets.bottom + 24 }]}
@@ -296,6 +332,11 @@ const styles = StyleSheet.create({
     color: palette.inkMuted,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  panWrap: {
+    flex: 1,
+    marginTop: 8,
+    minHeight: 0,
   },
   clusterLabel: {
     position: 'absolute',

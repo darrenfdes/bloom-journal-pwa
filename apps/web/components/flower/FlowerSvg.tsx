@@ -1,11 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import React, { useMemo } from 'react';
 
 import { Flower } from '@/components/flower/Flower';
 import { buildFlowerGenome } from '@bloom/core/flowers/genome';
 import type { EntryRecord, FlowerGenome } from '@bloom/core';
+import { cn } from '@/lib/utils';
 
 type Props = {
   entry: EntryRecord;
@@ -40,26 +40,26 @@ export function FlowerSvg({
 
   const wiltDroop = genome.wiltFactor * 8;
   const favScale = genome.isFavourited ? 1.06 : 1;
+  const stemRotate = genome.stemLean * 0.1;
 
   return (
-    <motion.div
-      className="relative flex items-end justify-center"
-      style={{ width: size, height: size, opacity: 1 - genome.fadeFactor }}
-      initial={animateBloom ? { scale: 0.12 } : { scale: favScale }}
-      animate={
-        animateSway
-          ? {
-              scale: favScale,
-              rotate: [genome.stemLean * 0.1, genome.stemLean * 0.1 + 1.2, genome.stemLean * 0.1 - 1.2],
-            }
-          : { scale: favScale, rotate: genome.stemLean * 0.1 }
-      }
-      transition={
-        animateBloom
-          ? { scale: { duration: 0.8, type: 'spring', bounce: 0.35 } }
-          : animateSway
-            ? { rotate: { duration: 2.8, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' } }
-            : undefined
+    <div
+      className={cn(
+        'relative flex items-end justify-center',
+        animateSway && 'flower-sway',
+        animateBloom && 'flower-bloom-in'
+      )}
+      style={
+        {
+          width: size,
+          height: size,
+          opacity: 1 - genome.fadeFactor,
+          transform: animateSway || animateBloom ? undefined : `rotate(${stemRotate}deg) scale(${favScale})`,
+          '--fav-scale': favScale,
+          '--sway-base': `${stemRotate}deg`,
+          '--sway-min': `${stemRotate - 1.2}deg`,
+          '--sway-max': `${stemRotate + 1.2}deg`,
+        } as React.CSSProperties
       }
     >
       {genome.isFavourited ? (
@@ -80,6 +80,6 @@ export function FlowerSvg({
         wordCount={genome.wordCount}
         wiltDroop={wiltDroop}
       />
-    </motion.div>
+    </div>
   );
 }
