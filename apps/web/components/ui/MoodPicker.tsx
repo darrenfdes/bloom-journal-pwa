@@ -1,6 +1,7 @@
 'use client';
 
 import { MOODS } from '@/lib/constants/moods';
+import { MoodIcon } from '@/lib/mood-icons';
 import type { Mood } from '@bloom/core';
 
 type Props = {
@@ -23,14 +24,15 @@ export function MoodPicker({ value, onChange }: Props) {
             key={m.id}
             type="button"
             onClick={() => onChange(value === m.id ? null : m.id)}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] ${
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] ${
               value === m.id
                 ? 'border-sage bg-sage text-cream shadow-[0_2px_12px_rgba(143,168,138,0.45)]'
                 : 'border-parchment bg-cream text-ink hover:bg-parchment/60'
             }`}
             title={m.description}
           >
-            {m.emoji} {m.label}
+            <MoodIcon mood={m.id} className="size-3.5" />
+            {m.label}
           </button>
         ))}
       </div>

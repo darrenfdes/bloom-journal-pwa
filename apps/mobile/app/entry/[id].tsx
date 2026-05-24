@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
-import { MOODS } from '@/lib/constants/moods';
+import { getMood } from '@/lib/constants/moods';
 import {
   getEntry,
   getRevisitChildren,
@@ -40,7 +40,7 @@ export default function EntryDetailScreen() {
 
   if (!entry) return null;
 
-  const moodLabel = MOODS.find((m) => m.id === entry.mood)?.label ?? entry.mood;
+  const moodLabel = getMood(entry.mood)?.label ?? entry.mood;
 
   const onFavourite = async () => {
     const updated = await toggleFavourite(entry.id);

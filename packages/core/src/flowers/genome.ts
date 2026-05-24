@@ -40,7 +40,7 @@ function matchesEcstaticContent(content: string): boolean {
 /**
  * Decide whether an entry should render as the pumpkin easter egg.
  * Returns true if any rule matches:
- *   1. `mood === 'ecstatic'` (explicit)
+ *   1. `mood === 'ecstatic'` (legacy entries only)
  *   2. `mood === 'joyful'` AND content contains an ecstatic keyword / `!!!`
  *   3. `mood === 'joyful'` AND `seed % 10 === 0` (rare random surprise)
  */

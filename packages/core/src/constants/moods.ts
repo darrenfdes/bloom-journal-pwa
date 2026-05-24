@@ -1,13 +1,15 @@
 import type { Mood } from '../types';
 
-export const MOODS: {
+export type MoodMeta = {
   id: Mood;
   label: string;
   emoji: string;
   description: string;
-}[] = [
+};
+
+/** Moods shown in the picker. Ecstatic is easter-egg only (content / random surprise). */
+export const MOODS: MoodMeta[] = [
   { id: 'joyful', label: 'Joyful', emoji: '☀️', description: 'Bright and open' },
-  { id: 'ecstatic', label: 'Ecstatic', emoji: '🎃', description: 'Extremely happy and excited' },
   { id: 'peaceful', label: 'Peaceful', emoji: '🌿', description: 'Calm and balanced' },
   { id: 'dreamy', label: 'Dreamy', emoji: '☁️', description: 'Soft and layered' },
   { id: 'loved', label: 'Loved', emoji: '💗', description: 'Warm and full' },
@@ -16,6 +18,19 @@ export const MOODS: {
   { id: 'grateful', label: 'Grateful', emoji: '🍑', description: 'Warm and grounded' },
   { id: 'anxious', label: 'Anxious', emoji: '🌫️', description: 'Tight and cool' },
 ];
+
+const ECSTATIC_MOOD: MoodMeta = {
+  id: 'ecstatic',
+  label: 'Ecstatic',
+  emoji: '🎃',
+  description: 'Extremely happy and excited',
+};
+
+/** Lookup mood metadata including easter-egg-only moods (legacy entries). */
+export function getMood(id: Mood | null | undefined): MoodMeta | undefined {
+  if (!id) return undefined;
+  return MOODS.find((m) => m.id === id) ?? (id === 'ecstatic' ? ECSTATIC_MOOD : undefined);
+}
 
 export const MOOD_COLORS: Record<
   Mood,
