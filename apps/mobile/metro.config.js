@@ -41,12 +41,22 @@ config.resolver.extraNodeModules = Object.fromEntries(
   singletonPackages.map((name) => [name, resolvePackageDir(name)])
 );
 
-// Force every `react` import (including subpaths) to the hoisted singleton.
+// Force every `react` import (including subpaths) to the hoisted singleton on client
+// bundles. During SSR (environment: node), Expo externalizes react/react-dom via Node
+// require — forcing react into the bundle there splits instances from react-dom.
 const reactRoot = resolvePackageDir('react');
 const defaultResolveRequest = config.resolver.resolveRequest;
 
+function isServerBundle(context) {
+  const env = context.customResolverOptions?.environment;
+  return env === 'node' || env === 'react-server';
+}
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === 'react' || moduleName.startsWith('react/')) {
+  if (
+    !isServerBundle(context) &&
+    (moduleName === 'react' || moduleName.startsWith('react/'))
+  ) {
     const filePath = require.resolve(moduleName, { paths: [reactRoot, monorepoRoot] });
     return { type: 'sourceFile', filePath };
   }
