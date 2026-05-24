@@ -36,9 +36,7 @@ type Props = {
   isHighlighted: boolean;
   animateSway: boolean;
   monthKey: string;
-  onOpenFilter: (entry: EntryRecord, monthKey: string) => void;
-  onLongPressStart: (entry: EntryRecord, monthKey: string) => void;
-  onLongPressEnd: () => void;
+  onOpenAction: (entry: EntryRecord, monthKey: string) => void;
 };
 
 function flowerSizeForEntry(entry: EntryRecord): number {
@@ -57,11 +55,8 @@ function GardenFlowerInner({
   isHighlighted,
   animateSway,
   monthKey,
-  onOpenFilter,
-  onLongPressStart,
-  onLongPressEnd,
+  onOpenAction,
 }: Props) {
-  const router = useRouter();
   const scene = useSceneContextOptional();
   const flowerSize = flowerSizeForEntry(entry);
   const windSpeed = scene?.weather?.windSpeed ?? 0;
@@ -99,21 +94,7 @@ function GardenFlowerInner({
         rotate: baseRotate,
       }}
       transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-      onClick={(e) => {
-        if (e.shiftKey) {
-          onOpenFilter(entry, monthKey);
-          return;
-        }
-        router.push(`/entry/${entry.id}`);
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onOpenFilter(entry, monthKey);
-      }}
-      onPointerDown={() => onLongPressStart(entry, monthKey)}
-      onPointerUp={onLongPressEnd}
-      onPointerLeave={onLongPressEnd}
-      onPointerCancel={onLongPressEnd}
+      onClick={() => onOpenAction(entry, monthKey)}
       title={entry.title ?? 'Memory'}
     >
       <motion.div

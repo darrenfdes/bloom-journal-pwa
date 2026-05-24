@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ export default function PlantConfirmPage() {
   const setHighlightEntryId = useBloomStore((s) => s.setHighlightEntryId);
   const meta = useBloomStore((s) => s.gardenMeta);
   const [planting, setPlanting] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
 
   const previewEntry: EntryRecord | null = useMemo(() => {
     if (!pending) return null;
@@ -84,12 +86,15 @@ export default function PlantConfirmPage() {
 
       toast.success('Planted in your garden');
       setHighlightEntryId(entry.id);
+      setCelebrating(true);
 
-      if (!meta?.hasPlantedFirst) {
-        router.replace(`/garden?bloom=${entry.id}`);
-      } else {
-        router.replace('/garden');
-      }
+      setTimeout(() => {
+        if (!meta?.hasPlantedFirst) {
+          router.replace(`/garden?bloom=${entry.id}`);
+        } else {
+          router.replace('/garden');
+        }
+      }, 1500);
     } catch {
       toast.error('Could not plant your entry');
       setPlanting(false);
@@ -97,8 +102,38 @@ export default function PlantConfirmPage() {
   };
 
   return (
-    <div className="flex w-full max-w-sm flex-col items-center gap-6 px-7 text-center">
-      <h1 className="font-display text-3xl font-semibold text-ink">Ready to plant this?</h1>
+    <>
+      <AnimatePresence>
+        {celebrating && (
+          <motion.div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-cream/95 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.5, 1], opacity: [0, 1, 0] }}
+              transition={{ duration: 1.5, ease: 'easeOut' }}
+              className="absolute h-64 w-64 rounded-full bg-sage/30 blur-3xl"
+            />
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.9 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.6, type: 'spring' }}
+              className="z-10 flex flex-col items-center"
+            >
+              <div className="mb-6 h-16 w-16 rounded-full bg-gradient-to-tr from-sage to-sage-dark shadow-[0_0_30px_rgba(143,168,138,0.6)] animate-pulse" />
+              <p className="font-display text-2xl font-semibold text-ink">
+                Nurturing your memory...
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex w-full max-w-sm flex-col items-center gap-6 px-7 text-center">
+        <h1 className="font-display text-3xl font-semibold text-ink">Ready to plant this?</h1>
 
       <div className="flex items-center justify-center py-4">
         <FlowerSvg entry={previewEntry} size={220} animateBloom genomeOverride={genome} />
@@ -126,5 +161,6 @@ export default function PlantConfirmPage() {
         </Button>
       </div>
     </div>
+    </>
   );
 }

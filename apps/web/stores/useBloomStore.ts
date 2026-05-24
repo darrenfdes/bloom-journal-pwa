@@ -20,6 +20,7 @@ interface BloomState {
   pendingPlant: WriteDraft | null;
   gardenFilter: GardenFilter;
   highlightEntryId: string | null;
+  quickWriteOpen: boolean;
   setReady: (ready: boolean) => void;
   setUnlocked: (unlocked: boolean) => void;
   setGardenMeta: (meta: GardenMeta) => void;
@@ -29,6 +30,7 @@ interface BloomState {
   setPendingPlant: (draft: WriteDraft | null) => void;
   setGardenFilter: (filter: GardenFilter) => void;
   setHighlightEntryId: (id: string | null) => void;
+  setQuickWriteOpen: (open: boolean) => void;
   refreshEntries: () => Promise<void>;
 }
 
@@ -41,6 +43,7 @@ export const useBloomStore = create<BloomState>((set, get) => ({
   pendingPlant: null,
   gardenFilter: { type: 'all' },
   highlightEntryId: null,
+  quickWriteOpen: false,
   setReady: (ready) => set({ ready }),
   setUnlocked: (unlocked) => set({ unlocked }),
   setGardenMeta: (gardenMeta) => set({ gardenMeta }),
@@ -50,6 +53,7 @@ export const useBloomStore = create<BloomState>((set, get) => ({
   setPendingPlant: (pendingPlant) => set({ pendingPlant }),
   setGardenFilter: (gardenFilter) => set({ gardenFilter }),
   setHighlightEntryId: (highlightEntryId) => set({ highlightEntryId }),
+  setQuickWriteOpen: (quickWriteOpen) => set({ quickWriteOpen }),
   refreshEntries: async () => {
     const { listEntries } = await import('@/lib/db/repositories/entries');
     const entries = await listEntries();
