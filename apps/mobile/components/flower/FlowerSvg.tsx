@@ -4,6 +4,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -11,6 +12,7 @@ import Animated, {
 
 import { Flower } from '@/components/flower/Flower';
 import { buildFlowerGenome } from '@/lib/flowers/genome';
+import { getFlowerSwayTiming } from '@bloom/core/scene';
 import type { EntryRecord, FlowerGenome } from '@/lib/types';
 
 type Props = {
@@ -22,6 +24,8 @@ type Props = {
   daysSinceLastEntry?: number | null;
   entryIndex?: number;
   totalEntries?: number;
+  swayAmplitude?: number;
+  showFavouriteHalo?: boolean;
 };
 
 export function FlowerSvg({
@@ -33,6 +37,8 @@ export function FlowerSvg({
   daysSinceLastEntry,
   entryIndex,
   totalEntries,
+  swayAmplitude = 1.2,
+  showFavouriteHalo = true,
 }: Props) {
   const genome =
     genomeOverride ??
@@ -40,6 +46,11 @@ export function FlowerSvg({
       { ...entry, mood: entry.mood ?? 'peaceful' },
       { daysSinceLastEntry: daysSinceLastEntry ?? undefined, entryIndex, totalEntries }
     );
+
+  const isRipePumpkin = genome.specialBloom === 'pumpkin' && genome.pumpkinStage === 2;
+  const swayTiming = getFlowerSwayTiming(genome.seed);
+  const swayDurationMs = Math.round(swayTiming.durationSec * 1000);
+  const swayDelayMs = Math.round(-swayTiming.delaySec * 1000);
 
   const scale = useSharedValue(animateBloom ? 0.12 : 1);
   const sway = useSharedValue(0);
@@ -51,22 +62,27 @@ export function FlowerSvg({
   }, [animateBloom, scale]);
 
   useEffect(() => {
-    if (animateSway) {
-      sway.value = withRepeat(
-        withSequence(
-          withTiming(1.2, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
-          withTiming(-1.2, { duration: 2800, easing: Easing.inOut(Easing.sin) })
-        ),
-        -1,
-        true
+    if (animateSway && !isRipePumpkin) {
+      sway.value = withDelay(
+        swayDelayMs,
+        withRepeat(
+          withSequence(
+            withTiming(swayAmplitude, { duration: swayDurationMs, easing: Easing.inOut(Easing.sin) }),
+            withTiming(-swayAmplitude, { duration: swayDurationMs, easing: Easing.inOut(Easing.sin) })
+          ),
+          -1,
+          true
+        )
       );
+    } else {
+      sway.value = 0;
     }
-  }, [animateSway, sway]);
+  }, [animateSway, isRipePumpkin, sway, swayAmplitude, swayDelayMs, swayDurationMs]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: scale.value * (genome.isFavourited ? 1.06 : 1) },
-      { rotate: `${sway.value + genome.stemLean * 0.1}deg` },
+      { rotate: `${sway.value + (isRipePumpkin ? 0 : genome.stemLean * 0.1)}deg` },
     ],
     opacity: 1 - genome.fadeFactor,
   }));
@@ -75,7 +91,7 @@ export function FlowerSvg({
 
   return (
     <Animated.View style={[styles.wrap, { width: size, height: size }, animatedStyle]}>
-      {genome.isFavourited ? (
+      {showFavouriteHalo && genome.isFavourited ? (
         <View
           pointerEvents="none"
           style={[
@@ -96,6 +112,7 @@ export function FlowerSvg({
         size={size}
         wordCount={genome.wordCount}
         wiltDroop={wiltDroop}
+        pumpkinStage={genome.specialBloom === 'pumpkin' ? genome.pumpkinStage : undefined}
       />
     </Animated.View>
   );

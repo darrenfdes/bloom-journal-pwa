@@ -6,7 +6,16 @@ import React, { memo } from 'react';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { isAnniversaryBlossom } from '@bloom/core/garden/anniversary';
+import { computePumpkinStage, resolvePumpkinTrigger } from '@bloom/core/flowers/genome';
+import {
+  getFlowerNightFilter,
+  getFlowerSeasonFilter,
+  getWindSwayDegrees,
+  isRainCategory,
+  shouldHideFlowersForWinter,
+} from '@bloom/core';
 import type { EntryRecord } from '@bloom/core';
+import { useSceneContextOptional } from '@/lib/scene/SceneContext';
 import { cn } from '@/lib/utils';
 
 type Position = {
@@ -28,9 +37,7 @@ type Props = {
   isHighlighted: boolean;
   animateSway: boolean;
   monthKey: string;
-  onOpenFilter: (entry: EntryRecord, monthKey: string) => void;
-  onLongPressStart: (entry: EntryRecord, monthKey: string) => void;
-  onLongPressEnd: () => void;
+  onOpenAction: (entry: EntryRecord, monthKey: string) => void;
 };
 
 function flowerSizeForEntry(entry: EntryRecord): number {
@@ -49,15 +56,34 @@ function GardenFlowerInner({
   isHighlighted,
   animateSway,
   monthKey,
-  onOpenFilter,
-  onLongPressStart,
-  onLongPressEnd,
+  onOpenAction,
 }: Props) {
-  const router = useRouter();
+  const scene = useSceneContextOptional();
   const flowerSize = flowerSizeForEntry(entry);
-  const plotHeight = flowerSize * 1.15;
+  const windSpeed = scene?.weather?.windSpeed ?? 0;
+  const swayAmplitude = getWindSwayDegrees(windSpeed);
+  const season = scene?.season ?? 'spring';
+  const timePhase = scene?.timePhase ?? 'day';
+  const weatherCategory = scene?.weather?.category;
+  const seasonFilter = getFlowerSeasonFilter(season);
+  const nightFilter = getFlowerNightFilter(timePhase);
+  const hideBloom = shouldHideFlowersForWinter(season);
+  const rainDroop = weatherCategory && isRainCategory(weatherCategory);
+  const filters = [seasonFilter, nightFilter, rainDroop ? 'brightness(0.85)' : null]
+    .filter(Boolean)
+    .join(' ');
+  const favHalo = entry.isFavourited ? 14 : 0;
+  const plotWidth = flowerSize + favHalo * 2;
+  const plotHeight = flowerSize * 1.15 + favHalo;
   const baseScale = position.scale;
   const baseRotate = position.rotation;
+  const isRipePumpkin =
+    resolvePumpkinTrigger({
+      mood: entry.mood ?? 'peaceful',
+      content: entry.content,
+      flowerSeed: entry.flowerSeed,
+      id: entry.id,
+    }) && computePumpkinStage(entry.createdAt) === 2;
 
   return (
     <motion.button
@@ -65,9 +91,9 @@ function GardenFlowerInner({
       data-garden-interactive
       className="garden-flower absolute flex flex-col items-center justify-end border-0 bg-transparent p-0"
       style={{
-        left: position.x - worldOffsetX - flowerSize / 2,
+        left: position.x - worldOffsetX - plotWidth / 2,
         top: position.y - plotHeight,
-        width: flowerSize,
+        width: plotWidth,
         height: plotHeight,
         zIndex: isHighlighted ? 9999 : position.z,
       }}
@@ -76,25 +102,16 @@ function GardenFlowerInner({
         rotate: baseRotate,
       }}
       transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-      onClick={(e) => {
-        if (e.shiftKey) {
-          onOpenFilter(entry, monthKey);
-          return;
-        }
-        router.push(`/entry/${entry.id}`);
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onOpenFilter(entry, monthKey);
-      }}
-      onPointerDown={() => onLongPressStart(entry, monthKey)}
-      onPointerUp={onLongPressEnd}
-      onPointerLeave={onLongPressEnd}
-      onPointerCancel={onLongPressEnd}
+      onClick={() => onOpenAction(entry, monthKey)}
       title={entry.title ?? 'Memory'}
     >
       <motion.div
-        className={cn('rounded-full', isHighlighted && 'ring-4 ring-sage/60')}
+        className={cn('relative overflow-visible', isHighlighted && 'rounded-full ring-4 ring-sage/60')}
+        style={{
+          filter: filters || undefined,
+          transform: rainDroop && !isRipePumpkin ? 'rotate(15deg)' : undefined,
+          opacity: hideBloom ? 0 : undefined,
+        }}
         animate={
           isHighlighted
             ? {
@@ -104,14 +121,27 @@ function GardenFlowerInner({
         }
         transition={{ duration: 0.35 }}
       >
+        {entry.isFavourited ? (
+          <div
+            className="pointer-events-none absolute rounded-full border-2 border-amber-200/50 bg-amber-100/15 shadow-[0_0_22px_rgba(245,215,110,0.45)]"
+            style={{
+              width: flowerSize * 0.9,
+              height: flowerSize * 0.9,
+              left: (plotWidth - flowerSize * 0.9) / 2,
+              bottom: 0,
+            }}
+          />
+        ) : null}
         <FlowerSvg
           entry={entry}
           size={flowerSize}
-          animateSway={animateSway}
+          animateSway={animateSway && !isRipePumpkin}
           animateBloom={isHighlighted}
           daysSinceLastEntry={daysSince}
           entryIndex={index}
           totalEntries={totalEntries}
+          swayAmplitude={swayAmplitude}
+          showFavouriteHalo={false}
         />
       </motion.div>
       {isAnniversaryBlossom(entry.createdAt) ? (

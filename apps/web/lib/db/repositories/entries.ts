@@ -4,7 +4,14 @@ import { assignPositionForNewEntry } from '@bloom/core/garden/layout';
 import { getDb } from '@/lib/db/client';
 import { createId } from '@/lib/id';
 import { resolveMood } from '@/lib/sentiment/infer';
-import type { EntryRecord, WriteDraft } from '@/lib/types';
+import type { EntryRecord, TimePhase, WriteDraft } from '@/lib/types';
+import type { EntryWeatherSnapshot, Season } from '@bloom/core';
+
+export type PlantSceneSnapshot = {
+  weather: EntryWeatherSnapshot | null;
+  timePhase: TimePhase;
+  sceneSeason: Season;
+};
 
 export async function listEntries(includeDeleted = false): Promise<EntryRecord[]> {
   const db = getDb();
@@ -19,7 +26,8 @@ export async function getEntry(id: string): Promise<EntryRecord | null> {
 
 export async function plantEntry(
   draft: WriteDraft,
-  bounds: { width: number; height: number }
+  bounds: { width: number; height: number },
+  scene?: PlantSceneSnapshot
 ): Promise<EntryRecord> {
   const db = getDb();
   const id = createId();
@@ -52,6 +60,9 @@ export async function plantEntry(
     isFavourited: false,
     revisitOf: draft.revisitOf,
     isDeleted: false,
+    weather: scene?.weather ?? null,
+    timePhase: scene?.timePhase ?? null,
+    sceneSeason: scene?.sceneSeason ?? null,
   };
 
   await db.entries.add(record);

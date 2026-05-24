@@ -5,6 +5,7 @@ import { CalmLavender } from '@/components/flower/blooms/Calm';
 import { HopefulTulip } from '@/components/flower/blooms/Hopeful';
 import { JoyDaisy } from '@/components/flower/blooms/Joy';
 import { LoveRose } from '@/components/flower/blooms/Love';
+import { Pumpkin } from '@/components/flower/blooms/Pumpkin';
 import { RestlessDahlia } from '@/components/flower/blooms/Restless';
 import { WistfulBluebells } from '@/components/flower/blooms/Wistful';
 import type { BloomProps } from '@/components/flower/blooms/bloomTypes';
@@ -39,6 +40,8 @@ export interface FlowerProps {
   opacity?: number;
   /** Bloom-only vertical droop in viewBox units (0–10). Stem follows. */
   wiltDroop?: number;
+  /** When set, replaces the bloom with the pumpkin easter egg at the given stage. */
+  pumpkinStage?: 0 | 1 | 2;
 }
 
 const VIEWBOX_W = 100;
@@ -58,9 +61,12 @@ export function Flower({
   foliageVariant,
   opacity = 1,
   wiltDroop = 0,
+  pumpkinStage,
 }: FlowerProps) {
   const palette = BLOOM_PALETTES[mood];
-  const ns = `${mood}-${seed >>> 0}`;
+  const isPumpkin = pumpkinStage !== undefined;
+  const isRipePumpkin = pumpkinStage === 2;
+  const ns = isPumpkin ? `pumpkin-${seed >>> 0}` : `${mood}-${seed >>> 0}`;
 
   const variant = useMemo<FoliageVariant>(
     () => foliageVariant ?? pickFoliageVariant(seed, wordCount),
@@ -69,8 +75,9 @@ export function Flower({
   const density = useMemo(() => foliageDensityForWordCount(wordCount), [wordCount]);
   const stemBend = useMemo(() => (xorshiftRand(seed ^ 0x57e3) * 2 - 1) * 7, [seed]);
 
-  const bloomCy = BLOOM_CY + wiltDroop;
-  const stemTopY = STEM_TOP_Y + wiltDroop;
+  const effectiveWilt = isRipePumpkin ? 0 : wiltDroop;
+  const bloomCy = BLOOM_CY + effectiveWilt;
+  const stemTopY = STEM_TOP_Y + effectiveWilt;
 
   const stemPath = useMemo(() => {
     const ctrlX = STEM_BASE_X + stemBend;
@@ -79,6 +86,7 @@ export function Flower({
   }, [stemBend, stemTopY]);
 
   const BloomComponent = BLOOM_COMPONENTS[mood];
+  const effectiveSway = isRipePumpkin ? 0 : sway;
 
   return (
     <Svg
@@ -89,41 +97,49 @@ export function Flower({
     >
       <G
         opacity={opacity}
-        transform={`rotate(${sway.toFixed(2)} ${STEM_BASE_X} ${STEM_BASE_Y})`}
+        transform={effectiveSway !== 0 ? `rotate(${effectiveSway.toFixed(2)} ${STEM_BASE_X} ${STEM_BASE_Y})` : undefined}
       >
-        {renderFoliage({ variant, density, palette, seed })}
+        {!isRipePumpkin ? renderFoliage({ variant, density, palette, seed }) : null}
 
-        <Path
-          d={stemPath}
-          stroke="rgba(40, 40, 30, 0.22)"
-          strokeWidth={3.4}
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d={stemPath}
-          stroke={palette.stem}
-          strokeWidth={2.6}
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d={stemPath}
-          stroke="#FFFFFF"
-          strokeOpacity={0.35}
-          strokeWidth={0.7}
-          fill="none"
-          strokeLinecap="round"
-          transform="translate(-0.4 0)"
-        />
+        {!isRipePumpkin ? (
+          <>
+            <Path
+              d={stemPath}
+              stroke="rgba(40, 40, 30, 0.22)"
+              strokeWidth={3.4}
+              fill="none"
+              strokeLinecap="round"
+            />
+            <Path
+              d={stemPath}
+              stroke={palette.stem}
+              strokeWidth={2.6}
+              fill="none"
+              strokeLinecap="round"
+            />
+            <Path
+              d={stemPath}
+              stroke="#FFFFFF"
+              strokeOpacity={0.35}
+              strokeWidth={0.7}
+              fill="none"
+              strokeLinecap="round"
+              transform="translate(-0.4 0)"
+            />
+          </>
+        ) : null}
 
-        <BloomComponent
-          ns={ns}
-          palette={palette}
-          seed={seed}
-          cx={BLOOM_CX}
-          cy={bloomCy}
-        />
+        {isPumpkin ? (
+          <Pumpkin ns={ns} seed={seed} cx={BLOOM_CX} cy={bloomCy} stage={pumpkinStage!} />
+        ) : (
+          <BloomComponent
+            ns={ns}
+            palette={palette}
+            seed={seed}
+            cx={BLOOM_CX}
+            cy={bloomCy}
+          />
+        )}
       </G>
     </Svg>
   );

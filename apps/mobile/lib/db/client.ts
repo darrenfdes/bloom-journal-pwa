@@ -50,11 +50,26 @@ CREATE TABLE IF NOT EXISTS drafts (
 );
 `;
 
+async function migrateEntriesV2(db: SQLite.SQLiteDatabase) {
+  const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(entries)');
+  const names = new Set(cols.map((c) => c.name));
+  if (!names.has('weather')) {
+    await db.execAsync('ALTER TABLE entries ADD COLUMN weather TEXT');
+  }
+  if (!names.has('time_phase')) {
+    await db.execAsync('ALTER TABLE entries ADD COLUMN time_phase TEXT');
+  }
+  if (!names.has('scene_season')) {
+    await db.execAsync('ALTER TABLE entries ADD COLUMN scene_season TEXT');
+  }
+}
+
 export async function initDatabase() {
   if (sqliteDb) return sqliteDb;
 
   const sqlite = await SQLite.openDatabaseAsync('bloom.db');
   await sqlite.execAsync(MIGRATION_SQL);
+  await migrateEntriesV2(sqlite);
   sqliteDb = sqlite;
   return sqliteDb;
 }

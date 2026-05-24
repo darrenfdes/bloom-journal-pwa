@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
@@ -20,6 +21,12 @@ import { PollenSparkles } from '@/components/garden/PollenSparkles';
 import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
+import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
+import { AmbientOverlay } from '@/components/scene/AmbientOverlay';
+import { JournalPanel } from '@/components/scene/JournalPanel';
+import { SceneLocatingLabel } from '@/components/scene/SceneLocatingLabel';
+import { WeatherParticles } from '@/components/scene/WeatherParticles';
+import { useSceneContext } from '@/lib/scene/SceneContext';
 import { computeGroundVariant } from '@/lib/garden/ground';
 import { applyGardenFilter } from '@/lib/garden/filters';
 import {
@@ -32,6 +39,10 @@ import {
 import { isXRangeVisible } from '@/lib/garden/visibility';
 import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
 import { isAnniversaryBlossom } from '@/lib/garden/anniversary';
+import {
+  getWindSwayDegrees,
+  shouldHideFlowersForWinter,
+} from '@bloom/core';
 import { MOODS } from '@/lib/constants/moods';
 import { fonts, palette } from '@/lib/theme';
 import type { EntryRecord, GardenMeta, Mood } from '@/lib/types';
@@ -51,17 +62,19 @@ function flowerSizeForEntry(entry: EntryRecord): number {
 }
 
 export function GardenScene({ meta, entries }: Props) {
+  const scene = useSceneContext();
+  const sceneReady = scene.status === 'ready';
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const filter = useBloomStore((s) => s.gardenFilter);
   const setGardenFilter = useBloomStore((s) => s.setGardenFilter);
   const scrollRef = useRef<ScrollView>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [filterMenu, setFilterMenu] = useState<{
-    entryId: string;
-    mood: Mood | null;
+  const [actionDrawerState, setActionDrawerState] = useState<{
+    entry: EntryRecord;
     monthKey: string;
   } | null>(null);
+  const [journalOpen, setJournalOpen] = useState(false);
 
   const { width, height: viewportHeight } = Dimensions.get('window');
   const filtered = useMemo(() => applyGardenFilter(entries, filter), [entries, filter]);
@@ -105,30 +118,21 @@ export function GardenScene({ meta, entries }: Props) {
     setScrollLeft(e.nativeEvent.contentOffset.x);
   };
 
-  const handleLongPress = (entry: EntryRecord, monthKey: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setFilterMenu({ entryId: entry.id, mood: entry.mood, monthKey });
-  };
-
-  const applyMoodFilter = () => {
-    if (!filterMenu?.mood) return;
-    setGardenFilter({ type: 'mood', mood: filterMenu.mood });
-    setFilterMenu(null);
-  };
-
-  const applyMonthFilter = () => {
-    if (!filterMenu) return;
-    const [year, month] = filterMenu.monthKey.split('-').map(Number);
-    setGardenFilter({ type: 'month', year, month });
-    setFilterMenu(null);
+  const handleOpenActionDrawer = (entry: EntryRecord, monthKey: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActionDrawerState({ entry, monthKey });
   };
 
   return (
     <SeasonBackground groundVariant={groundVariant} groundSeed={groundSeed} month={gardenMonth}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.title}>Your Garden</Text>
-        <Pressable onPress={() => router.push('/settings')} hitSlop={12}>
-          <Text style={styles.settingsLink}>Settings</Text>
+        <Pressable
+          onPress={() => router.push('/settings')}
+          hitSlop={12}
+          style={styles.settingsBtn}
+          accessibilityLabel="Settings"
+        >
+          <Feather name="settings" size={22} color="#fff" />
         </Pressable>
       </View>
 
@@ -166,6 +170,8 @@ export function GardenScene({ meta, entries }: Props) {
             month={gardenMonth}
             groundVariant={groundVariant}
             groundSeed={groundSeed}
+            sceneSeason={scene.season}
+            sceneReady={sceneReady}
           />
 
           {clusters.map((c) => {
@@ -210,9 +216,11 @@ export function GardenScene({ meta, entries }: Props) {
 
           {sortedLayout.map(({ entry, position }, index) => {
             const flowerSize = flowerSizeForEntry(entry);
-            const plotHeight = flowerSize * 1.15;
-            const plotLeft = position.x - flowerSize / 2;
-            const plotRight = position.x + flowerSize / 2;
+            const favHalo = entry.isFavourited ? 14 : 0;
+            const plotWidth = flowerSize + favHalo * 2;
+            const plotHeight = flowerSize * 1.15 + favHalo;
+            const plotLeft = position.x - plotWidth / 2;
+            const plotRight = position.x + plotWidth / 2;
 
             if (
               !isXRangeVisible(plotLeft, plotRight, scrollLeft, width, VIEWPORT_BUFFER)
@@ -223,23 +231,38 @@ export function GardenScene({ meta, entries }: Props) {
             return (
               <Pressable
                 key={entry.id}
-                onPress={() => router.push(`/entry/${entry.id}`)}
-                onLongPress={() => handleLongPress(entry, formatMonth(entry.createdAt))}
+                onPress={() => handleOpenActionDrawer(entry, formatMonth(entry.createdAt))}
+                onLongPress={() => handleOpenActionDrawer(entry, formatMonth(entry.createdAt))}
                 style={[
                   styles.flowerPlot,
                   {
                     left: plotLeft,
                     top: position.y - plotHeight,
-                    width: flowerSize,
+                    width: plotWidth,
                     height: plotHeight,
                     zIndex: position.z,
                     transform: [
                       { rotate: `${position.rotation}deg` },
                       { scale: position.scale },
                     ],
+                    opacity: shouldHideFlowersForWinter(scene.season) ? 0 : 1,
                   },
                 ]}
               >
+                {entry.isFavourited ? (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.favHalo,
+                      {
+                        width: flowerSize * 0.9,
+                        height: flowerSize * 0.9,
+                        borderRadius: flowerSize * 0.45,
+                        left: (plotWidth - flowerSize * 0.9) / 2,
+                      },
+                    ]}
+                  />
+                ) : null}
                 <FlowerSvg
                   entry={entry}
                   size={flowerSize}
@@ -247,6 +270,8 @@ export function GardenScene({ meta, entries }: Props) {
                   daysSinceLastEntry={daysSince}
                   entryIndex={index}
                   totalEntries={filtered.length}
+                  swayAmplitude={getWindSwayDegrees(scene.weather?.windSpeed ?? 0)}
+                  showFavouriteHalo={false}
                 />
                 {isAnniversaryBlossom(entry.createdAt) ? (
                   <Text style={styles.anniversary}>✦ anniversary</Text>
@@ -257,31 +282,34 @@ export function GardenScene({ meta, entries }: Props) {
         </ScrollView>
       </View>
 
-      <Pressable
-        style={[styles.fab, { bottom: insets.bottom + 24 }]}
-        onPress={() => router.push('/write')}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </Pressable>
-
-      {filterMenu ? (
-        <View style={styles.filterSheet}>
-          <Text style={styles.filterTitle}>Filter garden</Text>
-          {filterMenu.mood ? (
-            <Pressable style={styles.filterOption} onPress={applyMoodFilter}>
-              <Text style={styles.filterOptionText}>
-                Mood: {MOODS.find((m) => m.id === filterMenu.mood)?.label}
-              </Text>
-            </Pressable>
-          ) : null}
-          <Pressable style={styles.filterOption} onPress={applyMonthFilter}>
-            <Text style={styles.filterOptionText}>Month: {filterMenu.monthKey}</Text>
-          </Pressable>
-          <Pressable style={styles.filterCancel} onPress={() => setFilterMenu(null)}>
-            <Text style={styles.filterCancelText}>Cancel</Text>
-          </Pressable>
-        </View>
+      {!journalOpen ? (
+        <Pressable
+          style={[styles.fab, { bottom: insets.bottom + 24 }]}
+          onPress={() => setJournalOpen(true)}
+          accessibilityLabel="New entry"
+        >
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
       ) : null}
+
+      <WeatherParticles />
+      <AmbientOverlay />
+      <SceneLocatingLabel />
+      <JournalPanel visible={journalOpen} onClose={() => setJournalOpen(false)} />
+
+      <FlowerActionDrawer
+        entry={actionDrawerState?.entry ?? null}
+        monthKey={actionDrawerState?.monthKey}
+        onClose={() => setActionDrawerState(null)}
+        onFilterMood={(mood) => {
+          setGardenFilter({ type: 'mood', mood });
+          setActionDrawerState(null);
+        }}
+        onFilterMonth={(year, month) => {
+          setGardenFilter({ type: 'month', year, month });
+          setActionDrawerState(null);
+        }}
+      />
     </SeasonBackground>
   );
 }
@@ -295,22 +323,24 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     zIndex: 10,
   },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 32,
-    color: palette.ink,
-    textShadowColor: 'rgba(255, 247, 230, 0.7)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  settingsLink: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: palette.inkSoft,
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   filterBanner: {
     alignSelf: 'center',
@@ -350,6 +380,13 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255, 247, 230, 0.85)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  favHalo: {
+    position: 'absolute',
+    bottom: 0,
+    backgroundColor: 'rgba(245, 215, 110, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(245, 215, 110, 0.5)',
   },
   flowerPlot: {
     position: 'absolute',

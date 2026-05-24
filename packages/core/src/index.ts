@@ -17,4 +17,6 @@ export * from './garden/wilt';
 export * from './sentiment/infer';
 export { palette } from './theme/colors';
 export { getSeason, getSeasonPalette, type Season } from './theme/seasons';
+export * from './scene';
 export { fontFamilies, textStyles } from './theme/typography';
+export * from './scene';

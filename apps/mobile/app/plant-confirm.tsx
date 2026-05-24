@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +25,7 @@ export default function PlantConfirmScreen() {
   const resetDraft = useBloomStore((s) => s.resetDraft);
   const meta = useBloomStore((s) => s.gardenMeta);
   const [planting, setPlanting] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
 
   const previewEntry: EntryRecord | null = useMemo(() => {
     if (!pending) return null;
@@ -79,16 +81,20 @@ export default function PlantConfirmScreen() {
     setGardenMeta(gardenMeta);
     setPendingPlant(null);
     resetDraft();
-    setPlanting(false);
+    setCelebrating(true);
 
-    if (!meta?.hasPlantedFirst) {
-      router.replace({ pathname: '/garden', params: { bloom: entry.id } });
-    } else {
-      router.replace('/garden');
-    }
+    setTimeout(() => {
+      setPlanting(false);
+      if (!meta?.hasPlantedFirst) {
+        router.replace({ pathname: '/garden', params: { bloom: entry.id } });
+      } else {
+        router.replace('/garden');
+      }
+    }, 1500);
   };
 
   return (
+    <>
     <View style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
       <Text style={styles.prompt}>Ready to plant this?</Text>
 
@@ -114,6 +120,20 @@ export default function PlantConfirmScreen() {
         style={styles.btn}
       />
     </View>
+
+    {celebrating && (
+      <Animated.View 
+        entering={FadeIn.duration(400)} 
+        exiting={FadeOut} 
+        style={styles.celebrateOverlay}
+      >
+        <Animated.View entering={ZoomIn.duration(1000)} style={styles.celebrateGlow} />
+        <Animated.View entering={ZoomIn.delay(300).springify()}>
+          <Text style={styles.celebrateText}>Nurturing your memory...</Text>
+        </Animated.View>
+      </Animated.View>
+    )}
+    </>
   );
 }
 
@@ -158,5 +178,25 @@ const styles = StyleSheet.create({
   },
   btn: {
     width: '100%',
+  },
+  celebrateOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(253, 248, 241, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  celebrateGlow: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(143, 168, 138, 0.3)',
+  },
+  celebrateText: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: palette.ink,
+    marginTop: 20,
   },
 });

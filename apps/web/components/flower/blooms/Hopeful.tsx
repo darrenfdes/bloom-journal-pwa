@@ -13,8 +13,6 @@ export function HopefulTulip({ ns, palette, cx, cy }: BloomProps) {
 
   const baseY = cy + H * 0.55;
   const topY = cy - H * 0.45;
-  const leftX = cx - W;
-  const rightX = cx + W;
 
   const backPetal = (side: number) => {
     const x0 = cx + side * W * 0.55;

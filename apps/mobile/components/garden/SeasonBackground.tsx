@@ -3,6 +3,8 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { AmbientSky } from '@/components/garden/AmbientSky';
+import { CelestialLayer } from '@/components/scene/CelestialLayer';
+import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
 import { computeGroundVariant } from '@/lib/garden/ground';
 import { getHorizonGlow } from '@bloom/core/garden/season-hills';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
@@ -31,25 +33,29 @@ export function SeasonBackground({
 
   return (
     <View style={styles.root}>
-      <Svg
-        width={width}
-        height={skyH}
-        style={styles.sky}
-        viewBox={`0 0 ${width} ${skyH}`}
-        preserveAspectRatio="none"
-      >
-        <Defs>
-          <LinearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={sky} stopOpacity="1" />
-            <Stop offset="50%" stopColor={sky} stopOpacity="0.95" />
-            <Stop offset="85%" stopColor={horizonGlow} stopOpacity="0.85" />
-            <Stop offset="100%" stopColor={horizonGlow} stopOpacity="0.6" />
-          </LinearGradient>
-        </Defs>
-        <Path d={`M 0 0 L ${width} 0 L ${width} ${skyH} L 0 ${skyH} Z`} fill="url(#skyGrad)" />
-      </Svg>
+      <View style={[styles.skyBand, { height: skyH }]}>
+        <Svg
+          width={width}
+          height={skyH}
+          style={StyleSheet.absoluteFill}
+          viewBox={`0 0 ${width} ${skyH}`}
+          preserveAspectRatio="none"
+        >
+          <Defs>
+            <LinearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor={sky} stopOpacity="1" />
+              <Stop offset="50%" stopColor={sky} stopOpacity="0.95" />
+              <Stop offset="85%" stopColor={horizonGlow} stopOpacity="0.85" />
+              <Stop offset="100%" stopColor={horizonGlow} stopOpacity="0.6" />
+            </LinearGradient>
+          </Defs>
+          <Path d={`M 0 0 L ${width} 0 L ${width} ${skyH} L 0 ${skyH} Z`} fill="url(#skyGrad)" />
+        </Svg>
 
-      <AmbientSky month={month} />
+        <SkyTimePhaseLayer />
+        <CelestialLayer />
+        <AmbientSky month={month} skyHeight={skyH} />
+      </View>
 
       {children}
     </View>
@@ -60,10 +66,11 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  sky: {
+  skyBand: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    overflow: 'hidden',
   },
 });

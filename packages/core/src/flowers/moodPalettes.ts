@@ -18,6 +18,39 @@ export interface BloomPalette {
   leaf: string;
 }
 
+/**
+ * Pumpkin easter-egg palette. Petal ramp = the yellow/orange squash flower
+ * shown reference; fruit ramp = ripe pumpkin oranges. Used by the Pumpkin
+ * bloom across all three maturation stages.
+ */
+export interface PumpkinPalette {
+  petalHighlight: string;
+  petalMid: string;
+  petalDark: string;
+  fruitHighlight: string;
+  fruitMid: string;
+  fruitDark: string;
+  fruitDeepest: string;
+  fruitGreen: string;
+  stemBrown: string;
+  tendril: string;
+  leaf: string;
+}
+
+export const PUMPKIN_PALETTE: PumpkinPalette = {
+  petalHighlight: '#FFE066',
+  petalMid: '#F4A300',
+  petalDark: '#C2780C',
+  fruitHighlight: '#FFB04A',
+  fruitMid: '#FF8A1E',
+  fruitDark: '#D85B12',
+  fruitDeepest: '#7E330A',
+  fruitGreen: '#7FAE6A',
+  stemBrown: '#5F4423',
+  tendril: '#9CC07A',
+  leaf: '#6E9A56',
+};
+
 export const BLOOM_PALETTES: Record<BloomMood, BloomPalette> = {
   joy: {
     petalHighlight: '#FFF4C2',

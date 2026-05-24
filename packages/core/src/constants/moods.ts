@@ -7,6 +7,7 @@ export const MOODS: {
   description: string;
 }[] = [
   { id: 'joyful', label: 'Joyful', emoji: '☀️', description: 'Bright and open' },
+  { id: 'ecstatic', label: 'Ecstatic', emoji: '🎃', description: 'Extremely happy and excited' },
   { id: 'peaceful', label: 'Peaceful', emoji: '🌿', description: 'Calm and balanced' },
   { id: 'dreamy', label: 'Dreamy', emoji: '☁️', description: 'Soft and layered' },
   { id: 'loved', label: 'Loved', emoji: '💗', description: 'Warm and full' },
@@ -27,6 +28,14 @@ export const MOOD_COLORS: Record<
     stem: '#5F8050',
     leaf: '#7FAE6A',
     accent: '#FFF6B8',
+  },
+  ecstatic: {
+    petal: '#FFB23A',
+    petalAlt: '#FFE066',
+    center: '#C25113',
+    stem: '#5F8050',
+    leaf: '#7FAE6A',
+    accent: '#FFE7B8',
   },
   peaceful: {
     petal: '#86B98B',
