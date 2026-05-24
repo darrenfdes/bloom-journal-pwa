@@ -32,6 +32,7 @@ export const BLOOM_MOOD_LABEL: Record<BloomMood, string> = {
 export function appMoodToBloomMood(mood: Mood | null | undefined): BloomMood {
   switch (mood) {
     case 'joyful':
+    case 'ecstatic':
       return 'joy';
     case 'peaceful':
     case 'dreamy':

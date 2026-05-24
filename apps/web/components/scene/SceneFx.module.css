@@ -1,0 +1,209 @@
+@keyframes rain-fall {
+  0% {
+    transform: translateY(-10vh) rotate(20deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(110vh) rotate(20deg);
+    opacity: 0.4;
+  }
+}
+
+@keyframes snow-fall {
+  0% {
+    transform: translateY(-5vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(50vh) translateX(12px);
+  }
+  100% {
+    transform: translateY(105vh) translateX(-8px);
+    opacity: 0.5;
+  }
+}
+
+@keyframes fog-drift {
+  0%,
+  100% {
+    transform: translateX(-4%);
+  }
+  50% {
+    transform: translateX(4%);
+  }
+}
+
+@keyframes flash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes petal-drift {
+  0% {
+    transform: translateX(-10vw) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(110vw) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes leaf-fall {
+  0% {
+    transform: translateY(-8vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(105vh) rotate(280deg);
+    opacity: 0.4;
+  }
+}
+
+@keyframes star-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes bloom-confirm {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-locating {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.rainDrop {
+  position: absolute;
+  width: 2px;
+  height: 20px;
+  background: rgba(174, 214, 241, 0.6);
+  animation: rain-fall linear infinite;
+}
+
+.snowFlake {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  animation: snow-fall ease-in-out infinite;
+}
+
+.fogBlob {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  filter: blur(30px);
+  animation: fog-drift 18s ease-in-out infinite;
+}
+
+.lightningFlash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+  animation: flash 150ms ease-out;
+}
+
+.petal {
+  position: absolute;
+  border-radius: 50% 20%;
+  animation: petal-drift linear infinite;
+}
+
+.leaf {
+  position: absolute;
+  border-radius: 40% 60%;
+  animation: leaf-fall ease-in-out infinite;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: star-pulse ease-in-out infinite;
+}
+
+.starBright {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: star-pulse ease-in-out infinite;
+  box-shadow:
+    0 0 4px rgba(255, 255, 255, 0.95),
+    0 0 10px rgba(200, 215, 255, 0.45);
+}
+
+.starSparkle {
+  position: absolute;
+  background: transparent;
+  animation: star-pulse ease-in-out infinite;
+}
+
+.starSparkle::before,
+.starSparkle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #fff;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
+}
+
+.starSparkle::before {
+  width: 100%;
+  height: 22%;
+}
+
+.starSparkle::after {
+  width: 22%;
+  height: 100%;
+}
+
+.bloomConfirm {
+  animation: bloom-confirm 1.2s ease-out forwards;
+}
+
+.locatingLabel {
+  animation: pulse-locating 2.4s ease-in-out infinite;
+}

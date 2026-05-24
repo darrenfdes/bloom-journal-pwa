@@ -21,7 +21,11 @@ export function MoodPicker({ value, onChange }: Props) {
             <Pressable
               key={m.id}
               onPress={() => onChange(selected ? null : m.id)}
-              style={[styles.chip, selected && styles.chipSelected]}
+              style={({ pressed }) => [
+                styles.chip,
+                selected && styles.chipSelected,
+                pressed && { transform: [{ scale: 0.95 }] },
+              ]}
             >
               <Text style={styles.emoji}>{m.emoji}</Text>
               <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{m.label}</Text>

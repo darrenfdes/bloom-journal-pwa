@@ -8,7 +8,9 @@ import {
   getGardenHillSvgHeight,
   getGardenHillTop,
 } from '@bloom/core/garden/scene-layout';
-import type { GroundVariant } from '@bloom/core';
+import { getHillColors } from '@bloom/core/scene';
+import { getSeason } from '@bloom/core/theme/seasons';
+import type { GroundVariant, Season } from '@bloom/core';
 
 type Props = {
   scrollLeft: number;
@@ -18,6 +20,8 @@ type Props = {
   month?: number;
   groundVariant?: GroundVariant;
   groundSeed?: number;
+  sceneSeason?: Season | null;
+  sceneReady?: boolean;
 };
 
 /**
@@ -31,12 +35,25 @@ export function RepeatingSeasonGround({
   month = new Date().getMonth() + 1,
   groundVariant,
   groundSeed = 0,
+  sceneSeason = null,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
-  const groundStyle = getGroundStyle(variant);
-  const hillTop = getGardenHillTop(viewportHeight);
-  const groundSvgH = getGardenHillSvgHeight(viewportHeight);
-  const hills = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
+  const baseGroundStyle = getGroundStyle(variant);
+  const hillsSeason = sceneSeason ?? getSeason(month);
+  const sceneHills = getHillColors(hillsSeason);
+  const groundStyle = {
+    ...baseGroundStyle,
+    backTop: sceneHills.far,
+    backBottom: sceneHills.far,
+    midTop: sceneHills.mid,
+    midBottom: sceneHills.mid,
+    frontTop: sceneHills.near,
+    frontBottom: sceneHills.near,
+  };
+  const hillSkyOverlap = 12;
+  const hillTop = getGardenHillTop(viewportHeight) - hillSkyOverlap;
+  const groundSvgH = getGardenHillSvgHeight(viewportHeight) + hillSkyOverlap;
+  const hillPaths = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
   const offset = tileWidth > 0 ? scrollLeft % tileWidth : 0;
   const startIndex = tileWidth > 0 ? Math.floor(scrollLeft / tileWidth) - 1 : 0;
@@ -52,10 +69,11 @@ export function RepeatingSeasonGround({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 overflow-hidden"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
       aria-hidden
       style={{ height: viewportHeight }}
     >
+      <div className="absolute inset-0" style={{ backgroundColor: groundStyle.haze, opacity: 0.22 }} />
       {indices.map((tileIndex) => {
         const x = tileIndex * tileWidth - offset;
         const gradId = `hill-${tileIndex}-${groundSeed}`;
@@ -85,16 +103,15 @@ export function RepeatingSeasonGround({
               </linearGradient>
             </defs>
             <path
-              d={hills.backHill}
+              d={hillPaths.backHill}
               fill={`url(#${gradId}-back)`}
               opacity={variant === 3 ? 0.82 : 0.7}
             />
-            <path d={hills.midHill} fill={`url(#${gradId}-mid)`} opacity={0.88} />
-            <path d={hills.frontHill} fill={`url(#${gradId}-front)`} />
+            <path d={hillPaths.midHill} fill={`url(#${gradId}-mid)`} opacity={0.88} />
+            <path d={hillPaths.frontHill} fill={`url(#${gradId}-front)`} />
           </svg>
         );
       })}
-      <div className="absolute inset-0" style={{ backgroundColor: groundStyle.haze, opacity: 0.35 }} />
     </div>
   );
 }

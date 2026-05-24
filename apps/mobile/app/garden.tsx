@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { GardenScene } from '@/components/garden/GardenScene';
+import { SceneProvider } from '@/lib/scene/SceneContext';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 export default function GardenScreen() {
@@ -9,5 +10,9 @@ export default function GardenScreen() {
 
   if (!meta) return null;
 
-  return <GardenScene meta={meta} entries={entries} />;
+  return (
+    <SceneProvider>
+      <GardenScene meta={meta} entries={entries} />
+    </SceneProvider>
+  );
 }
