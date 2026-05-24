@@ -1,4 +1,5 @@
 import { getSqlite } from '@/lib/db/client';
+import { afterLocalMutation } from '@/lib/sync/hooks';
 import { createId } from '@/lib/id';
 import { parseGardenPosition, parseJsonArray } from '@/lib/db/json';
 import { createFlowerSeed } from '@/lib/flowers/genome';
@@ -33,6 +34,8 @@ export type EntryRow = {
   weather: string | null;
   time_phase: string | null;
   scene_season: string | null;
+  synced_at: string | null;
+  pending_push: number;
 };
 
 function rowToEntry(row: EntryRow): EntryRecord {
@@ -57,6 +60,8 @@ function rowToEntry(row: EntryRow): EntryRecord {
       : null,
     timePhase: (row.time_phase as TimePhase | null) ?? null,
     sceneSeason: (row.scene_season as Season | null) ?? null,
+    syncedAt: row.synced_at,
+    pendingPush: Boolean(row.pending_push),
   };
 }
 
@@ -126,8 +131,9 @@ export async function plantEntry(
     `INSERT INTO entries (
       id, user_id, title, content, mood, inferred_sentiment, tags,
       created_at, updated_at, flower_seed, flower_style, garden_position,
-      is_favourited, revisit_of, is_deleted, weather, time_phase, scene_season
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      is_favourited, revisit_of, is_deleted, weather, time_phase, scene_season,
+      synced_at, pending_push
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     record.id,
     record.userId,
     record.title,
@@ -145,7 +151,8 @@ export async function plantEntry(
     0,
     record.weather ? JSON.stringify(record.weather) : null,
     record.timePhase ?? null,
-    record.sceneSeason ?? null
+    record.sceneSeason ?? null,
+    null
   );
 
   const meta = await db.getFirstAsync<{ id: string }>('SELECT id FROM garden_meta LIMIT 1');
@@ -157,6 +164,7 @@ export async function plantEntry(
     );
   }
 
+  void afterLocalMutation();
   return record;
 }
 
@@ -166,21 +174,23 @@ export async function toggleFavourite(id: string): Promise<EntryRecord | null> {
   const next = !entry.isFavourited;
   const db = getSqlite();
   await db.runAsync(
-    'UPDATE entries SET is_favourited = ?, updated_at = ? WHERE id = ?',
+    'UPDATE entries SET is_favourited = ?, updated_at = ?, pending_push = 1 WHERE id = ?',
     next ? 1 : 0,
     new Date().toISOString(),
     id
   );
+  void afterLocalMutation();
   return { ...entry, isFavourited: next };
 }
 
 export async function softDeleteEntry(id: string): Promise<void> {
   const db = getSqlite();
   await db.runAsync(
-    'UPDATE entries SET is_deleted = 1, updated_at = ? WHERE id = ?',
+    'UPDATE entries SET is_deleted = 1, updated_at = ?, pending_push = 1 WHERE id = ?',
     new Date().toISOString(),
     id
   );
+  void afterLocalMutation();
 }
 
 export async function searchEntries(query: string): Promise<EntryRecord[]> {
@@ -204,11 +214,12 @@ export async function updateGardenPosition(
 ): Promise<void> {
   const db = getSqlite();
   await db.runAsync(
-    'UPDATE entries SET garden_position = ?, updated_at = ? WHERE id = ?',
+    'UPDATE entries SET garden_position = ?, updated_at = ?, pending_push = 1 WHERE id = ?',
     JSON.stringify(position),
     new Date().toISOString(),
     id
   );
+  void afterLocalMutation();
 }
 
 export async function getRevisitChildren(parentId: string): Promise<EntryRecord[]> {

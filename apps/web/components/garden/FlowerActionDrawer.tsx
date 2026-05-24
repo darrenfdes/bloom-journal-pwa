@@ -123,7 +123,7 @@ export function FlowerActionDrawer({
                 <span className="text-parchment">•</span>
                 {mood ? (
                   <Badge
-                    variant="secondary"
+                    variant="outline"
                     className="gap-1 px-2 py-0.5 text-[11px] font-medium tracking-wide"
                   >
                     <MoodIcon mood={mood.id} className="size-3" />
@@ -169,7 +169,7 @@ export function FlowerActionDrawer({
                 <div className="flex gap-3">
                   {entry.mood && (
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       className="flex-1 rounded-xl h-11 text-xs text-ink-soft bg-parchment/30 hover:bg-parchment/60 border-none"
                       onClick={() => onFilterMood(entry.mood!)}
                     >
@@ -179,7 +179,7 @@ export function FlowerActionDrawer({
                   )}
                   {monthKey && (
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       className="flex-1 rounded-xl h-11 text-xs text-ink-soft bg-parchment/30 hover:bg-parchment/60 border-none"
                       onClick={handleFilterMonth}
                     >

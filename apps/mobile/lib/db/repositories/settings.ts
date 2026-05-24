@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 import { getSqlite } from '@/lib/db/client';
+import { afterLocalMutation } from '@/lib/sync/hooks';
 import { parseJsonObject } from '@/lib/db/json';
 import type { AppSettings, WriteDraft } from '@/lib/types';
 
@@ -78,6 +79,12 @@ export async function updateSettings(
     patch.pinHash !== undefined ? patch.pinHash : current.pinHash,
     'default'
   );
+
+  const syncable =
+    patch.reminderEnabled !== undefined ||
+    patch.reminderHour !== undefined ||
+    patch.reminderMinute !== undefined;
+  if (syncable) void afterLocalMutation();
 }
 
 export async function saveWriteDraft(draft: WriteDraft): Promise<void> {

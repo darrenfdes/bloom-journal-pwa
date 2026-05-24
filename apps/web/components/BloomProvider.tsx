@@ -2,11 +2,15 @@
 
 import { useEffect } from 'react';
 
+import { useAuth } from '@/components/auth/AuthProvider';
+import { MigrateLocalDialog } from '@/components/auth/MigrateLocalDialog';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings, loadWriteDraft } from '@/lib/db/repositories/settings';
+import { pullForUser, setActiveSyncUser } from '@/lib/sync/engine';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 export function BloomProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const setReady = useBloomStore((s) => s.setReady);
   const setGardenMeta = useBloomStore((s) => s.setGardenMeta);
   const setDraft = useBloomStore((s) => s.setDraft);
@@ -37,5 +41,39 @@ export function BloomProvider({ children }: { children: React.ReactNode }) {
     };
   }, [setReady, setGardenMeta, setDraft, refreshEntries]);
 
-  return <>{children}</>;
+  useEffect(() => {
+    if (authLoading) return;
+
+    const uid = user?.id ?? null;
+    setActiveSyncUser(uid);
+
+    if (!uid) return;
+
+    void (async () => {
+      await pullForUser(uid);
+      await refreshEntries();
+      const meta = await getOrCreateGardenMeta();
+      setGardenMeta(meta);
+    })();
+  }, [user?.id, authLoading, refreshEntries, setGardenMeta]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void pullForUser(user.id).then(() => refreshEntries());
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user?.id, refreshEntries]);
+
+  return (
+    <>
+      {children}
+      <MigrateLocalDialog />
+    </>
+  );
 }

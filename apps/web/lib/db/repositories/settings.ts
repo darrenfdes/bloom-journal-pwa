@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db/client';
+import { afterLocalMutation } from '@/lib/sync/hooks';
 import type { AppSettings, WriteDraft } from '@/lib/types';
 
 const EMPTY_DRAFT: WriteDraft = {
@@ -61,6 +62,12 @@ export async function updateSettings(
     reminderMinute: patch.reminderMinute ?? current.reminderMinute,
     pinHash: patch.pinHash !== undefined ? patch.pinHash : current.pinHash,
   });
+
+  const syncable =
+    patch.reminderEnabled !== undefined ||
+    patch.reminderHour !== undefined ||
+    patch.reminderMinute !== undefined;
+  if (syncable) void afterLocalMutation();
 }
 
 export async function saveWriteDraft(draft: WriteDraft): Promise<void> {
