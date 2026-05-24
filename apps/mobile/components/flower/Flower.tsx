@@ -65,6 +65,7 @@ export function Flower({
 }: FlowerProps) {
   const palette = BLOOM_PALETTES[mood];
   const isPumpkin = pumpkinStage !== undefined;
+  const isRipePumpkin = pumpkinStage === 2;
   const ns = isPumpkin ? `pumpkin-${seed >>> 0}` : `${mood}-${seed >>> 0}`;
 
   const variant = useMemo<FoliageVariant>(
@@ -74,7 +75,7 @@ export function Flower({
   const density = useMemo(() => foliageDensityForWordCount(wordCount), [wordCount]);
   const stemBend = useMemo(() => (xorshiftRand(seed ^ 0x57e3) * 2 - 1) * 7, [seed]);
 
-  const effectiveWilt = isPumpkin && pumpkinStage === 2 ? 0 : wiltDroop;
+  const effectiveWilt = isRipePumpkin ? 0 : wiltDroop;
   const bloomCy = BLOOM_CY + effectiveWilt;
   const stemTopY = STEM_TOP_Y + effectiveWilt;
 
@@ -85,6 +86,7 @@ export function Flower({
   }, [stemBend, stemTopY]);
 
   const BloomComponent = BLOOM_COMPONENTS[mood];
+  const effectiveSway = isRipePumpkin ? 0 : sway;
 
   return (
     <Svg
@@ -95,33 +97,37 @@ export function Flower({
     >
       <G
         opacity={opacity}
-        transform={`rotate(${sway.toFixed(2)} ${STEM_BASE_X} ${STEM_BASE_Y})`}
+        transform={effectiveSway !== 0 ? `rotate(${effectiveSway.toFixed(2)} ${STEM_BASE_X} ${STEM_BASE_Y})` : undefined}
       >
-        {renderFoliage({ variant, density, palette, seed })}
+        {!isRipePumpkin ? renderFoliage({ variant, density, palette, seed }) : null}
 
-        <Path
-          d={stemPath}
-          stroke="rgba(40, 40, 30, 0.22)"
-          strokeWidth={3.4}
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d={stemPath}
-          stroke={palette.stem}
-          strokeWidth={2.6}
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d={stemPath}
-          stroke="#FFFFFF"
-          strokeOpacity={0.35}
-          strokeWidth={0.7}
-          fill="none"
-          strokeLinecap="round"
-          transform="translate(-0.4 0)"
-        />
+        {!isRipePumpkin ? (
+          <>
+            <Path
+              d={stemPath}
+              stroke="rgba(40, 40, 30, 0.22)"
+              strokeWidth={3.4}
+              fill="none"
+              strokeLinecap="round"
+            />
+            <Path
+              d={stemPath}
+              stroke={palette.stem}
+              strokeWidth={2.6}
+              fill="none"
+              strokeLinecap="round"
+            />
+            <Path
+              d={stemPath}
+              stroke="#FFFFFF"
+              strokeOpacity={0.35}
+              strokeWidth={0.7}
+              fill="none"
+              strokeLinecap="round"
+              transform="translate(-0.4 0)"
+            />
+          </>
+        ) : null}
 
         {isPumpkin ? (
           <Pumpkin ns={ns} seed={seed} cx={BLOOM_CX} cy={bloomCy} stage={pumpkinStage!} />

@@ -86,7 +86,9 @@ export default function FlowersGalleryPage() {
 
       <header className="mt-4">
         <h2 className="font-display text-xl font-semibold text-ink">Pumpkin easter egg</h2>
-        <p className="mt-1 text-sm text-ink-muted">Triggered by ecstatic / extremely-happy entries. Matures in 3 stages over ~30 days.</p>
+        <p className="mt-1 text-sm text-ink-muted">
+          Triggered by ecstatic / extremely-happy entries. Matures in 3 stages over ~30 days.
+        </p>
       </header>
       <div className="grid grid-cols-3 gap-4">
         {([0, 1, 2] as const).map((stage) => (

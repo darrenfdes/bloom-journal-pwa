@@ -13,6 +13,8 @@ export interface PumpkinProps {
 }
 
 const PETAL_COUNT = 5;
+/** Ripe pumpkin body radius; bottom sits at viewBox stem base (y=138). */
+const RIPE_FRUIT_RY = 17.5;
 
 export function Pumpkin({ ns, seed: _seed, cx, cy, stage }: PumpkinProps) {
   const petalGrad = nsId(ns, 'pumpkinPetal');
@@ -55,7 +57,9 @@ export function Pumpkin({ ns, seed: _seed, cx, cy, stage }: PumpkinProps) {
           ribShade={ribShade}
         />
       ) : null}
-      {stage === 2 ? <PumpkinRipe cx={cx} cy={cy} fruitGrad={fruitGrad} ribShade={ribShade} /> : null}
+      {stage === 2 ? (
+        <PumpkinRipe cx={cx} fruitGrad={fruitGrad} ribShade={ribShade} stemBaseY={138} />
+      ) : null}
     </g>
   );
 }
@@ -236,36 +240,58 @@ function PumpkinFruiting({
 
 function PumpkinRipe({
   cx,
-  cy,
   fruitGrad,
   ribShade,
+  stemBaseY,
 }: {
   cx: number;
-  cy: number;
   fruitGrad: string;
   ribShade: string;
+  stemBaseY: number;
 }) {
   const fruitCx = cx;
-  const fruitCy = cy + 2;
+  const fruitCy = stemBaseY - RIPE_FRUIT_RY;
   const fruitRx = 22;
-  const fruitRy = 17.5;
+
+  const fruitTop = fruitCy - RIPE_FRUIT_RY;
+  const fruitBottom = stemBaseY;
 
   return (
     <g>
-      <ellipse cx={fruitCx + 0.8} cy={fruitCy + fruitRy * 0.78} rx={fruitRx + 1.2} ry={fruitRy * 0.32} fill="rgba(40, 32, 22, 0.22)" />
+      <ellipse cx={fruitCx + 0.8} cy={fruitBottom - 1} rx={fruitRx + 1.2} ry={RIPE_FRUIT_RY * 0.22} fill="rgba(40, 32, 22, 0.22)" />
 
-      <ellipse cx={fruitCx - fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.5} ry={fruitRy} fill={`url(#${fruitGrad})`} fillOpacity={0.92} />
-      <ellipse cx={fruitCx + fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.5} ry={fruitRy} fill={`url(#${fruitGrad})`} fillOpacity={0.92} />
-      <ellipse cx={fruitCx - fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.55} ry={fruitRy * 0.99} fill={`url(#${fruitGrad})`} fillOpacity={0.96} />
-      <ellipse cx={fruitCx + fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.55} ry={fruitRy * 0.99} fill={`url(#${fruitGrad})`} fillOpacity={0.96} />
-      <ellipse cx={fruitCx} cy={fruitCy} rx={fruitRx * 0.6} ry={fruitRy} fill={`url(#${fruitGrad})`} />
+      {/* Vine from ground into the pumpkin base */}
+      <path
+        d={`M ${fruitCx.toFixed(2)} ${stemBaseY.toFixed(2)}
+            C ${(fruitCx + 5).toFixed(2)} ${(fruitBottom - 8).toFixed(2)} ${(fruitCx + 4).toFixed(2)} ${(fruitCy + 6).toFixed(2)} ${(fruitCx + 1).toFixed(2)} ${(fruitBottom - 3).toFixed(2)}`}
+        stroke={PUMPKIN_PALETTE.stemBrown}
+        strokeWidth={2.2}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M ${fruitCx.toFixed(2)} ${stemBaseY.toFixed(2)}
+            C ${(fruitCx - 4).toFixed(2)} ${(fruitBottom - 10).toFixed(2)} ${(fruitCx - 2).toFixed(2)} ${(fruitCy + 4).toFixed(2)} ${fruitCx.toFixed(2)} ${(fruitBottom - 2).toFixed(2)}`}
+        stroke={PUMPKIN_PALETTE.stemBrown}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeOpacity={0.85}
+      />
+
+      <ellipse cx={fruitCx - fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.5} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} fillOpacity={0.92} />
+      <ellipse cx={fruitCx + fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.5} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} fillOpacity={0.92} />
+      <ellipse cx={fruitCx - fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.55} ry={RIPE_FRUIT_RY * 0.99} fill={`url(#${fruitGrad})`} fillOpacity={0.96} />
+      <ellipse cx={fruitCx + fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.55} ry={RIPE_FRUIT_RY * 0.99} fill={`url(#${fruitGrad})`} fillOpacity={0.96} />
+      <ellipse cx={fruitCx} cy={fruitCy} rx={fruitRx * 0.6} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} />
 
       {[-0.78, -0.42, 0, 0.42, 0.78].map((offsetFrac, i) => {
         const ribX = fruitCx + offsetFrac * fruitRx;
         return (
           <path
             key={`rib-${i}`}
-            d={`M ${ribX.toFixed(2)} ${(fruitCy - fruitRy + 0.6).toFixed(2)} Q ${(ribX + offsetFrac * 1.6).toFixed(2)} ${fruitCy.toFixed(2)} ${ribX.toFixed(2)} ${(fruitCy + fruitRy - 0.6).toFixed(2)}`}
+            d={`M ${ribX.toFixed(2)} ${(fruitTop + 0.6).toFixed(2)} Q ${(ribX + offsetFrac * 1.6).toFixed(2)} ${fruitCy.toFixed(2)} ${ribX.toFixed(2)} ${(fruitBottom - 0.6).toFixed(2)}`}
             stroke={`url(#${ribShade})`}
             strokeWidth={0.9}
             fill="none"
@@ -274,38 +300,25 @@ function PumpkinRipe({
         );
       })}
 
-      <ellipse cx={fruitCx - fruitRx * 0.42} cy={fruitCy - fruitRy * 0.55} rx={4.2} ry={1.6} fill={PUMPKIN_PALETTE.fruitHighlight} fillOpacity={0.55} />
+      <ellipse cx={fruitCx - fruitRx * 0.42} cy={fruitTop + RIPE_FRUIT_RY * 0.45} rx={4.2} ry={1.6} fill={PUMPKIN_PALETTE.fruitHighlight} fillOpacity={0.55} />
 
+      {/* Brown peduncle stem on top */}
       <path
-        d={`M ${(fruitCx - 1.8).toFixed(2)} ${(fruitCy - fruitRy + 0.4).toFixed(2)}
-            C ${(fruitCx - 2.6).toFixed(2)} ${(fruitCy - fruitRy - 4).toFixed(2)} ${(fruitCx + 2).toFixed(2)} ${(fruitCy - fruitRy - 5.2).toFixed(2)} ${(fruitCx + 2.4).toFixed(2)} ${(fruitCy - fruitRy - 1).toFixed(2)}
-            L ${(fruitCx + 1.6).toFixed(2)} ${(fruitCy - fruitRy + 0.6).toFixed(2)} Z`}
+        d={`M ${(fruitCx - 2).toFixed(2)} ${(fruitTop + 1).toFixed(2)}
+            C ${(fruitCx - 2.5).toFixed(2)} ${(fruitTop - 5).toFixed(2)} ${(fruitCx + 1.5).toFixed(2)} ${(fruitTop - 7).toFixed(2)} ${(fruitCx + 2).toFixed(2)} ${(fruitTop - 1).toFixed(2)}
+            L ${(fruitCx + 1.2).toFixed(2)} ${(fruitTop + 1.5).toFixed(2)} Z`}
         fill={PUMPKIN_PALETTE.stemBrown}
         stroke={PUMPKIN_PALETTE.fruitDeepest}
-        strokeWidth={0.4}
+        strokeWidth={0.45}
         strokeLinejoin="round"
       />
-
-      <path
-        d={`M ${(fruitCx + 2.4).toFixed(2)} ${(fruitCy - fruitRy - 2.6).toFixed(2)}
-            q 4 -2 5 1
-            q 1 3 -2 3.5
-            q -3 0.5 -2 -2.4`}
-        fill="none"
-        stroke={PUMPKIN_PALETTE.tendril}
-        strokeWidth={0.9}
-        strokeLinecap="round"
-      />
-
-      <path
-        d={`M ${(fruitCx - 14).toFixed(2)} ${(fruitCy - fruitRy * 0.55).toFixed(2)}
-            q -5 -3 -8 1
-            q 0 4 5 4
-            q 4 0 3 -5 Z`}
-        fill={PUMPKIN_PALETTE.leaf}
-        stroke={PUMPKIN_PALETTE.fruitDeepest}
-        strokeWidth={0.35}
-        strokeOpacity={0.5}
+      <rect
+        x={fruitCx - 1.1}
+        y={fruitTop - 9}
+        width={2.2}
+        height={5}
+        rx={0.7}
+        fill={PUMPKIN_PALETTE.stemBrown}
       />
     </g>
   );
