@@ -6,6 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bloomjournal",
+    "extra": {
+      "supabaseRedirectPath": "auth/callback"
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {

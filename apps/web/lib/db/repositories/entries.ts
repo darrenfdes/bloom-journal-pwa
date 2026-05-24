@@ -3,6 +3,7 @@ import { assignPositionForNewEntry } from '@bloom/core/garden/layout';
 
 import { getDb } from '@/lib/db/client';
 import { createId } from '@/lib/id';
+import { afterLocalMutation } from '@/lib/sync/hooks';
 import { resolveMood } from '@/lib/sentiment/infer';
 import type { EntryRecord, TimePhase, WriteDraft } from '@/lib/types';
 import type { EntryWeatherSnapshot, Season } from '@bloom/core';
@@ -65,7 +66,7 @@ export async function plantEntry(
     sceneSeason: scene?.sceneSeason ?? null,
   };
 
-  await db.entries.add(record);
+  await db.entries.add({ ...record, pendingPush: true, syncedAt: null });
 
   const meta = await db.garden_meta.toCollection().first();
   if (meta) {
@@ -75,6 +76,7 @@ export async function plantEntry(
     });
   }
 
+  void afterLocalMutation();
   return record;
 }
 
@@ -108,7 +110,8 @@ export async function updateEntry(
     updatedAt: now,
   };
 
-  await getDb().entries.put(updated);
+  await getDb().entries.put({ ...updated, pendingPush: true });
+  void afterLocalMutation();
   return updated;
 }
 
@@ -122,7 +125,8 @@ export async function toggleFavourite(id: string): Promise<EntryRecord | null> {
     updatedAt: new Date().toISOString(),
   };
 
-  await getDb().entries.put(updated);
+  await getDb().entries.put({ ...updated, pendingPush: true });
+  void afterLocalMutation();
   return updated;
 }
 
@@ -134,7 +138,9 @@ export async function softDelete(id: string): Promise<void> {
     ...entry,
     isDeleted: true,
     updatedAt: new Date().toISOString(),
+    pendingPush: true,
   });
+  void afterLocalMutation();
 }
 
 export async function searchEntries(query: string): Promise<EntryRecord[]> {

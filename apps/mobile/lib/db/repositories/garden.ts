@@ -1,4 +1,5 @@
 import { getSqlite } from '@/lib/db/client';
+import { afterLocalMutation } from '@/lib/sync/hooks';
 import { createId } from '@/lib/id';
 import { parseJsonObject } from '@/lib/db/json';
 import type { GardenMeta } from '@/lib/types';
@@ -65,4 +66,5 @@ export async function refreshGardenAfterWrite(): Promise<void> {
   const db = getSqlite();
   const meta = await getOrCreateGardenMeta();
   await db.runAsync('UPDATE garden_meta SET last_entry_at = ? WHERE id = ?', new Date().toISOString(), meta.id);
+  void afterLocalMutation();
 }

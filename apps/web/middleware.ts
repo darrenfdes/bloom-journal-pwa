@@ -1,11 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
 
-/**
- * Placeholder middleware — ready for Supabase `updateSession` when auth is enabled.
- * No redirects in v1; local-first app works without Supabase env vars.
- */
-export async function middleware(_request: NextRequest) {
-  return NextResponse.next();
+import { updateSession } from '@/lib/supabase/middleware';
+
+export async function middleware(request: NextRequest) {
+  return updateSession(request);
 }
 
 export const config = {

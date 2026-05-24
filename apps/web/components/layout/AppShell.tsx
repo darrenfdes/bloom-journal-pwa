@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 
+import { AuthProvider } from '@/components/auth/AuthProvider';
 import { BloomProvider } from '@/components/BloomProvider';
 import { AppNav } from '@/components/nav/AppNav';
 import { Toaster } from '@/components/ui/sonner';
@@ -28,7 +29,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hideNav = shouldHideNav(pathname);
 
   return (
-    <BloomProvider>
+    <AuthProvider>
+      <BloomProvider>
       <main
         className={cn(
           'flex w-full flex-1 flex-col',
@@ -41,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
       {!hideNav ? <AppNav /> : null}
       <Toaster />
-    </BloomProvider>
+      </BloomProvider>
+    </AuthProvider>
   );
 }

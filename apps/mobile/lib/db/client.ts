@@ -50,6 +50,17 @@ CREATE TABLE IF NOT EXISTS drafts (
 );
 `;
 
+async function migrateSyncV3(db: SQLite.SQLiteDatabase) {
+  const entryCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(entries)');
+  const entryNames = new Set(entryCols.map((c) => c.name));
+  if (!entryNames.has('synced_at')) {
+    await db.execAsync('ALTER TABLE entries ADD COLUMN synced_at TEXT');
+  }
+  if (!entryNames.has('pending_push')) {
+    await db.execAsync('ALTER TABLE entries ADD COLUMN pending_push INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
 async function migrateEntriesV2(db: SQLite.SQLiteDatabase) {
   const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(entries)');
   const names = new Set(cols.map((c) => c.name));
@@ -70,6 +81,7 @@ export async function initDatabase() {
   const sqlite = await SQLite.openDatabaseAsync('bloom.db');
   await sqlite.execAsync(MIGRATION_SQL);
   await migrateEntriesV2(sqlite);
+  await migrateSyncV3(sqlite);
   sqliteDb = sqlite;
   return sqliteDb;
 }

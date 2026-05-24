@@ -97,6 +97,9 @@ export interface EntryRecord {
   weather?: EntryWeatherSnapshot | null;
   timePhase?: TimePhase | null;
   sceneSeason?: Season | null;
+  /** Local sync metadata (not stored in Postgres). */
+  syncedAt?: string | null;
+  pendingPush?: boolean;
 }
 
 export interface GardenMeta {
