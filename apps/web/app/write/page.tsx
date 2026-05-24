@@ -53,8 +53,7 @@ export default function WritePage() {
   const resolved = resolveMood(draft.mood, draft.content);
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-6 pb-24">
+    <div className="flex flex-1 flex-col gap-6 pb-[calc(2rem+var(--safe-bottom))]">
         <div className="flex items-center justify-between">
           {meta?.hasPlantedFirst ? (
             <Link href="/garden" className="text-sm text-ink-soft hover:text-ink">
@@ -114,20 +113,21 @@ export default function WritePage() {
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label>Tags</Label>
-          <TagInput tags={draft.tags} onChange={(tags) => setDraft({ tags })} />
-        </div>
-      </div>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tags</Label>
+            <TagInput tags={draft.tags} onChange={(tags) => setDraft({ tags })} />
+          </div>
 
-      <div
-        className="sticky bottom-0 -mx-4 border-t border-parchment bg-cream/95 px-4 py-4 backdrop-blur-sm"
-        style={{ paddingBottom: 'calc(1rem + var(--safe-bottom))' }}
-      >
-        <Button size="lg" className="w-full" disabled={!canPlant} onClick={handlePlant}>
-          Plant it
-        </Button>
-      </div>
+          <Button
+            size="lg"
+            className="h-12 w-full rounded-full border-0 text-base font-semibold shadow-lg shadow-sage/30 transition-all active:scale-[0.98] active:shadow-md disabled:shadow-none"
+            disabled={!canPlant}
+            onClick={handlePlant}
+          >
+            Plant it
+          </Button>
+        </div>
     </div>
   );
 }

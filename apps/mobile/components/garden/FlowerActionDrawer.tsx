@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
-import { MOODS } from '@/lib/constants/moods';
+import { getMood } from '@/lib/constants/moods';
 import type { EntryRecord } from '@bloom/core';
 import { toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -64,7 +64,7 @@ export function FlowerActionDrawer({
 
   if (!entry) return null;
 
-  const mood = MOODS.find((m) => m.id === entry.mood);
+  const mood = getMood(entry.mood);
   const moodLabel = mood ? `${mood.emoji} ${mood.label}` : '';
 
   return (

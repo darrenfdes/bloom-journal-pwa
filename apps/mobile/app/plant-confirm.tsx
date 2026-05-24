@@ -11,7 +11,7 @@ import { buildFlowerGenome } from '@/lib/flowers/genome';
 import { plantEntry } from '@/lib/db/repositories/entries';
 import { clearWriteDraft } from '@/lib/db/repositories/settings';
 import { resolveMood } from '@/lib/sentiment/infer';
-import { MOODS } from '@/lib/constants/moods';
+import { getMood } from '@/lib/constants/moods';
 import { fonts, palette } from '@/lib/theme';
 import type { EntryRecord } from '@/lib/types';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -60,7 +60,7 @@ export default function PlantConfirmScreen() {
     return null;
   }
 
-  const moodLabel = MOODS.find((m) => m.id === previewEntry.mood)?.label ?? previewEntry.mood;
+  const moodLabel = getMood(previewEntry.mood)?.label ?? previewEntry.mood;
   const genome = buildFlowerGenome({ ...previewEntry, mood: previewEntry.mood! });
 
   const confirmPlant = async () => {

@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { Button } from '@/components/ui/button';
-import { MOODS } from '@/lib/constants/moods';
+import { getMood } from '@/lib/constants/moods';
 import { plantEntry } from '@/lib/db/repositories/entries';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { clearWriteDraft } from '@/lib/db/repositories/settings';
@@ -61,7 +61,7 @@ export default function PlantConfirmPage() {
     return null;
   }
 
-  const moodLabel = MOODS.find((m) => m.id === previewEntry.mood)?.label ?? previewEntry.mood;
+  const moodLabel = getMood(previewEntry.mood)?.label ?? previewEntry.mood;
   const genome = buildFlowerGenome({ ...previewEntry, mood: previewEntry.mood! });
 
   const confirmPlant = async () => {
