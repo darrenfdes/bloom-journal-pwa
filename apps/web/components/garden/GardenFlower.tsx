@@ -6,6 +6,7 @@ import React, { memo } from 'react';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { isAnniversaryBlossom } from '@bloom/core/garden/anniversary';
+import { computePumpkinStage, resolvePumpkinTrigger } from '@bloom/core/flowers/genome';
 import {
   getFlowerNightFilter,
   getFlowerSeasonFilter,
@@ -76,6 +77,13 @@ function GardenFlowerInner({
   const plotHeight = flowerSize * 1.15 + favHalo;
   const baseScale = position.scale;
   const baseRotate = position.rotation;
+  const isRipePumpkin =
+    resolvePumpkinTrigger({
+      mood: entry.mood ?? 'peaceful',
+      content: entry.content,
+      flowerSeed: entry.flowerSeed,
+      id: entry.id,
+    }) && computePumpkinStage(entry.createdAt) === 2;
 
   return (
     <motion.button
@@ -101,7 +109,7 @@ function GardenFlowerInner({
         className={cn('relative overflow-visible', isHighlighted && 'rounded-full ring-4 ring-sage/60')}
         style={{
           filter: filters || undefined,
-          transform: rainDroop ? 'rotate(15deg)' : undefined,
+          transform: rainDroop && !isRipePumpkin ? 'rotate(15deg)' : undefined,
           opacity: hideBloom ? 0 : undefined,
         }}
         animate={
@@ -127,7 +135,7 @@ function GardenFlowerInner({
         <FlowerSvg
           entry={entry}
           size={flowerSize}
-          animateSway={animateSway}
+          animateSway={animateSway && !isRipePumpkin}
           animateBloom={isHighlighted}
           daysSinceLastEntry={daysSince}
           entryIndex={index}

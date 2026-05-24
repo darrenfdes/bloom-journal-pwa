@@ -47,14 +47,15 @@ export function FlowerSvg({
 
   const wiltDroop = genome.wiltFactor * 8;
   const favScale = genome.isFavourited ? 1.06 : 1;
-  const stemRotate = genome.stemLean * 0.1;
+  const isRipePumpkin = genome.specialBloom === 'pumpkin' && genome.pumpkinStage === 2;
+  const stemRotate = isRipePumpkin ? 0 : genome.stemLean * 0.1;
   const swayTiming = useMemo(() => getFlowerSwayTiming(genome.seed), [genome.seed]);
 
   return (
     <div
       className={cn(
         'relative flex items-end justify-center',
-        animateSway && 'flower-sway',
+        animateSway && !isRipePumpkin && 'flower-sway',
         animateBloom && 'flower-bloom-in'
       )}
       style={
