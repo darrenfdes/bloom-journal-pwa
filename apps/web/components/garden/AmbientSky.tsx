@@ -7,26 +7,26 @@ import { getWeatherClouds, isNightPhase, isSunPhase } from '@bloom/core/scene';
 import { getSeason } from '@bloom/core/theme/seasons';
 
 type CloudProps = {
-  x: number;
+  startX: number;
+  endX: number;
   y: number;
   scale: number;
   opacity: number;
   duration: number;
   delay: number;
-  drift: number;
 };
 
-function DriftingCloud({ x, y, scale, opacity, duration, delay, drift }: CloudProps) {
+function DriftingCloud({ startX, endX, y, scale, opacity, duration, delay }: CloudProps) {
   return (
     <div
-      className="ambient-cloud pointer-events-none absolute"
+      className="ambient-cloud pointer-events-none absolute left-0 z-[3]"
       style={
         {
-          left: x,
           top: y,
           scale,
           opacity,
-          '--cloud-drift': `${drift}px`,
+          '--cloud-start': `${startX}px`,
+          '--cloud-end': `${endX}px`,
           '--cloud-duration': `${duration}ms`,
           '--cloud-delay': `${delay}ms`,
         } as React.CSSProperties

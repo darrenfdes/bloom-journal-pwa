@@ -348,9 +348,9 @@ export function GardenScene({ meta, entries }: Props) {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.05 }}
-                    className="pointer-events-none absolute w-[120px] text-center text-xs font-semibold uppercase tracking-wider text-ink-soft"
+                    className="pointer-events-none absolute w-[140px] rounded-full bg-white/80 px-2.5 py-1 text-center text-xs font-semibold uppercase tracking-wider text-ink shadow-sm backdrop-blur-sm"
                     style={{
-                      left: GARDEN_CLUSTER_BAND_WIDTH * 0.5 - 60,
+                      left: GARDEN_CLUSTER_BAND_WIDTH * 0.5 - 70,
                       top: cluster.groundY,
                     }}
                   >

@@ -1,5 +1,6 @@
 export type Mood =
   | 'joyful'
+  | 'ecstatic'
   | 'peaceful'
   | 'dreamy'
   | 'loved'
@@ -71,6 +72,10 @@ export interface FlowerGenome {
   timeAccent: string;
   wiltFactor: number;
   fadeFactor: number;
+  /** When set, render a special easter-egg bloom instead of `bloomMood`. */
+  specialBloom?: 'pumpkin';
+  /** Maturation stage for the pumpkin easter egg: 0=flower, 1=fruiting, 2=ripe. */
+  pumpkinStage?: 0 | 1 | 2;
 }
 
 export interface EntryRecord {
