@@ -418,7 +418,7 @@ export function GardenScene({ meta, entries }: Props) {
           router.push(path);
         }}
         onFilterMood={(mood) => {
-          setGardenFilter({ type: 'mood', mood });
+          setGardenFilter({ type: 'mood', mood: mood as import('@bloom/core').Mood });
           setActionDrawerState(null);
         }}
         onFilterMonth={(year, month) => {

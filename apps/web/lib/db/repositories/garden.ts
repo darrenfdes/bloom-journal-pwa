@@ -1,5 +1,6 @@
 import { getDb } from '@/lib/db/client';
 import { createId } from '@/lib/id';
+import { afterLocalMutation } from '@/lib/sync/hooks';
 import type { GardenMeta } from '@/lib/types';
 
 export async function getOrCreateGardenMeta(): Promise<GardenMeta> {
@@ -29,4 +30,5 @@ export async function refreshGardenAfterWrite(): Promise<void> {
   await db.garden_meta.update(meta.id, {
     lastEntryAt: new Date().toISOString(),
   });
+  void afterLocalMutation();
 }

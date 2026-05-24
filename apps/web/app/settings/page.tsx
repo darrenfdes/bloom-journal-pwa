@@ -2,21 +2,33 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportBackup } from '@/lib/export/backup';
 import { searchEntries } from '@/lib/db/repositories/entries';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { signOut } from '@/lib/auth/session';
+import { getSyncStatus, subscribeSyncStatus, type SyncStatus } from '@/lib/sync/status';
+import { isSupabaseConfigured } from '@/lib/auth/session';
+
+function formatSyncTime(iso: string | null): string {
+  if (!iso) return 'Never';
+  return new Date(iso).toLocaleString();
+}
 
 export default function SettingsPage() {
   const router = useRouter();
-  const supabaseConfigured = Boolean(getSupabaseBrowserClient());
+  const { user, loading: authLoading, configured } = useAuth();
+  const supabaseConfigured = isSupabaseConfigured();
   const [query, setQuery] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus);
+
+  useEffect(() => subscribeSyncStatus(() => setSyncStatus(getSyncStatus())), []);
 
   const handleSearch = async () => {
     const results = await searchEntries(query);
@@ -39,14 +51,63 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    toast.message('Signed out — your local garden is still here');
+    router.refresh();
+  };
+
+  const syncLabel = syncStatus.offline
+    ? 'Offline'
+    : syncStatus.syncing
+      ? 'Syncing…'
+      : syncStatus.pendingChanges > 0
+        ? `${syncStatus.pendingChanges} pending change(s)`
+        : `Last synced ${formatSyncTime(syncStatus.lastSyncedAt)}`;
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <header>
         <h1 className="font-display text-3xl font-semibold text-ink">Settings</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          Your journal stays on this device until you connect an account.
+          Your journal stays on this device. Sign in to back up and sync across devices.
         </p>
       </header>
+
+      <section className="space-y-4 rounded-xl border border-parchment p-4">
+        <h2 className="font-display text-lg font-medium text-ink">Account</h2>
+        {authLoading ? (
+          <p className="text-sm text-ink-soft">Loading account…</p>
+        ) : user ? (
+          <>
+            <p className="text-sm text-ink">{user.email}</p>
+            <Button variant="outline" onClick={() => void handleSignOut()}>
+              Sign out
+            </Button>
+          </>
+        ) : configured ? (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/login">Create account</Link>
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-ink-soft">
+            Copy <code className="text-xs">.env.local.example</code> to enable cloud backup.
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-parchment p-4">
+        <h2 className="font-display text-lg font-medium text-ink">Cloud sync</h2>
+        <p className="text-sm text-ink-soft">{syncLabel}</p>
+        <Badge variant={supabaseConfigured ? 'default' : 'secondary'}>
+          {supabaseConfigured ? (user ? 'Signed in' : 'Ready — not signed in') : 'Local only'}
+        </Badge>
+      </section>
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">
         <h2 className="font-display text-lg font-medium text-ink">Search memories</h2>
@@ -76,17 +137,6 @@ export default function SettingsPage() {
         <Button variant="outline" asChild>
           <Link href="/flowers">Preview mood blooms</Link>
         </Button>
-      </section>
-
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Cloud sync</h2>
-        <p className="text-sm text-ink-soft">
-          Supabase sync is wired but inactive. Copy <code className="text-xs">.env.local.example</code>{' '}
-          to enable sign-in and backup in a future release.
-        </p>
-        <Badge variant={supabaseConfigured ? 'default' : 'secondary'}>
-          {supabaseConfigured ? 'Supabase configured' : 'Local only'}
-        </Badge>
       </section>
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">

@@ -13,7 +13,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
+import { getCurrentUser, signOut } from '@/lib/auth/session';
 import { exportBackup } from '@/lib/export/backup';
+import { getLastSyncedAt, getPendingCount } from '@/lib/sync/state';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 import {
   cancelReminders,
   notificationsAvailable,
@@ -42,6 +45,29 @@ export default function SettingsScreen() {
   const [pinInput, setPinInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<EntryRecord[]>([]);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState('');
+
+  useEffect(() => {
+    void getCurrentUser().then((u) => setAccountEmail(u?.email ?? null));
+    void getLastSyncedAt().then((t) => {
+      const pending = getPendingCount();
+      if (!accountEmail) setSyncStatus('Sign in to enable cloud backup');
+      else if (pending > 0) setSyncStatus(`Pending upload (${pending})`);
+      else if (t) setSyncStatus(`Last synced ${new Date(t).toLocaleString()}`);
+      else setSyncStatus('Signed in — sync on write');
+    });
+    const interval = setInterval(() => {
+      void getLastSyncedAt().then((t) => {
+        const pending = getPendingCount();
+        if (!accountEmail) setSyncStatus('Sign in to enable cloud backup');
+        else if (pending > 0) setSyncStatus(`Pending upload (${pending})`);
+        else if (t) setSyncStatus(`Last synced ${new Date(t).toLocaleString()}`);
+        else setSyncStatus('Signed in — sync on write');
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [accountEmail]);
 
   useEffect(() => {
     getOrCreateSettings().then((s) => {
@@ -112,6 +138,36 @@ export default function SettingsScreen() {
       </Pressable>
 
       <Text style={styles.title}>Settings</Text>
+
+      <Text style={styles.section}>Account</Text>
+      {accountEmail ? (
+        <>
+          <Text style={styles.accountEmail}>{accountEmail}</Text>
+          <Text style={styles.hint}>{syncStatus}</Text>
+          <Button
+            label="Sign out"
+            variant="secondary"
+            onPress={() => {
+              void signOut().then(() => {
+                setAccountEmail(null);
+                Alert.alert('Signed out', 'Your garden stays on this device.');
+              });
+            }}
+            style={styles.btn}
+          />
+        </>
+      ) : isSupabaseConfigured() ? (
+        <Button
+          label="Sign in or create account"
+          onPress={() => router.push('/login' as '/settings')}
+          style={styles.btn}
+        />
+      ) : (
+        <Text style={styles.hint}>
+          Add Supabase env vars (see apps/mobile/.env.example) for cloud backup.
+        </Text>
+      )}
+
       <Text style={styles.section}>Privacy</Text>
 
       <View style={styles.row}>
@@ -188,7 +244,8 @@ export default function SettingsScreen() {
       ))}
 
       <Text style={styles.footerNote}>
-        Bloom Journal stores everything locally on your device. No ads. No server reads your words.
+        Bloom Journal is local-first. Sign in to back up and sync — your words are only sent to your
+        account when you choose to sync.
       </Text>
     </ScrollView>
   );
@@ -211,6 +268,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: palette.ink,
     marginBottom: 20,
+  },
+  accountEmail: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: palette.ink,
+    marginBottom: 4,
   },
   section: {
     fontFamily: fonts.bodySemiBold,
