@@ -1,7 +1,7 @@
 'use client';
 
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,6 +13,7 @@ import { JournalPanel } from '@/components/scene/JournalPanel';
 import { SceneLocatingLabel } from '@/components/scene/SceneLocatingLabel';
 import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
 import { WeatherParticles } from '@/components/scene/WeatherParticles';
+import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
 import { GardenFlower } from '@/components/garden/GardenFlower';
 import { GardenPanIndicator } from '@/components/garden/GardenPanIndicator';
 import { GrassLayer } from '@/components/garden/GrassLayer';
@@ -21,7 +22,7 @@ import { PollenSparkles } from '@/components/garden/PollenSparkles';
 import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
-import { MOODS } from '@/lib/constants/moods';
+
 import { useElementSize } from '@/lib/hooks/useElementSize';
 import { useHorizontalDragPan } from '@/lib/hooks/useHorizontalDragPan';
 import { useScrollMetrics } from '@/lib/hooks/useScrollMetrics';
@@ -40,15 +41,13 @@ import {
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
-import type { EntryRecord, GardenMeta, Mood } from '@bloom/core';
+import type { EntryRecord, GardenMeta } from '@bloom/core';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 type Props = {
   meta: GardenMeta;
   entries: EntryRecord[];
 };
-
-const LONG_PRESS_MS = 500;
 const SWAY_ENTRY_LIMIT = 18;
 const COLUMN_SIZE = GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP;
 
@@ -68,14 +67,13 @@ export function GardenScene({ meta, entries }: Props) {
   const setHighlightEntryId = useBloomStore((s) => s.setHighlightEntryId);
   const panRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [filterMenu, setFilterMenu] = useState<{
-    entryId: string;
-    mood: Mood | null;
+  const [actionDrawerState, setActionDrawerState] = useState<{
+    entry: EntryRecord;
     monthKey: string;
   } | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
-  const [journalOpen, setJournalOpen] = useState(false);
+  const journalOpen = useBloomStore((s) => s.quickWriteOpen);
+  const setJournalOpen = useBloomStore((s) => s.setQuickWriteOpen);
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
   const { width: panWidth, height: panHeight } = useElementSize(panRef);
@@ -184,26 +182,9 @@ export function GardenScene({ meta, entries }: Props) {
     return () => clearTimeout(clearTimer);
   }, [highlightId, bloomParam, sortedLayout, setHighlightEntryId, router, width, contentWidth]);
 
-  const openFilterMenu = useCallback((entry: EntryRecord, monthKey: string) => {
-    setFilterMenu({ entryId: entry.id, mood: entry.mood, monthKey });
+  const openActionDrawer = useCallback((entry: EntryRecord, monthKey: string) => {
+    setActionDrawerState({ entry, monthKey });
   }, []);
-
-  const clearLongPress = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  const startLongPress = useCallback(
-    (entry: EntryRecord, monthKey: string) => {
-      clearLongPress();
-      longPressTimer.current = setTimeout(() => {
-        openFilterMenu(entry, monthKey);
-      }, LONG_PRESS_MS);
-    },
-    [clearLongPress, openFilterMenu]
-  );
 
   const jumpToMonth = useCallback((scrollX: number) => {
     scrollRef.current?.scrollTo({ left: scrollX, behavior: 'smooth' });
@@ -376,9 +357,7 @@ export function GardenScene({ meta, entries }: Props) {
                         isHighlighted={isHighlighted}
                         animateSway={enableSway}
                         monthKey={formatMonth(entry.createdAt)}
-                        onOpenFilter={openFilterMenu}
-                        onLongPressStart={startLongPress}
-                        onLongPressEnd={clearLongPress}
+                        onOpenAction={openActionDrawer}
                       />
                     );
                   })}
@@ -397,9 +376,7 @@ export function GardenScene({ meta, entries }: Props) {
               isHighlighted
               animateSway={enableSway}
               monthKey={formatMonth(highlightedPlot.entry.createdAt)}
-              onOpenFilter={openFilterMenu}
-              onLongPressStart={startLongPress}
-              onLongPressEnd={clearLongPress}
+              onOpenAction={openActionDrawer}
             />
           ) : null}
           </div>
@@ -418,65 +395,23 @@ export function GardenScene({ meta, entries }: Props) {
       <SceneLocatingLabel scene={scene} />
       <JournalPanel scene={scene} open={journalOpen} onClose={() => setJournalOpen(false)} />
 
-      {!journalOpen ? (
-        <button
-          type="button"
-          className="fixed right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-sage text-3xl text-cream shadow-lg"
-          style={{ bottom: 'calc(1.5rem + var(--safe-bottom))' }}
-          onClick={() => setJournalOpen(true)}
-          aria-label="New entry"
-        >
-          +
-        </button>
-      ) : null}
-
-      <AnimatePresence>
-        {filterMenu ? (
-          <motion.div
-            key="filter-menu"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-            className="fixed bottom-24 left-5 right-5 z-30 rounded-2xl border border-parchment bg-cream p-4 shadow-lg"
-          >
-            <p className="mb-3 text-sm font-semibold text-ink">Filter garden</p>
-            {filterMenu.mood ? (
-              <button
-                type="button"
-                className="block w-full border-b border-parchment py-3 text-left text-sm text-ink-soft"
-                onClick={() => {
-                  if (filterMenu.mood) setGardenFilter({ type: 'mood', mood: filterMenu.mood });
-                  setFilterMenu(null);
-                }}
-              >
-                Mood: {MOODS.find((m) => m.id === filterMenu.mood)?.label}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="block w-full border-b border-parchment py-3 text-left text-sm text-ink-soft"
-              onClick={() => {
-                const [year, month] = filterMenu.monthKey.split('-').map(Number);
-                setGardenFilter({ type: 'month', year: year!, month: month! });
-                setFilterMenu(null);
-              }}
-            >
-              Month: {filterMenu.monthKey}
-            </button>
-            <button
-              type="button"
-              className="mt-2 w-full text-center text-sm text-ink-muted"
-              onClick={() => setFilterMenu(null)}
-            >
-              Cancel
-            </button>
-            <p className="mt-2 text-center text-[10px] text-ink-muted">
-              Long-press, right-click, or Shift+click a flower for filters
-            </p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <FlowerActionDrawer
+        entry={actionDrawerState?.entry ?? null}
+        monthKey={actionDrawerState?.monthKey}
+        onClose={() => setActionDrawerState(null)}
+        onNavigate={(path) => {
+          setActionDrawerState(null);
+          router.push(path);
+        }}
+        onFilterMood={(mood) => {
+          setGardenFilter({ type: 'mood', mood });
+          setActionDrawerState(null);
+        }}
+        onFilterMonth={(year, month) => {
+          setGardenFilter({ type: 'month', year, month });
+          setActionDrawerState(null);
+        }}
+      />
     </SeasonBackground>
   );
 }

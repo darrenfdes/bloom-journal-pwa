@@ -36,7 +36,6 @@ export function RepeatingSeasonGround({
   groundVariant,
   groundSeed = 0,
   sceneSeason = null,
-  sceneReady = false,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
   const baseGroundStyle = getGroundStyle(variant);

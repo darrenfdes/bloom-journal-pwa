@@ -1,41 +1,88 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { Sprout, Plus, Settings } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
-
-const links = [
-  { href: '/write', label: 'Write' },
-  { href: '/garden', label: 'Garden' },
-  { href: '/settings', label: 'Settings' },
-];
+import { useBloomStore } from '@/stores/useBloomStore';
 
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const setQuickWriteOpen = useBloomStore((s) => s.setQuickWriteOpen);
+
+  const isGarden = pathname === '/garden' || pathname.startsWith('/garden/');
+  const isSettings = pathname === '/settings' || pathname.startsWith('/settings/');
+
+  const handleCenterAction = (e: React.MouseEvent) => {
+    if (pathname === '/garden') {
+      e.preventDefault();
+      setQuickWriteOpen(true);
+    } else {
+      router.push('/write');
+    }
+  };
 
   return (
-    <nav className="border-t border-parchment bg-cream px-4 py-2">
-      <ul className="mx-auto flex max-w-lg items-center justify-around gap-2">
-        {links.map(({ href, label }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <li key={href}>
-              <Link
-                href={href}
-                className={cn(
-                  'rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-sage text-cream'
-                    : 'text-ink-muted hover:bg-parchment hover:text-ink'
-                )}
-              >
-                {label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <motion.nav
+      initial={{ y: 80, x: '-50%', opacity: 0 }}
+      animate={{ y: 0, x: '-50%', opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 30, delay: 0.1 }}
+      className="fixed bottom-6 left-1/2 z-40 flex w-[90%] max-w-sm items-center justify-between rounded-full border border-white/40 bg-cream/75 px-5 py-2.5 shadow-[0_8px_32px_0_rgba(61,56,50,0.12)] backdrop-blur-md select-none"
+    >
+      {/* Garden Tab */}
+      <Link
+        href="/garden"
+        className={cn(
+          'relative flex flex-col items-center justify-center rounded-full px-4 py-1.5 transition-colors',
+          isGarden ? 'text-sage-dark' : 'text-ink-muted hover:text-ink'
+        )}
+      >
+        {isGarden && (
+          <motion.div
+            layoutId="activeNavTab"
+            className="absolute inset-0 -z-10 rounded-full bg-sage/15"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+        <Sprout className="h-5 w-5" strokeWidth={isGarden ? 2.5 : 2} />
+        <span className="text-[10px] font-semibold tracking-wide uppercase mt-0.5">Garden</span>
+      </Link>
+
+      {/* Prominent Write Center Button */}
+      <div className="relative -mt-6">
+        {/* Background glow pulse */}
+        <div className="absolute -inset-1 rounded-full bg-sage/20 blur-md animate-pulse pointer-events-none" />
+        <button
+          type="button"
+          onClick={handleCenterAction}
+          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-sage text-cream shadow-md transition-all hover:scale-105 active:scale-95"
+          aria-label="New journal entry"
+        >
+          <Plus className="h-6 w-6" strokeWidth={3} />
+        </button>
+      </div>
+
+      {/* Settings Tab */}
+      <Link
+        href="/settings"
+        className={cn(
+          'relative flex flex-col items-center justify-center rounded-full px-4 py-1.5 transition-colors',
+          isSettings ? 'text-sage-dark' : 'text-ink-muted hover:text-ink'
+        )}
+      >
+        {isSettings && (
+          <motion.div
+            layoutId="activeNavTab"
+            className="absolute inset-0 -z-10 rounded-full bg-sage/15"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+        <Settings className="h-5 w-5" strokeWidth={isSettings ? 2.5 : 2} />
+        <span className="text-[10px] font-semibold tracking-wide uppercase mt-0.5">Settings</span>
+      </Link>
+    </motion.nav>
   );
 }

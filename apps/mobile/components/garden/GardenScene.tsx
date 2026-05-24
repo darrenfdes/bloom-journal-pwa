@@ -21,6 +21,7 @@ import { PollenSparkles } from '@/components/garden/PollenSparkles';
 import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
+import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
 import { AmbientOverlay } from '@/components/scene/AmbientOverlay';
 import { JournalPanel } from '@/components/scene/JournalPanel';
 import { SceneLocatingLabel } from '@/components/scene/SceneLocatingLabel';
@@ -69,9 +70,8 @@ export function GardenScene({ meta, entries }: Props) {
   const setGardenFilter = useBloomStore((s) => s.setGardenFilter);
   const scrollRef = useRef<ScrollView>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [filterMenu, setFilterMenu] = useState<{
-    entryId: string;
-    mood: Mood | null;
+  const [actionDrawerState, setActionDrawerState] = useState<{
+    entry: EntryRecord;
     monthKey: string;
   } | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
@@ -118,22 +118,9 @@ export function GardenScene({ meta, entries }: Props) {
     setScrollLeft(e.nativeEvent.contentOffset.x);
   };
 
-  const handleLongPress = (entry: EntryRecord, monthKey: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setFilterMenu({ entryId: entry.id, mood: entry.mood, monthKey });
-  };
-
-  const applyMoodFilter = () => {
-    if (!filterMenu?.mood) return;
-    setGardenFilter({ type: 'mood', mood: filterMenu.mood });
-    setFilterMenu(null);
-  };
-
-  const applyMonthFilter = () => {
-    if (!filterMenu) return;
-    const [year, month] = filterMenu.monthKey.split('-').map(Number);
-    setGardenFilter({ type: 'month', year, month });
-    setFilterMenu(null);
+  const handleOpenActionDrawer = (entry: EntryRecord, monthKey: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActionDrawerState({ entry, monthKey });
   };
 
   return (
@@ -244,8 +231,8 @@ export function GardenScene({ meta, entries }: Props) {
             return (
               <Pressable
                 key={entry.id}
-                onPress={() => router.push(`/entry/${entry.id}`)}
-                onLongPress={() => handleLongPress(entry, formatMonth(entry.createdAt))}
+                onPress={() => handleOpenActionDrawer(entry, formatMonth(entry.createdAt))}
+                onLongPress={() => handleOpenActionDrawer(entry, formatMonth(entry.createdAt))}
                 style={[
                   styles.flowerPlot,
                   {
@@ -310,24 +297,19 @@ export function GardenScene({ meta, entries }: Props) {
       <SceneLocatingLabel />
       <JournalPanel visible={journalOpen} onClose={() => setJournalOpen(false)} />
 
-      {filterMenu ? (
-        <View style={styles.filterSheet}>
-          <Text style={styles.filterTitle}>Filter garden</Text>
-          {filterMenu.mood ? (
-            <Pressable style={styles.filterOption} onPress={applyMoodFilter}>
-              <Text style={styles.filterOptionText}>
-                Mood: {MOODS.find((m) => m.id === filterMenu.mood)?.label}
-              </Text>
-            </Pressable>
-          ) : null}
-          <Pressable style={styles.filterOption} onPress={applyMonthFilter}>
-            <Text style={styles.filterOptionText}>Month: {filterMenu.monthKey}</Text>
-          </Pressable>
-          <Pressable style={styles.filterCancel} onPress={() => setFilterMenu(null)}>
-            <Text style={styles.filterCancelText}>Cancel</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <FlowerActionDrawer
+        entry={actionDrawerState?.entry ?? null}
+        monthKey={actionDrawerState?.monthKey}
+        onClose={() => setActionDrawerState(null)}
+        onFilterMood={(mood) => {
+          setGardenFilter({ type: 'mood', mood });
+          setActionDrawerState(null);
+        }}
+        onFilterMonth={(year, month) => {
+          setGardenFilter({ type: 'month', year, month });
+          setActionDrawerState(null);
+        }}
+      />
     </SeasonBackground>
   );
 }
