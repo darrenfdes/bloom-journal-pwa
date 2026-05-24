@@ -16,24 +16,25 @@ import { getSeason } from '@/lib/theme/seasons';
 import { getWeatherClouds, isNightPhase, isSunPhase } from '@bloom/core/scene';
 
 type CloudProps = {
-  x: number;
+  startX: number;
+  endX: number;
   y: number;
   scale: number;
   opacity: number;
   duration: number;
   delay: number;
-  drift: number;
 };
 
-const AnimatedCloud = ({ x, y, scale, opacity, duration, delay, drift }: CloudProps) => {
-  const tx = useSharedValue(0);
+const AnimatedCloud = ({ startX, endX, y, scale, opacity, duration, delay }: CloudProps) => {
+  const tx = useSharedValue(startX);
 
   useEffect(() => {
+    tx.value = startX;
     tx.value = withDelay(
       delay,
-      withRepeat(withTiming(drift, { duration, easing: Easing.linear }), -1, false)
+      withRepeat(withTiming(endX, { duration, easing: Easing.linear }), -1, false)
     );
-  }, [delay, drift, duration, tx]);
+  }, [delay, duration, endX, startX, tx]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { scale }],
@@ -41,7 +42,7 @@ const AnimatedCloud = ({ x, y, scale, opacity, duration, delay, drift }: CloudPr
   }));
 
   return (
-    <Animated.View style={[styles.cloudWrap, { left: x, top: y }, style]}>
+    <Animated.View style={[styles.cloudWrap, { left: 0, top: y }, style]}>
       <Svg width={120} height={50} viewBox="0 0 120 50">
         <Ellipse cx="35" cy="32" rx="28" ry="14" fill="rgba(255,255,255,0.72)" />
         <Ellipse cx="65" cy="24" rx="34" ry="18" fill="rgba(255,255,255,0.82)" />

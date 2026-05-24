@@ -1,3 +1,5 @@
+import { differenceInDays, parseISO } from 'date-fns';
+
 import { MOOD_COLORS } from '../constants/moods';
 import { foliageDensityForWordCount, pickFoliageVariant } from '../flowers/foliage';
 import { appMoodToBloomMood } from '../flowers/moodBloom';
@@ -9,6 +11,61 @@ import type {
   Mood,
   PetalShape,
 } from '../types';
+
+/**
+ * Phrases that escalate `joyful` into the pumpkin easter egg. Matched
+ * case-insensitively against entry content. `!!!` (3+ exclamation marks
+ * in a row) also triggers.
+ */
+const ECSTATIC_KEYWORDS = [
+  'extremely happy',
+  'so excited',
+  'so happy',
+  'ecstatic',
+  'thrilled',
+  'elated',
+  'overjoyed',
+  'over the moon',
+  'on cloud nine',
+];
+
+const TRIPLE_BANG = /!{3,}/;
+
+function matchesEcstaticContent(content: string): boolean {
+  if (TRIPLE_BANG.test(content)) return true;
+  const lower = content.toLowerCase();
+  return ECSTATIC_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+/**
+ * Decide whether an entry should render as the pumpkin easter egg.
+ * Returns true if any rule matches:
+ *   1. `mood === 'ecstatic'` (explicit)
+ *   2. `mood === 'joyful'` AND content contains an ecstatic keyword / `!!!`
+ *   3. `mood === 'joyful'` AND `seed % 10 === 0` (rare random surprise)
+ */
+export function resolvePumpkinTrigger(
+  entry: { mood: Mood; content: string; flowerSeed: number; id: string }
+): boolean {
+  if (entry.mood === 'ecstatic') return true;
+  if (entry.mood !== 'joyful') return false;
+  if (matchesEcstaticContent(entry.content)) return true;
+  const seed = entry.flowerSeed || hashString(entry.id);
+  return seed % 10 === 0;
+}
+
+/**
+ * Map days-since-planted to a 3-stage pumpkin maturation:
+ *   0–9   days → stage 0 (yellow flower)
+ *   10–19 days → stage 1 (fruiting: petals shrinking, small green pumpkin)
+ *   20+   days → stage 2 (ripe orange pumpkin)
+ */
+export function computePumpkinStage(createdAt: string, now: Date = new Date()): 0 | 1 | 2 {
+  const days = differenceInDays(now, parseISO(createdAt));
+  if (days >= 20) return 2;
+  if (days >= 10) return 1;
+  return 0;
+}
 
 function getTimeAccent(dateIso: string): string {
   const hour = new Date(dateIso).getHours();
@@ -118,6 +175,8 @@ function speciesPetalConfig(species: FlowerSpecies, rng: SeededRNG, hasTitle: bo
 
 function moodOpennessModifier(mood: Mood): number {
   switch (mood) {
+    case 'ecstatic':
+      return 0.18;
     case 'joyful':
     case 'energized':
     case 'grateful':
@@ -165,6 +224,8 @@ export function buildFlowerGenome(
     entryIndex?: number;
     totalEntries?: number;
     streakFactor?: number;
+    /** Override "now" for deterministic tests / gallery previews. */
+    now?: Date;
   }
 ): FlowerGenome {
   const seed = entry.flowerSeed || hashString(entry.id);
@@ -203,6 +264,16 @@ export function buildFlowerGenome(
   const foliageVariant = pickFoliageVariant(seed, wordCount);
   const foliageDensity = foliageDensityForWordCount(wordCount);
 
+  const isPumpkin = resolvePumpkinTrigger({
+    mood,
+    content: entry.content,
+    flowerSeed: seed,
+    id: entry.id,
+  });
+  const pumpkinStage = isPumpkin
+    ? computePumpkinStage(entry.createdAt, options?.now)
+    : undefined;
+
   return {
     seed,
     species,
@@ -232,6 +303,7 @@ export function buildFlowerGenome(
     timeAccent: getTimeAccent(entry.createdAt),
     wiltFactor,
     fadeFactor,
+    ...(isPumpkin ? { specialBloom: 'pumpkin' as const, pumpkinStage } : {}),
   };
 }
 

@@ -115,10 +115,10 @@ body {
 
 @keyframes cloud-drift {
   from {
-    transform: translateX(0);
+    transform: translateX(var(--cloud-start));
   }
   to {
-    transform: translateX(var(--cloud-drift));
+    transform: translateX(var(--cloud-end));
   }
 }
 

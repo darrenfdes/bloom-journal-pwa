@@ -89,6 +89,7 @@ export function FlowerSvg({
         size={size}
         wordCount={genome.wordCount}
         wiltDroop={wiltDroop}
+        pumpkinStage={genome.specialBloom === 'pumpkin' ? genome.pumpkinStage : undefined}
       />
     </div>
   );
