@@ -11,7 +11,9 @@
     "./garden/*": "./src/garden/*.ts",
     "./sentiment/*": "./src/sentiment/*.ts",
     "./constants/*": "./src/constants/*.ts",
-    "./theme/*": "./src/theme/*.ts"
+    "./theme/*": "./src/theme/*.ts",
+    "./scene": "./src/scene/index.ts",
+    "./scene/*": "./src/scene/*.ts"
   },
   "dependencies": {
     "date-fns": "^4.2.1"

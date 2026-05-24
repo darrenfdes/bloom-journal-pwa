@@ -3,9 +3,16 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
+import { Settings } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { AmbientOverlay } from '@/components/scene/AmbientOverlay';
+import { CelestialLayer } from '@/components/scene/CelestialLayer';
+import { JournalPanel } from '@/components/scene/JournalPanel';
+import { SceneLocatingLabel } from '@/components/scene/SceneLocatingLabel';
+import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
+import { WeatherParticles } from '@/components/scene/WeatherParticles';
 import { GardenFlower } from '@/components/garden/GardenFlower';
 import { GardenPanIndicator } from '@/components/garden/GardenPanIndicator';
 import { GrassLayer } from '@/components/garden/GrassLayer';
@@ -30,6 +37,8 @@ import {
   getGardenHorizontalPadding,
   getMonthClusters,
 } from '@bloom/core/garden/layout';
+import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
+import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
 import type { EntryRecord, GardenMeta, Mood } from '@bloom/core';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -49,6 +58,8 @@ function formatMonth(iso: string): string {
 }
 
 export function GardenScene({ meta, entries }: Props) {
+  const scene = useSceneContext();
+  const sceneReady = scene.status === 'ready';
   const router = useRouter();
   const searchParams = useSearchParams();
   const filter = useBloomStore((s) => s.gardenFilter);
@@ -64,6 +75,7 @@ export function GardenScene({ meta, entries }: Props) {
     monthKey: string;
   } | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+  const [journalOpen, setJournalOpen] = useState(false);
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
   const { width: panWidth, height: panHeight } = useElementSize(panRef);
@@ -95,6 +107,7 @@ export function GardenScene({ meta, entries }: Props) {
   );
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;
+  const skyHeight = useMemo(() => getGardenSkyHeight(sceneHeight), [sceneHeight]);
 
   const flowersByMonth = useMemo(() => {
     const map = new Map<string, typeof sortedLayout>();
@@ -222,11 +235,20 @@ export function GardenScene({ meta, entries }: Props) {
       groundSeed={groundSeed}
       width={width}
       viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
+      skyOverlays={
+        <>
+          <SkyTimePhaseLayer scene={scene} />
+          <CelestialLayer scene={scene} width={width} skyHeight={skyHeight} />
+        </>
+      }
     >
-      <header className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-2 pt-[calc(1rem+var(--safe-top))]">
-        <h1 className="font-display text-3xl font-semibold text-ink drop-shadow-sm">Your Garden</h1>
-        <Link href="/settings" className="text-sm font-medium text-ink-soft hover:text-ink">
-          Settings
+      <header className="relative z-10 flex shrink-0 items-center justify-end px-5 pb-2 pt-[calc(1rem+var(--safe-top))]">
+        <Link
+          href="/settings"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/30 text-white shadow-[0_1px_4px_rgba(0,0,0,0.35)] backdrop-blur-sm transition-colors hover:bg-black/40"
+          aria-label="Settings"
+        >
+          <Settings className="h-5 w-5" strokeWidth={2} aria-hidden />
         </Link>
       </header>
 
@@ -258,6 +280,8 @@ export function GardenScene({ meta, entries }: Props) {
           month={gardenMonth}
           groundVariant={groundVariant}
           groundSeed={groundSeed}
+          sceneSeason={scene.season}
+          sceneReady={sceneReady}
         />
 
         <div ref={scrollRef} className="garden-pan absolute inset-0">
@@ -389,15 +413,22 @@ export function GardenScene({ meta, entries }: Props) {
         />
       </div>
 
-      <button
-        type="button"
-        className="fixed right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-sage text-3xl text-cream shadow-lg"
-        style={{ bottom: 'calc(1.5rem + var(--safe-bottom))' }}
-        onClick={() => router.push('/write')}
-        aria-label="New entry"
-      >
-        +
-      </button>
+      <WeatherParticles scene={scene} />
+      <AmbientOverlay scene={scene} />
+      <SceneLocatingLabel scene={scene} />
+      <JournalPanel scene={scene} open={journalOpen} onClose={() => setJournalOpen(false)} />
+
+      {!journalOpen ? (
+        <button
+          type="button"
+          className="fixed right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-sage text-3xl text-cream shadow-lg"
+          style={{ bottom: 'calc(1.5rem + var(--safe-bottom))' }}
+          onClick={() => setJournalOpen(true)}
+          aria-label="New entry"
+        >
+          +
+        </button>
+      ) : null}
 
       <AnimatePresence>
         {filterMenu ? (

@@ -3,6 +3,8 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { AmbientSky } from '@/components/garden/AmbientSky';
+import { CelestialLayer } from '@/components/scene/CelestialLayer';
+import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
 import { computeGroundVariant } from '@/lib/garden/ground';
 import { getHorizonGlow } from '@bloom/core/garden/season-hills';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
@@ -50,6 +52,8 @@ export function SeasonBackground({
       </Svg>
 
       <AmbientSky month={month} />
+      <SkyTimePhaseLayer />
+      <CelestialLayer />
 
       {children}
     </View>

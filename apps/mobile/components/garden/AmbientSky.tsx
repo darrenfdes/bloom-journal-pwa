@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -11,33 +11,33 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-native-svg';
 
+import { useSceneContext } from '@/lib/scene/SceneContext';
 import { getSeason } from '@/lib/theme/seasons';
+import { getWeatherClouds, isNightPhase } from '@bloom/core/scene';
 
 type CloudProps = {
   x: number;
   y: number;
   scale: number;
+  opacity: number;
   duration: number;
   delay: number;
   drift: number;
 };
 
-const AnimatedCloud = ({ x, y, scale, duration, delay, drift }: CloudProps) => {
+const AnimatedCloud = ({ x, y, scale, opacity, duration, delay, drift }: CloudProps) => {
   const tx = useSharedValue(0);
 
   useEffect(() => {
     tx.value = withDelay(
       delay,
-      withRepeat(
-        withTiming(drift, { duration, easing: Easing.linear }),
-        -1,
-        false
-      )
+      withRepeat(withTiming(drift, { duration, easing: Easing.linear }), -1, false)
     );
   }, [delay, drift, duration, tx]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { scale }],
+    opacity,
   }));
 
   return (
@@ -52,12 +52,22 @@ const AnimatedCloud = ({ x, y, scale, duration, delay, drift }: CloudProps) => {
 };
 
 export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: number }) {
+  const scene = useSceneContext();
   const { width } = Dimensions.get('window');
   const season = getSeason(month);
   const sunY = 60;
   const sunX = width * 0.78;
   const sunR = 36;
   const isWarm = season === 'summer' || season === 'spring';
+
+  const cloudCover = scene.weather?.cloudCover ?? 35;
+  const clouds = useMemo(
+    () =>
+      scene.status === 'ready' && isNightPhase(scene.timePhase)
+        ? []
+        : getWeatherClouds(cloudCover, width),
+    [cloudCover, width, scene.status, scene.timePhase]
+  );
 
   const sunPulse = useSharedValue(1);
   useEffect(() => {
@@ -77,7 +87,6 @@ export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: numb
 
   return (
     <View style={styles.root} pointerEvents="none">
-      {/* Sun / moon */}
       <Animated.View style={[styles.sunWrap, { left: sunX - sunR, top: sunY - sunR }, sunStyle]}>
         <Svg width={sunR * 2} height={sunR * 2}>
           <Defs>
@@ -92,7 +101,6 @@ export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: numb
         </Svg>
       </Animated.View>
 
-      {/* Distant misty mountains */}
       <Svg
         width={width}
         height={120}
@@ -110,11 +118,9 @@ export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: numb
         />
       </Svg>
 
-      {/* Clouds — slow drift to the right only */}
-      <AnimatedCloud x={width * 0.05} y={40} scale={1.1} duration={120000} delay={0} drift={48} />
-      <AnimatedCloud x={width * 0.4} y={78} scale={0.85} duration={140000} delay={8000} drift={40} />
-      <AnimatedCloud x={width * 0.58} y={115} scale={0.95} duration={160000} delay={15000} drift={52} />
-      <AnimatedCloud x={width * 0.15} y={148} scale={0.7} duration={130000} delay={22000} drift={36} />
+      {clouds.map((cloud, i) => (
+        <AnimatedCloud key={i} {...cloud} />
+      ))}
     </View>
   );
 }

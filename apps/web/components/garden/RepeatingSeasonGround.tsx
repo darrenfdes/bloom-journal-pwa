@@ -8,7 +8,8 @@ import {
   getGardenHillSvgHeight,
   getGardenHillTop,
 } from '@bloom/core/garden/scene-layout';
-import type { GroundVariant } from '@bloom/core';
+import { getHillColors } from '@bloom/core/scene';
+import type { GroundVariant, Season } from '@bloom/core';
 
 type Props = {
   scrollLeft: number;
@@ -18,6 +19,8 @@ type Props = {
   month?: number;
   groundVariant?: GroundVariant;
   groundSeed?: number;
+  sceneSeason?: Season | null;
+  sceneReady?: boolean;
 };
 
 /**
@@ -31,12 +34,26 @@ export function RepeatingSeasonGround({
   month = new Date().getMonth() + 1,
   groundVariant,
   groundSeed = 0,
+  sceneSeason = null,
+  sceneReady = false,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
-  const groundStyle = getGroundStyle(variant);
+  const baseGroundStyle = getGroundStyle(variant);
+  const sceneHills = sceneReady && sceneSeason ? getHillColors(sceneSeason) : null;
+  const groundStyle = sceneHills
+    ? {
+        ...baseGroundStyle,
+        backTop: sceneHills.far,
+        backBottom: sceneHills.far,
+        midTop: sceneHills.mid,
+        midBottom: sceneHills.mid,
+        frontTop: sceneHills.near,
+        frontBottom: sceneHills.near,
+      }
+    : baseGroundStyle;
   const hillTop = getGardenHillTop(viewportHeight);
   const groundSvgH = getGardenHillSvgHeight(viewportHeight);
-  const hills = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
+  const hillPaths = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
   const offset = tileWidth > 0 ? scrollLeft % tileWidth : 0;
   const startIndex = tileWidth > 0 ? Math.floor(scrollLeft / tileWidth) - 1 : 0;
@@ -85,12 +102,12 @@ export function RepeatingSeasonGround({
               </linearGradient>
             </defs>
             <path
-              d={hills.backHill}
+              d={hillPaths.backHill}
               fill={`url(#${gradId}-back)`}
               opacity={variant === 3 ? 0.82 : 0.7}
             />
-            <path d={hills.midHill} fill={`url(#${gradId}-mid)`} opacity={0.88} />
-            <path d={hills.frontHill} fill={`url(#${gradId}-front)`} />
+            <path d={hillPaths.midHill} fill={`url(#${gradId}-mid)`} opacity={0.88} />
+            <path d={hillPaths.frontHill} fill={`url(#${gradId}-front)`} />
           </svg>
         );
       })}

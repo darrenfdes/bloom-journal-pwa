@@ -94,7 +94,8 @@ body {
 
 .flower-sway {
   transform-origin: center bottom;
-  animation: flower-sway 2.8s ease-in-out infinite alternate;
+  animation: flower-sway var(--sway-duration, 2.8s) ease-in-out infinite alternate;
+  animation-delay: var(--sway-delay, 0s);
   will-change: transform;
 }
 
@@ -144,7 +145,8 @@ body {
 .garden-flower {
   content-visibility: auto;
   contain-intrinsic-size: 160px 160px;
-  contain: layout style paint;
+  contain: layout style;
+  overflow: visible;
 }
 
 .garden-pan {

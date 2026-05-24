@@ -27,6 +27,12 @@ export class BloomDatabase extends Dexie {
       app_settings: 'id',
       drafts: 'id, updatedAt',
     });
+    this.version(2).stores({
+      entries: 'id, userId, createdAt, updatedAt, isDeleted',
+      garden_meta: 'id, userId',
+      app_settings: 'id',
+      drafts: 'id, updatedAt',
+    });
   }
 }
 

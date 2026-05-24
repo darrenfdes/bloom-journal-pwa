@@ -1,0 +1,204 @@
+import type { Season } from '../theme/seasons';
+import type { TimePhase, WeatherCategory } from './types';
+
+export interface SkyGradient {
+  top: string;
+  bottom: string;
+}
+
+export interface HillColors {
+  far: string;
+  mid: string;
+  near: string;
+}
+
+export interface AmbientOverlaySpec {
+  color: string;
+  opacity: number;
+}
+
+const SKY_BY_PHASE: Record<TimePhase, SkyGradient> = {
+  deep_night: { top: '#020818', bottom: '#0a0f2e' },
+  pre_dawn: { top: '#0d0d2b', bottom: '#1a1040' },
+  dawn: { top: '#ff7043', bottom: '#ffcc80' },
+  day: { top: '#42a5f5', bottom: '#90caf9' },
+  golden_hour: { top: '#ff6f00', bottom: '#ffca28' },
+  dusk: { top: '#6a1b9a', bottom: '#e91e63' },
+  night: { top: '#0d1b4b', bottom: '#1a237e' },
+};
+
+const HILLS_BY_SEASON: Record<Season, HillColors> = {
+  spring: { far: '#81c784', mid: '#66bb6a', near: '#4caf50' },
+  summer: { far: '#388e3c', mid: '#2e7d32', near: '#1b5e20' },
+  autumn: { far: '#bf360c', mid: '#e64a19', near: '#ff7043' },
+  winter: { far: '#cfd8dc', mid: '#b0bec5', near: '#90a4ae' },
+};
+
+const AMBIENT_BY_PHASE: Record<TimePhase, AmbientOverlaySpec> = {
+  deep_night: { color: '#020b1a', opacity: 0.65 },
+  pre_dawn: { color: '#0d0828', opacity: 0.5 },
+  dawn: { color: '#ff8f00', opacity: 0.15 },
+  day: { color: 'transparent', opacity: 0 },
+  golden_hour: { color: '#f57c00', opacity: 0.25 },
+  dusk: { color: '#4a148c', opacity: 0.3 },
+  night: { color: '#01003a', opacity: 0.55 },
+};
+
+const CLOUD_BLEND = '#6b7280';
+
+function blendHex(a: string, b: string, t: number): string {
+  const parse = (hex: string) => {
+    const h = hex.replace('#', '');
+    return [
+      parseInt(h.slice(0, 2), 16),
+      parseInt(h.slice(2, 4), 16),
+      parseInt(h.slice(4, 6), 16),
+    ] as const;
+  };
+  const [ar, ag, ab] = parse(a);
+  const [br, bg, bb] = parse(b);
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * t);
+  const r = mix(ar, br);
+  const g = mix(ag, bg);
+  const bl = mix(ab, bb);
+  return `#${[r, g, bl].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+}
+
+export function getSkyGradient(timePhase: TimePhase, cloudCover: number): SkyGradient {
+  const base = SKY_BY_PHASE[timePhase];
+  if (cloudCover <= 60) return base;
+  const intensity = Math.min(1, cloudCover / 100);
+  return {
+    top: blendHex(base.top, CLOUD_BLEND, intensity),
+    bottom: blendHex(base.bottom, CLOUD_BLEND, intensity),
+  };
+}
+
+export function getSkyCssBackground(timePhase: TimePhase, cloudCover: number): string {
+  const { top, bottom } = getSkyGradient(timePhase, cloudCover);
+  return `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`;
+}
+
+export function getHillColors(season: Season): HillColors {
+  return HILLS_BY_SEASON[season];
+}
+
+export function getAmbientOverlay(timePhase: TimePhase): AmbientOverlaySpec {
+  return AMBIENT_BY_PHASE[timePhase];
+}
+
+/** Subtle wind-driven sway in degrees (±), layered on each flower's base lean. */
+export function getWindSwayDegrees(windSpeed: number): number {
+  const base = 0.9;
+  const extra = Math.min(1.6, windSpeed * 0.06);
+  return base + extra;
+}
+
+export function getSeasonFlowerFilter(season: Season): string {
+  switch (season) {
+    case 'spring':
+      return 'none';
+    case 'summer':
+      return 'saturate(1.2)';
+    case 'autumn':
+      return 'sepia(0.3) hue-rotate(-20deg)';
+    case 'winter':
+      return 'opacity(0)';
+  }
+}
+
+export function getNightFlowerFilter(timePhase: TimePhase): string {
+  if (timePhase === 'deep_night' || timePhase === 'night' || timePhase === 'pre_dawn') {
+    return 'brightness(0.4) saturate(0.6)';
+  }
+  if (timePhase === 'dusk') {
+    return 'brightness(0.7) saturate(0.8)';
+  }
+  return 'none';
+}
+
+export function combineFlowerFilters(...filters: string[]): string {
+  const active = filters.filter((f) => f && f !== 'none');
+  return active.length > 0 ? active.join(' ') : 'none';
+}
+
+export function shouldRainDroop(category: WeatherCategory): boolean {
+  return category === 'rain' || category === 'heavy_rain';
+}
+
+export function getRainParticleCount(category: WeatherCategory): number {
+  switch (category) {
+    case 'drizzle':
+      return 40;
+    case 'rain':
+      return 100;
+    case 'heavy_rain':
+      return 200;
+    default:
+      return 0;
+  }
+}
+
+export function shouldShowPetals(
+  season: Season,
+  category: WeatherCategory,
+  windSpeed: number
+): boolean {
+  return (
+    season === 'spring' &&
+    windSpeed > 8 &&
+    (category === 'clear' || category === 'partly_cloudy')
+  );
+}
+
+export function shouldShowAutumnLeaves(season: Season): boolean {
+  return season === 'autumn';
+}
+
+export function getSeasonPlaceholder(season: Season): string {
+  switch (season) {
+    case 'spring':
+      return "What's blooming today?";
+    case 'summer':
+      return 'What are you soaking in?';
+    case 'autumn':
+      return 'What are you letting go of?';
+    case 'winter':
+      return 'What are you resting in?';
+  }
+}
+
+export function isNightPhase(timePhase: TimePhase): boolean {
+  return (
+    timePhase === 'deep_night' ||
+    timePhase === 'night' ||
+    timePhase === 'pre_dawn'
+  );
+}
+
+export function isSunPhase(timePhase: TimePhase): boolean {
+  return timePhase === 'dawn' || timePhase === 'day' || timePhase === 'golden_hour';
+}
+
+/** @alias getSeasonFlowerFilter */
+export const getFlowerSeasonFilter = getSeasonFlowerFilter;
+
+/** @alias getNightFlowerFilter */
+export const getFlowerNightFilter = getNightFlowerFilter;
+
+export function isRainCategory(category: WeatherCategory): boolean {
+  return shouldRainDroop(category);
+}
+
+export function shouldHideFlowersForWinter(season: Season): boolean {
+  return season === 'winter';
+}
+
+export function isMoonPhase(timePhase: TimePhase): boolean {
+  return (
+    timePhase === 'dusk' ||
+    timePhase === 'night' ||
+    timePhase === 'deep_night' ||
+    timePhase === 'pre_dawn'
+  );
+}
