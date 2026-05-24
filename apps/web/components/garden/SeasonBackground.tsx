@@ -15,6 +15,8 @@ type Props = {
   groundSeed?: number;
   width: number;
   viewportHeight: number;
+  /** Measured sky band height — extends through UI chrome to meet the meadow horizon. */
+  skyBandHeight?: number;
   /** Layers between the base sky SVG and scene content (time-phase sky, celestial). */
   skyOverlays?: React.ReactNode;
   children: React.ReactNode;
@@ -27,12 +29,13 @@ export function SeasonBackground({
   groundSeed = 0,
   width,
   viewportHeight,
+  skyBandHeight,
   skyOverlays,
   children,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
   const { sky, season } = getSeasonPalette(month);
-  const skyH = getGardenSkyHeight(viewportHeight);
+  const skyH = skyBandHeight ?? getGardenSkyHeight(viewportHeight);
   const horizonGlow = getHorizonGlow(variant, season);
 
   return (
