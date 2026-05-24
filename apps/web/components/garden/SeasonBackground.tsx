@@ -15,6 +15,8 @@ type Props = {
   groundSeed?: number;
   width: number;
   viewportHeight: number;
+  /** Layers between the base sky SVG and scene content (time-phase sky, celestial). */
+  skyOverlays?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -25,6 +27,7 @@ export function SeasonBackground({
   groundSeed = 0,
   width,
   viewportHeight,
+  skyOverlays,
   children,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
@@ -53,6 +56,7 @@ export function SeasonBackground({
           <path d={`M 0 0 L ${width} 0 L ${width} ${skyH} L 0 ${skyH} Z`} fill="url(#skyGrad)" />
         </svg>
         <AmbientSky month={month} width={width} />
+        {skyOverlays}
       </div>
 
       <div className="relative z-[1] flex min-h-0 flex-1 flex-col">{children}</div>

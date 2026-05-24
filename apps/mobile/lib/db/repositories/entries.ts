@@ -4,7 +4,15 @@ import { parseGardenPosition, parseJsonArray } from '@/lib/db/json';
 import { createFlowerSeed } from '@/lib/flowers/genome';
 import { assignPositionForNewEntry } from '@/lib/garden/layout';
 import { resolveMood } from '@/lib/sentiment/infer';
+import type { EntryWeatherSnapshot, Season, TimePhase } from '@bloom/core';
+import { parseJsonObject } from '@/lib/db/json';
 import type { EntryRecord, GardenPosition, Mood, WriteDraft } from '@/lib/types';
+
+export type PlantSceneSnapshot = {
+  weather: EntryWeatherSnapshot | null;
+  timePhase: TimePhase;
+  sceneSeason: Season;
+};
 
 export type EntryRow = {
   id: string;
@@ -22,6 +30,9 @@ export type EntryRow = {
   is_favourited: number;
   revisit_of: string | null;
   is_deleted: number;
+  weather: string | null;
+  time_phase: string | null;
+  scene_season: string | null;
 };
 
 function rowToEntry(row: EntryRow): EntryRecord {
@@ -41,6 +52,11 @@ function rowToEntry(row: EntryRow): EntryRecord {
     isFavourited: Boolean(row.is_favourited),
     revisitOf: row.revisit_of,
     isDeleted: Boolean(row.is_deleted),
+    weather: row.weather
+      ? parseJsonObject<EntryWeatherSnapshot | null>(row.weather, null)
+      : null,
+    timePhase: (row.time_phase as TimePhase | null) ?? null,
+    sceneSeason: (row.scene_season as Season | null) ?? null,
   };
 }
 
@@ -66,7 +82,8 @@ export async function getEntry(id: string): Promise<EntryRecord | null> {
 
 export async function plantEntry(
   draft: WriteDraft,
-  bounds: { width: number; height: number }
+  bounds: { width: number; height: number },
+  scene?: PlantSceneSnapshot
 ): Promise<EntryRecord> {
   const db = getSqlite();
   const id = createId();
@@ -100,14 +117,17 @@ export async function plantEntry(
     isFavourited: false,
     revisitOf: draft.revisitOf,
     isDeleted: false,
+    weather: scene?.weather ?? null,
+    timePhase: scene?.timePhase ?? null,
+    sceneSeason: scene?.sceneSeason ?? null,
   };
 
   await db.runAsync(
     `INSERT INTO entries (
       id, user_id, title, content, mood, inferred_sentiment, tags,
       created_at, updated_at, flower_seed, flower_style, garden_position,
-      is_favourited, revisit_of, is_deleted
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      is_favourited, revisit_of, is_deleted, weather, time_phase, scene_season
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     record.id,
     record.userId,
     record.title,
@@ -122,7 +142,10 @@ export async function plantEntry(
     JSON.stringify(record.gardenPosition),
     record.isFavourited ? 1 : 0,
     record.revisitOf,
-    0
+    0,
+    record.weather ? JSON.stringify(record.weather) : null,
+    record.timePhase ?? null,
+    record.sceneSeason ?? null
   );
 
   const meta = await db.getFirstAsync<{ id: string }>('SELECT id FROM garden_meta LIMIT 1');

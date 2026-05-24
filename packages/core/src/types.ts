@@ -36,6 +36,8 @@ export interface GardenPosition {
 
 import type { FoliageVariant } from './flowers/foliage';
 import type { BloomMood } from './flowers/moodPalettes';
+import type { EntryWeatherSnapshot, TimePhase } from './scene/types';
+import type { Season } from './theme/seasons';
 
 export interface FlowerGenome {
   seed: number;
@@ -87,6 +89,9 @@ export interface EntryRecord {
   isFavourited: boolean;
   revisitOf: string | null;
   isDeleted: boolean;
+  weather?: EntryWeatherSnapshot | null;
+  timePhase?: TimePhase | null;
+  sceneSeason?: Season | null;
 }
 
 export interface GardenMeta {

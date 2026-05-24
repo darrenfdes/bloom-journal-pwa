@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 
 import { Flower } from '@/components/flower/Flower';
 import { buildFlowerGenome } from '@bloom/core/flowers/genome';
+import { getFlowerSwayTiming } from '@bloom/core/scene';
 import type { EntryRecord, FlowerGenome } from '@bloom/core';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,10 @@ type Props = {
   daysSinceLastEntry?: number | null;
   entryIndex?: number;
   totalEntries?: number;
+  /** Wind-driven sway amplitude in degrees (±). Defaults to 1.2. */
+  swayAmplitude?: number;
+  /** When false, omit the halo (garden renders it on a non-swaying parent). Default true. */
+  showFavouriteHalo?: boolean;
 };
 
 export function FlowerSvg({
@@ -27,6 +32,8 @@ export function FlowerSvg({
   daysSinceLastEntry,
   entryIndex,
   totalEntries,
+  swayAmplitude = 1.2,
+  showFavouriteHalo = true,
 }: Props) {
   const genome = useMemo(
     () =>
@@ -41,6 +48,7 @@ export function FlowerSvg({
   const wiltDroop = genome.wiltFactor * 8;
   const favScale = genome.isFavourited ? 1.06 : 1;
   const stemRotate = genome.stemLean * 0.1;
+  const swayTiming = useMemo(() => getFlowerSwayTiming(genome.seed), [genome.seed]);
 
   return (
     <div
@@ -57,12 +65,14 @@ export function FlowerSvg({
           transform: animateSway || animateBloom ? undefined : `rotate(${stemRotate}deg) scale(${favScale})`,
           '--fav-scale': favScale,
           '--sway-base': `${stemRotate}deg`,
-          '--sway-min': `${stemRotate - 1.2}deg`,
-          '--sway-max': `${stemRotate + 1.2}deg`,
+          '--sway-min': `${stemRotate - swayAmplitude}deg`,
+          '--sway-max': `${stemRotate + swayAmplitude}deg`,
+          '--sway-duration': `${swayTiming.durationSec}s`,
+          '--sway-delay': `${swayTiming.delaySec}s`,
         } as React.CSSProperties
       }
     >
-      {genome.isFavourited ? (
+      {showFavouriteHalo && genome.isFavourited ? (
         <div
           className="pointer-events-none absolute rounded-full border-2 border-amber-200/50 bg-amber-100/20"
           style={{

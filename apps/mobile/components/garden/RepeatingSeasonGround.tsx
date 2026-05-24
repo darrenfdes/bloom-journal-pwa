@@ -8,6 +8,7 @@ import {
   getGardenHillTop,
 } from '@bloom/core/garden/scene-layout';
 import { computeGroundVariant, getGroundStyle } from '@/lib/garden/ground';
+import { getHillColors, type HillColors, type Season } from '@bloom/core';
 import type { GroundVariant } from '@/lib/types';
 
 type Props = {
@@ -17,6 +18,8 @@ type Props = {
   month?: number;
   groundVariant?: GroundVariant;
   groundSeed?: number;
+  sceneSeason?: Season | null;
+  sceneReady?: boolean;
 };
 
 export function RepeatingSeasonGround({
@@ -26,11 +29,26 @@ export function RepeatingSeasonGround({
   month = new Date().getMonth() + 1,
   groundVariant,
   groundSeed = 0,
+  sceneSeason = null,
+  sceneReady = false,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
-  const groundStyle = getGroundStyle(variant);
-  const groundSvgH = viewportHeight * 0.7;
-  const skyH = viewportHeight * 0.5;
+  const baseGroundStyle = getGroundStyle(variant);
+  const sceneHills: HillColors | null =
+    sceneReady && sceneSeason ? getHillColors(sceneSeason) : null;
+  const groundStyle = sceneHills
+    ? {
+        ...baseGroundStyle,
+        backTop: sceneHills.far,
+        backBottom: sceneHills.far,
+        midTop: sceneHills.mid,
+        midBottom: sceneHills.mid,
+        frontTop: sceneHills.near,
+        frontBottom: sceneHills.near,
+      }
+    : baseGroundStyle;
+  const groundSvgH = getGardenHillSvgHeight(viewportHeight);
+  const hillTop = getGardenHillTop(viewportHeight);
   const hills = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
   const offset = scrollLeft % tileWidth;

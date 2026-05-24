@@ -4,6 +4,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -11,6 +12,7 @@ import Animated, {
 
 import { Flower } from '@/components/flower/Flower';
 import { buildFlowerGenome } from '@/lib/flowers/genome';
+import { getFlowerSwayTiming } from '@bloom/core/scene';
 import type { EntryRecord, FlowerGenome } from '@/lib/types';
 
 type Props = {
@@ -22,6 +24,8 @@ type Props = {
   daysSinceLastEntry?: number | null;
   entryIndex?: number;
   totalEntries?: number;
+  swayAmplitude?: number;
+  showFavouriteHalo?: boolean;
 };
 
 export function FlowerSvg({
@@ -33,6 +37,8 @@ export function FlowerSvg({
   daysSinceLastEntry,
   entryIndex,
   totalEntries,
+  swayAmplitude = 1.2,
+  showFavouriteHalo = true,
 }: Props) {
   const genome =
     genomeOverride ??
@@ -40,6 +46,10 @@ export function FlowerSvg({
       { ...entry, mood: entry.mood ?? 'peaceful' },
       { daysSinceLastEntry: daysSinceLastEntry ?? undefined, entryIndex, totalEntries }
     );
+
+  const swayTiming = getFlowerSwayTiming(genome.seed);
+  const swayDurationMs = Math.round(swayTiming.durationSec * 1000);
+  const swayDelayMs = Math.round(-swayTiming.delaySec * 1000);
 
   const scale = useSharedValue(animateBloom ? 0.12 : 1);
   const sway = useSharedValue(0);
@@ -52,16 +62,19 @@ export function FlowerSvg({
 
   useEffect(() => {
     if (animateSway) {
-      sway.value = withRepeat(
-        withSequence(
-          withTiming(1.2, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
-          withTiming(-1.2, { duration: 2800, easing: Easing.inOut(Easing.sin) })
-        ),
-        -1,
-        true
+      sway.value = withDelay(
+        swayDelayMs,
+        withRepeat(
+          withSequence(
+            withTiming(swayAmplitude, { duration: swayDurationMs, easing: Easing.inOut(Easing.sin) }),
+            withTiming(-swayAmplitude, { duration: swayDurationMs, easing: Easing.inOut(Easing.sin) })
+          ),
+          -1,
+          true
+        )
       );
     }
-  }, [animateSway, sway]);
+  }, [animateSway, sway, swayAmplitude, swayDelayMs, swayDurationMs]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -75,7 +88,7 @@ export function FlowerSvg({
 
   return (
     <Animated.View style={[styles.wrap, { width: size, height: size }, animatedStyle]}>
-      {genome.isFavourited ? (
+      {showFavouriteHalo && genome.isFavourited ? (
         <View
           pointerEvents="none"
           style={[

@@ -1,19 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 
+import { useSceneContextOptional } from '@/lib/scene/SceneContext';
+import { getWeatherClouds, isNightPhase } from '@bloom/core/scene';
 import { getSeason } from '@bloom/core/theme/seasons';
 
 type CloudProps = {
   x: number;
   y: number;
   scale: number;
+  opacity: number;
   duration: number;
   delay: number;
   drift: number;
 };
 
-function DriftingCloud({ x, y, scale, duration, delay, drift }: CloudProps) {
+function DriftingCloud({ x, y, scale, opacity, duration, delay, drift }: CloudProps) {
   return (
     <div
       className="ambient-cloud pointer-events-none absolute"
@@ -22,6 +25,7 @@ function DriftingCloud({ x, y, scale, duration, delay, drift }: CloudProps) {
           left: x,
           top: y,
           scale,
+          opacity,
           '--cloud-drift': `${drift}px`,
           '--cloud-duration': `${duration}ms`,
           '--cloud-delay': `${delay}ms`,
@@ -39,11 +43,21 @@ function DriftingCloud({ x, y, scale, duration, delay, drift }: CloudProps) {
 }
 
 export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month?: number; width: number }) {
+  const scene = useSceneContextOptional();
   const season = getSeason(month);
   const sunY = 60;
   const sunX = width * 0.78;
   const sunR = 36;
   const isWarm = season === 'summer' || season === 'spring';
+
+  const cloudCover = scene?.weather?.cloudCover ?? 35;
+  const timePhase = scene?.timePhase ?? 'day';
+  const sceneReady = scene?.status === 'ready';
+
+  const clouds = useMemo(
+    () => (sceneReady && isNightPhase(timePhase) ? [] : getWeatherClouds(cloudCover, width)),
+    [cloudCover, width, sceneReady, timePhase]
+  );
 
   return (
     <div className="pointer-events-none absolute left-0 right-0 top-0 h-[260px] overflow-hidden">
@@ -88,10 +102,9 @@ export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month
         />
       </svg>
 
-      <DriftingCloud x={width * 0.05} y={40} scale={1.1} duration={120000} delay={0} drift={48} />
-      <DriftingCloud x={width * 0.4} y={78} scale={0.85} duration={140000} delay={8000} drift={40} />
-      <DriftingCloud x={width * 0.58} y={115} scale={0.95} duration={160000} delay={15000} drift={52} />
-      <DriftingCloud x={width * 0.15} y={148} scale={0.7} duration={130000} delay={22000} drift={36} />
+      {clouds.map((cloud, i) => (
+        <DriftingCloud key={i} {...cloud} />
+      ))}
     </div>
   );
 }
