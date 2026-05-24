@@ -7,7 +7,8 @@ import React, { useEffect, useState } from 'react';
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MOODS } from '@/lib/constants/moods';
+import { getMood } from '@/lib/constants/moods';
+import { MoodIcon } from '@/lib/mood-icons';
 import type { EntryRecord } from '@bloom/core';
 import { toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -53,8 +54,7 @@ export function FlowerActionDrawer({
     }
   };
 
-  const mood = entry ? MOODS.find((m) => m.id === entry.mood) : null;
-  const moodLabel = mood ? `${mood.emoji} ${mood.label}` : '';
+  const mood = entry ? getMood(entry.mood) : null;
 
   return (
     <AnimatePresence>
@@ -121,9 +121,15 @@ export function FlowerActionDrawer({
                   })}
                 </p>
                 <span className="text-parchment">•</span>
-                <Badge variant="secondary" className="px-2 py-0.5 text-[11px] font-medium tracking-wide">
-                  {moodLabel}
-                </Badge>
+                {mood ? (
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 px-2 py-0.5 text-[11px] font-medium tracking-wide"
+                  >
+                    <MoodIcon mood={mood.id} className="size-3" />
+                    {mood.label}
+                  </Badge>
+                ) : null}
               </div>
 
               {entry.content && (

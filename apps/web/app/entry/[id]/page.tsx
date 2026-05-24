@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MOODS } from '@/lib/constants/moods';
+import { getMood } from '@/lib/constants/moods';
+import { MoodIcon } from '@/lib/mood-icons';
 import {
   countRevisits,
   getEntry,
@@ -46,7 +47,7 @@ export default function EntryPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const mood = entry ? MOODS.find((m) => m.id === entry.mood) : null;
+  const mood = entry ? getMood(entry.mood) : null;
 
   const handleFavourite = async () => {
     if (!entry) return;
@@ -97,8 +98,9 @@ export default function EntryPage() {
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {mood && (
-            <Badge variant="secondary">
-              {mood.emoji} {mood.label}
+            <Badge variant="secondary" className="gap-1">
+              <MoodIcon mood={mood.id} className="size-3.5" />
+              {mood.label}
             </Badge>
           )}
           <time className="text-sm text-ink-muted">
