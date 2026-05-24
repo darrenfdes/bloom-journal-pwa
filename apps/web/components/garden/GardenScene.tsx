@@ -284,7 +284,7 @@ export function GardenScene({ meta, entries }: Props) {
           sceneReady={sceneReady}
         />
 
-        <div ref={scrollRef} className="garden-pan absolute inset-0">
+        <div ref={scrollRef} className="garden-pan absolute inset-0 z-[1]">
           <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
             <PollenSparkles
               width={width}
