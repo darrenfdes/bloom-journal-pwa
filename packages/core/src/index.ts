@@ -1,4 +1,5 @@
 export * from './types';
+export * from './sync';
 export * from './id';
 export * from './constants/moods';
 export * from './constants/prompts';
@@ -19,4 +20,4 @@ export { palette } from './theme/colors';
 export { getSeason, getSeasonPalette, type Season } from './theme/seasons';
 export * from './scene';
 export { fontFamilies, textStyles } from './theme/typography';
-export * from './scene';
+export * from './sync';

@@ -302,7 +302,7 @@ export function GardenScene({ meta, entries }: Props) {
         monthKey={actionDrawerState?.monthKey}
         onClose={() => setActionDrawerState(null)}
         onFilterMood={(mood) => {
-          setGardenFilter({ type: 'mood', mood });
+          setGardenFilter({ type: 'mood', mood: mood as import('@/lib/types').Mood });
           setActionDrawerState(null);
         }}
         onFilterMonth={(year, month) => {

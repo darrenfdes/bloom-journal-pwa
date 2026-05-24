@@ -17,6 +17,7 @@ import 'react-native-reanimated';
 import { LockGate } from '@/components/lock/LockGate';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { palette } from '@/lib/theme';
+import { AuthProvider } from '@/providers/AuthProvider';
 import { DatabaseProvider } from '@/providers/DatabaseProvider';
 import { useBloomStore } from '@/stores/useBloomStore';
 
@@ -44,9 +45,11 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <DatabaseProvider>
-      <AppShell />
-    </DatabaseProvider>
+    <AuthProvider>
+      <DatabaseProvider>
+        <AppShell />
+      </DatabaseProvider>
+    </AuthProvider>
   );
 }
 
@@ -81,6 +84,7 @@ function AppShell() {
         <Stack.Screen name="entry/[id]" />
         <Stack.Screen name="revisit/[parentId]" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="login" />
         <Stack.Screen name="flowers" />
       </Stack>
 
