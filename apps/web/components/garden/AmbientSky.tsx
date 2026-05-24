@@ -42,7 +42,15 @@ function DriftingCloud({ x, y, scale, opacity, duration, delay, drift }: CloudPr
   );
 }
 
-export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month?: number; width: number }) {
+export function AmbientSky({
+  month = new Date().getMonth() + 1,
+  width,
+  skyHeight = 260,
+}: {
+  month?: number;
+  width: number;
+  skyHeight?: number;
+}) {
   const scene = useSceneContextOptional();
   const season = getSeason(month);
   const sunY = 60;
@@ -59,8 +67,13 @@ export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month
     [cloudCover, width, sceneReady, timePhase]
   );
 
+  const mountainH = Math.min(140, Math.round(skyHeight * 0.45));
+
   return (
-    <div className="pointer-events-none absolute left-0 right-0 top-0 h-[260px] overflow-hidden">
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ height: skyHeight }}
+    >
       <div
         className="ambient-sun absolute"
         style={{ left: sunX - sunR, top: sunY - sunR }}
@@ -86,19 +99,20 @@ export function AmbientSky({ month = new Date().getMonth() + 1, width }: { month
       </div>
 
       <svg
-        className="absolute bottom-0 left-0 right-0 opacity-95"
+        className="absolute bottom-0 left-0 right-0 z-[2] opacity-95"
         width={width}
-        height={120}
-        viewBox={`0 0 ${width} 120`}
+        height={mountainH}
+        viewBox={`0 0 ${width} ${mountainH}`}
         preserveAspectRatio="none"
+        aria-hidden
       >
         <path
-          d={`M 0 90 L ${width * 0.18} 50 L ${width * 0.3} 78 L ${width * 0.42} 38 L ${width * 0.55} 70 L ${width * 0.68} 42 L ${width * 0.82} 76 L ${width} 56 L ${width} 120 L 0 120 Z`}
-          fill="rgba(140, 160, 170, 0.32)"
+          d={`M 0 ${mountainH * 0.75} L ${width * 0.18} ${mountainH * 0.42} L ${width * 0.3} ${mountainH * 0.65} L ${width * 0.42} ${mountainH * 0.32} L ${width * 0.55} ${mountainH * 0.58} L ${width * 0.68} ${mountainH * 0.35} L ${width * 0.82} ${mountainH * 0.63} L ${width} ${mountainH * 0.47} L ${width} ${mountainH} L 0 ${mountainH} Z`}
+          fill="rgba(140, 160, 170, 0.38)"
         />
         <path
-          d={`M 0 110 L ${width * 0.22} 78 L ${width * 0.4} 100 L ${width * 0.58} 72 L ${width * 0.75} 96 L ${width} 80 L ${width} 120 L 0 120 Z`}
-          fill="rgba(120, 145, 145, 0.38)"
+          d={`M 0 ${mountainH * 0.92} L ${width * 0.22} ${mountainH * 0.65} L ${width * 0.4} ${mountainH * 0.83} L ${width * 0.58} ${mountainH * 0.6} L ${width * 0.75} ${mountainH * 0.8} L ${width} ${mountainH * 0.67} L ${width} ${mountainH} L 0 ${mountainH} Z`}
+          fill="rgba(120, 145, 145, 0.45)"
         />
       </svg>
 

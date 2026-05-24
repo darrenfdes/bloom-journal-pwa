@@ -9,6 +9,7 @@ import {
   getGardenHillTop,
 } from '@bloom/core/garden/scene-layout';
 import { getHillColors } from '@bloom/core/scene';
+import { getSeason } from '@bloom/core/theme/seasons';
 import type { GroundVariant, Season } from '@bloom/core';
 
 type Props = {
@@ -39,18 +40,17 @@ export function RepeatingSeasonGround({
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
   const baseGroundStyle = getGroundStyle(variant);
-  const sceneHills = sceneReady && sceneSeason ? getHillColors(sceneSeason) : null;
-  const groundStyle = sceneHills
-    ? {
-        ...baseGroundStyle,
-        backTop: sceneHills.far,
-        backBottom: sceneHills.far,
-        midTop: sceneHills.mid,
-        midBottom: sceneHills.mid,
-        frontTop: sceneHills.near,
-        frontBottom: sceneHills.near,
-      }
-    : baseGroundStyle;
+  const hillsSeason = sceneSeason ?? getSeason(month);
+  const sceneHills = getHillColors(hillsSeason);
+  const groundStyle = {
+    ...baseGroundStyle,
+    backTop: sceneHills.far,
+    backBottom: sceneHills.far,
+    midTop: sceneHills.mid,
+    midBottom: sceneHills.mid,
+    frontTop: sceneHills.near,
+    frontBottom: sceneHills.near,
+  };
   const hillTop = getGardenHillTop(viewportHeight);
   const groundSvgH = getGardenHillSvgHeight(viewportHeight);
   const hillPaths = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
@@ -69,10 +69,11 @@ export function RepeatingSeasonGround({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 overflow-hidden"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
       aria-hidden
       style={{ height: viewportHeight }}
     >
+      <div className="absolute inset-0" style={{ backgroundColor: groundStyle.haze, opacity: 0.22 }} />
       {indices.map((tileIndex) => {
         const x = tileIndex * tileWidth - offset;
         const gradId = `hill-${tileIndex}-${groundSeed}`;
@@ -111,7 +112,6 @@ export function RepeatingSeasonGround({
           </svg>
         );
       })}
-      <div className="absolute inset-0" style={{ backgroundColor: groundStyle.haze, opacity: 0.35 }} />
     </div>
   );
 }

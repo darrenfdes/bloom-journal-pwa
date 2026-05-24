@@ -3,7 +3,7 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
-import { getStarField, isMoonPhase, isNightPhase, isSunPhase } from '@bloom/core/scene';
+import { getStarField, isMoonPhase, isNightPhase } from '@bloom/core/scene';
 
 import { useSceneContext } from '@/lib/scene/SceneContext';
 
@@ -16,18 +16,13 @@ export function CelestialLayer() {
 
   if (scene.status !== 'ready') return null;
 
-  const showSun = isSunPhase(scene.timePhase);
+  const showSun = scene.timePhase === 'dawn';
   const showMoon = isMoonPhase(scene.timePhase);
   const showStars = isNightPhase(scene.timePhase);
 
-  const sunLeft =
-    scene.timePhase === 'dawn'
-      ? width * 0.12
-      : scene.timePhase === 'golden_hour'
-        ? width * 0.78
-        : width * 0.5 - 30;
-  const sunTop = scene.timePhase === 'day' ? skyH * 0.18 : skyH * 0.5;
-  const sunSize = scene.timePhase === 'day' ? 60 : 80;
+  const sunLeft = width * 0.12;
+  const sunTop = skyH * 0.5;
+  const sunSize = 80;
 
   return (
     <View style={[styles.layer, { height: skyH }]} pointerEvents="none">

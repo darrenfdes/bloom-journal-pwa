@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { getStarField, isMoonPhase, isNightPhase, isSunPhase } from '@bloom/core/scene';
+import { getStarField, isMoonPhase, isNightPhase } from '@bloom/core/scene';
 import type { SceneState, TimePhase } from '@bloom/core/scene';
 
 import styles from './SceneFx.module.css';
@@ -33,7 +33,8 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
 
   if (!ready) return null;
 
-  const showSun = isSunPhase(timePhase);
+  // Daytime sun is AmbientSky (upper right); only show rising sun here at dawn.
+  const showSun = timePhase === 'dawn';
   const showMoon = isMoonPhase(timePhase);
   const showStars = isNightPhase(timePhase);
   const sun = sunPosition(timePhase, width, skyHeight);

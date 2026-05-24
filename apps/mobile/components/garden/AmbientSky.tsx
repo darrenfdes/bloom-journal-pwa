@@ -51,9 +51,16 @@ const AnimatedCloud = ({ x, y, scale, opacity, duration, delay, drift }: CloudPr
   );
 };
 
-export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: number }) {
+export function AmbientSky({
+  month = new Date().getMonth() + 1,
+  skyHeight = 260,
+}: {
+  month?: number;
+  skyHeight?: number;
+}) {
   const scene = useSceneContext();
   const { width } = Dimensions.get('window');
+  const mountainH = Math.min(140, Math.round(skyHeight * 0.45));
   const season = getSeason(month);
   const sunY = 60;
   const sunX = width * 0.78;
@@ -86,7 +93,7 @@ export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: numb
   }));
 
   return (
-    <View style={styles.root} pointerEvents="none">
+    <View style={[styles.root, { height: skyHeight }]} pointerEvents="none">
       <Animated.View style={[styles.sunWrap, { left: sunX - sunR, top: sunY - sunR }, sunStyle]}>
         <Svg width={sunR * 2} height={sunR * 2}>
           <Defs>
@@ -103,18 +110,18 @@ export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: numb
 
       <Svg
         width={width}
-        height={120}
+        height={mountainH}
         style={styles.mountains}
-        viewBox={`0 0 ${width} 120`}
+        viewBox={`0 0 ${width} ${mountainH}`}
         preserveAspectRatio="none"
       >
         <Path
-          d={`M 0 90 L ${width * 0.18} 50 L ${width * 0.3} 78 L ${width * 0.42} 38 L ${width * 0.55} 70 L ${width * 0.68} 42 L ${width * 0.82} 76 L ${width} 56 L ${width} 120 L 0 120 Z`}
-          fill="rgba(140, 160, 170, 0.32)"
+          d={`M 0 ${mountainH * 0.75} L ${width * 0.18} ${mountainH * 0.42} L ${width * 0.3} ${mountainH * 0.65} L ${width * 0.42} ${mountainH * 0.32} L ${width * 0.55} ${mountainH * 0.58} L ${width * 0.68} ${mountainH * 0.35} L ${width * 0.82} ${mountainH * 0.63} L ${width} ${mountainH * 0.47} L ${width} ${mountainH} L 0 ${mountainH} Z`}
+          fill="rgba(140, 160, 170, 0.38)"
         />
         <Path
-          d={`M 0 110 L ${width * 0.22} 78 L ${width * 0.4} 100 L ${width * 0.58} 72 L ${width * 0.75} 96 L ${width} 80 L ${width} 120 L 0 120 Z`}
-          fill="rgba(120, 145, 145, 0.38)"
+          d={`M 0 ${mountainH * 0.92} L ${width * 0.22} ${mountainH * 0.65} L ${width * 0.4} ${mountainH * 0.83} L ${width * 0.58} ${mountainH * 0.6} L ${width * 0.75} ${mountainH * 0.8} L ${width} ${mountainH * 0.67} L ${width} ${mountainH} L 0 ${mountainH} Z`}
+          fill="rgba(120, 145, 145, 0.45)"
         />
       </Svg>
 
@@ -127,11 +134,7 @@ export function AmbientSky({ month = new Date().getMonth() + 1 }: { month?: numb
 
 const styles = StyleSheet.create({
   root: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
+    ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
   },
   sunWrap: {
