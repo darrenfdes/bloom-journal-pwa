@@ -50,8 +50,9 @@ export function RepeatingSeasonGround({
     frontTop: sceneHills.near,
     frontBottom: sceneHills.near,
   };
-  const hillTop = getGardenHillTop(viewportHeight);
-  const groundSvgH = getGardenHillSvgHeight(viewportHeight);
+  const hillSkyOverlap = 12;
+  const hillTop = getGardenHillTop(viewportHeight) - hillSkyOverlap;
+  const groundSvgH = getGardenHillSvgHeight(viewportHeight) + hillSkyOverlap;
   const hillPaths = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
   const offset = tileWidth > 0 ? scrollLeft % tileWidth : 0;

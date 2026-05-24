@@ -2,8 +2,6 @@
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { Settings } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
@@ -105,7 +103,12 @@ export function GardenScene({ meta, entries }: Props) {
   );
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;
-  const skyHeight = useMemo(() => getGardenSkyHeight(sceneHeight), [sceneHeight]);
+  const meadowSkyHeight = useMemo(
+    () => getGardenSkyHeight(sceneHeight > 0 ? sceneHeight : windowHeight),
+    [sceneHeight, windowHeight]
+  );
+  const [panTopOffset, setPanTopOffset] = useState(0);
+  const skyBandHeight = panTopOffset + meadowSkyHeight;
 
   const flowersByMonth = useMemo(() => {
     const map = new Map<string, typeof sortedLayout>();
@@ -144,6 +147,26 @@ export function GardenScene({ meta, entries }: Props) {
   useLayoutEffect(() => {
     columnVirtualizer.measure();
   }, [columnVirtualizer, clusters.length, contentWidth, width, sceneHeight, horizontalPadding]);
+
+  useLayoutEffect(() => {
+    const measurePanTop = () => {
+      if (panRef.current) {
+        setPanTopOffset(panRef.current.offsetTop);
+      }
+    };
+
+    measurePanTop();
+    window.addEventListener('resize', measurePanTop);
+    const observer = new ResizeObserver(measurePanTop);
+    if (panRef.current) {
+      observer.observe(panRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measurePanTop);
+      observer.disconnect();
+    };
+  }, [filter.type, wilted, clusters.length, sceneHeight]);
 
   useLayoutEffect(() => {
     if (!scrollRef.current || width <= 0 || clusters.length === 0 || highlightId) return;
@@ -216,40 +239,31 @@ export function GardenScene({ meta, entries }: Props) {
       groundSeed={groundSeed}
       width={width}
       viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
+      skyBandHeight={skyBandHeight}
       skyOverlays={
         <>
           <SkyTimePhaseLayer scene={scene} />
-          <CelestialLayer scene={scene} width={width} skyHeight={skyHeight} />
+          <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
         </>
       }
     >
-      <header className="relative z-10 flex shrink-0 items-center justify-end px-5 pb-2 pt-[calc(1rem+var(--safe-top))]">
-        <Link
-          href="/settings"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/30 text-white shadow-[0_1px_4px_rgba(0,0,0,0.35)] backdrop-blur-sm transition-colors hover:bg-black/40"
-          aria-label="Settings"
-        >
-          <Settings className="h-5 w-5" strokeWidth={2} aria-hidden />
-        </Link>
-      </header>
+      <div className="relative z-10 shrink-0 pt-[calc(1rem+var(--safe-top))]">
+        {filter.type !== 'all' ? (
+          <button
+            type="button"
+            className="mx-auto mt-2 shrink-0 rounded-full bg-white/65 px-3.5 py-1.5 text-sm text-ink-soft"
+            onClick={() => setGardenFilter({ type: 'all' })}
+          >
+            Filter active · tap to show all
+          </button>
+        ) : null}
 
-      {filter.type !== 'all' ? (
-        <button
-          type="button"
-          className="relative z-10 mx-auto mt-2 shrink-0 rounded-full bg-white/65 px-3.5 py-1.5 text-sm text-ink-soft"
-          onClick={() => setGardenFilter({ type: 'all' })}
-        >
-          Filter active · tap to show all
-        </button>
-      ) : null}
+        {wilted ? (
+          <p className="mt-1 shrink-0 text-center text-sm italic text-ink-muted">
+            Your garden misses you — write to refresh it
+          </p>
+        ) : null}
 
-      {wilted ? (
-        <p className="relative z-10 mt-1 shrink-0 text-center text-sm italic text-ink-muted">
-          Your garden misses you — write to refresh it
-        </p>
-      ) : null}
-
-      <div className="relative z-10 shrink-0">
         <TimelineScrubber clusters={clusters} onJump={jumpToMonth} />
       </div>
 

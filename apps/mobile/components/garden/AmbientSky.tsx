@@ -13,7 +13,7 @@ import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-na
 
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { getSeason } from '@/lib/theme/seasons';
-import { getWeatherClouds, isNightPhase } from '@bloom/core/scene';
+import { getWeatherClouds, isNightPhase, isSunPhase } from '@bloom/core/scene';
 
 type CloudProps = {
   x: number;
@@ -91,22 +91,26 @@ export function AmbientSky({
   const sunStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sunPulse.value }],
   }));
+  const showSun =
+    scene.status === 'ready' && isSunPhase(scene.timePhase) && scene.timePhase !== 'dawn';
 
   return (
     <View style={[styles.root, { height: skyHeight }]} pointerEvents="none">
-      <Animated.View style={[styles.sunWrap, { left: sunX - sunR, top: sunY - sunR }, sunStyle]}>
-        <Svg width={sunR * 2} height={sunR * 2}>
-          <Defs>
-            <RadialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={isWarm ? '#FFF6CE' : '#F3EBD8'} stopOpacity="1" />
-              <Stop offset="55%" stopColor={isWarm ? '#FFE5A0' : '#E2DAC6'} stopOpacity="0.95" />
-              <Stop offset="100%" stopColor={isWarm ? '#FFCC78' : '#C7BFAA'} stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={sunR} cy={sunR} r={sunR * 0.9} fill="url(#sunGrad)" />
-          <Circle cx={sunR} cy={sunR} r={sunR * 0.45} fill={isWarm ? '#FFEFB8' : '#EFE6CE'} fillOpacity={0.8} />
-        </Svg>
-      </Animated.View>
+      {showSun ? (
+        <Animated.View style={[styles.sunWrap, { left: sunX - sunR, top: sunY - sunR }, sunStyle]}>
+          <Svg width={sunR * 2} height={sunR * 2}>
+            <Defs>
+              <RadialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
+                <Stop offset="0%" stopColor={isWarm ? '#FFF6CE' : '#F3EBD8'} stopOpacity="1" />
+                <Stop offset="55%" stopColor={isWarm ? '#FFE5A0' : '#E2DAC6'} stopOpacity="0.95" />
+                <Stop offset="100%" stopColor={isWarm ? '#FFCC78' : '#C7BFAA'} stopOpacity="0" />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={sunR} cy={sunR} r={sunR * 0.9} fill="url(#sunGrad)" />
+            <Circle cx={sunR} cy={sunR} r={sunR * 0.45} fill={isWarm ? '#FFEFB8' : '#EFE6CE'} fillOpacity={0.8} />
+          </Svg>
+        </Animated.View>
+      ) : null}
 
       <Svg
         width={width}

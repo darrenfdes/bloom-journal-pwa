@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 
 import { useSceneContextOptional } from '@/lib/scene/SceneContext';
-import { getWeatherClouds, isNightPhase } from '@bloom/core/scene';
+import { getWeatherClouds, isNightPhase, isSunPhase } from '@bloom/core/scene';
 import { getSeason } from '@bloom/core/theme/seasons';
 
 type CloudProps = {
@@ -68,35 +68,38 @@ export function AmbientSky({
   );
 
   const mountainH = Math.min(140, Math.round(skyHeight * 0.45));
+  const showSun = sceneReady && isSunPhase(timePhase) && timePhase !== 'dawn';
 
   return (
     <div
       className="pointer-events-none absolute inset-0 overflow-hidden"
       style={{ height: skyHeight }}
     >
-      <div
-        className="ambient-sun absolute"
-        style={{ left: sunX - sunR, top: sunY - sunR }}
-        aria-hidden
-      >
-        <svg width={sunR * 2} height={sunR * 2}>
-          <defs>
-            <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={isWarm ? '#FFF6CE' : '#F3EBD8'} stopOpacity="1" />
-              <stop offset="55%" stopColor={isWarm ? '#FFE5A0' : '#E2DAC6'} stopOpacity="0.95" />
-              <stop offset="100%" stopColor={isWarm ? '#FFCC78' : '#C7BFAA'} stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <circle cx={sunR} cy={sunR} r={sunR * 0.9} fill="url(#sunGrad)" />
-          <circle
-            cx={sunR}
-            cy={sunR}
-            r={sunR * 0.45}
-            fill={isWarm ? '#FFEFB8' : '#EFE6CE'}
-            fillOpacity={0.8}
-          />
-        </svg>
-      </div>
+      {showSun ? (
+        <div
+          className="ambient-sun absolute"
+          style={{ left: sunX - sunR, top: sunY - sunR }}
+          aria-hidden
+        >
+          <svg width={sunR * 2} height={sunR * 2}>
+            <defs>
+              <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor={isWarm ? '#FFF6CE' : '#F3EBD8'} stopOpacity="1" />
+                <stop offset="55%" stopColor={isWarm ? '#FFE5A0' : '#E2DAC6'} stopOpacity="0.95" />
+                <stop offset="100%" stopColor={isWarm ? '#FFCC78' : '#C7BFAA'} stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx={sunR} cy={sunR} r={sunR * 0.9} fill="url(#sunGrad)" />
+            <circle
+              cx={sunR}
+              cy={sunR}
+              r={sunR * 0.45}
+              fill={isWarm ? '#FFEFB8' : '#EFE6CE'}
+              fillOpacity={0.8}
+            />
+          </svg>
+        </div>
+      ) : null}
 
       <svg
         className="absolute bottom-0 left-0 right-0 z-[2] opacity-95"
