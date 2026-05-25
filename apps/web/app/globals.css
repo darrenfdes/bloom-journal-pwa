@@ -128,7 +128,7 @@ nextjs-portal {
 }
 
 .ambient-cloud {
-  animation: cloud-drift var(--cloud-duration) var(--cloud-delay) linear infinite;
+  animation: cloud-drift var(--cloud-duration) var(--cloud-delay) linear infinite backwards;
   will-change: transform;
 }
 
