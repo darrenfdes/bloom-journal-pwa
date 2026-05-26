@@ -1,4 +1,5 @@
 import type { Season } from '../theme/seasons';
+import { isPrecipitatingCategory, isStormyCategory } from './weather-effects';
 import type { TimePhase, WeatherCategory } from './types';
 
 export interface SkyGradient {
@@ -45,6 +46,9 @@ const AMBIENT_BY_PHASE: Record<TimePhase, AmbientOverlaySpec> = {
 };
 
 const CLOUD_BLEND = '#6b7280';
+const STORM_SKY_TOP = '#3d4a5c';
+const STORM_SKY_BOTTOM = '#5c6b7a';
+const DRIZZLE_SKY_BLEND = '#7a8796';
 
 function blendHex(a: string, b: string, t: number): string {
   const parse = (hex: string) => {
@@ -64,8 +68,29 @@ function blendHex(a: string, b: string, t: number): string {
   return `#${[r, g, bl].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
 }
 
-export function getSkyGradient(timePhase: TimePhase, cloudCover: number): SkyGradient {
+export function getSkyGradient(
+  timePhase: TimePhase,
+  cloudCover: number,
+  category?: WeatherCategory
+): SkyGradient {
   const base = SKY_BY_PHASE[timePhase];
+
+  if (isStormyCategory(category)) {
+    const intensity = Math.min(1, 0.55 + cloudCover / 200);
+    return {
+      top: blendHex(base.top, STORM_SKY_TOP, intensity),
+      bottom: blendHex(base.bottom, STORM_SKY_BOTTOM, intensity * 0.9),
+    };
+  }
+
+  if (category === 'drizzle' || (category && isPrecipitatingCategory(category) && cloudCover > 40)) {
+    const t = Math.min(1, 0.35 + cloudCover / 150);
+    return {
+      top: blendHex(base.top, DRIZZLE_SKY_BLEND, t),
+      bottom: blendHex(base.bottom, CLOUD_BLEND, t * 0.85),
+    };
+  }
+
   if (cloudCover <= 60) return base;
   const intensity = Math.min(1, cloudCover / 100);
   return {
@@ -74,8 +99,12 @@ export function getSkyGradient(timePhase: TimePhase, cloudCover: number): SkyGra
   };
 }
 
-export function getSkyCssBackground(timePhase: TimePhase, cloudCover: number): string {
-  const { top, bottom } = getSkyGradient(timePhase, cloudCover);
+export function getSkyCssBackground(
+  timePhase: TimePhase,
+  cloudCover: number,
+  category?: WeatherCategory
+): string {
+  const { top, bottom } = getSkyGradient(timePhase, cloudCover, category);
   return `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`;
 }
 
@@ -133,6 +162,7 @@ export function getRainParticleCount(category: WeatherCategory): number {
     case 'rain':
       return 100;
     case 'heavy_rain':
+    case 'thunderstorm':
       return 200;
     default:
       return 0;
