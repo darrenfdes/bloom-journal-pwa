@@ -12,7 +12,7 @@ export function SkyTimePhaseLayer() {
   const { width, height } = Dimensions.get('window');
   const skyH = getGardenSkyHeight(height);
   const cloudCover = weather?.cloudCover ?? 0;
-  const { top, bottom } = getSkyGradient(timePhase, cloudCover);
+  const { top, bottom } = getSkyGradient(timePhase, cloudCover, weather?.category);
 
   return (
     <Svg

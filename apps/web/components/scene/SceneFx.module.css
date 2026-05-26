@@ -1,14 +1,55 @@
-@keyframes rain-fall {
+@keyframes rickler-drop {
   0% {
-    transform: translateY(-10vh) rotate(20deg);
-    opacity: 0;
+    transform: translateY(0);
   }
-  10% {
-    opacity: 0.7;
+  75% {
+    transform: translateY(90vh);
   }
   100% {
-    transform: translateY(110vh) rotate(20deg);
-    opacity: 0.4;
+    transform: translateY(90vh);
+  }
+}
+
+@keyframes rickler-stem {
+  0% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rickler-splat {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  90% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes rain-sheet-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 12px 48px;
   }
 }
 
@@ -44,21 +85,34 @@
   100% {
     opacity: 0;
   }
-  50% {
-    opacity: 0.7;
+  40% {
+    opacity: 0.92;
+  }
+}
+
+@keyframes lightning-tint {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.35;
   }
 }
 
 @keyframes petal-drift {
   0% {
-    transform: translateX(-10vw) rotate(0deg);
+    transform: translateX(-20vw) rotate(0deg);
     opacity: 0;
   }
-  10% {
+  8% {
+    opacity: 0.85;
+  }
+  92% {
     opacity: 0.85;
   }
   100% {
-    transform: translateX(110vw) rotate(360deg);
+    transform: translateX(120vw) rotate(360deg);
     opacity: 0;
   }
 }
@@ -112,12 +166,64 @@
   }
 }
 
-.rainDrop {
+.rainStaticOverlay {
   position: absolute;
-  width: 2px;
-  height: 20px;
-  background: rgba(174, 214, 241, 0.6);
-  animation: rain-fall linear infinite;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(55, 70, 90, 0.12) 0%,
+    rgba(80, 100, 125, 0.2) 100%
+  );
+  pointer-events: none;
+}
+
+.rainFrontRow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.rainBackRow {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  bottom: 60px;
+  z-index: 1;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ricklerDrop {
+  position: absolute;
+  bottom: 100%;
+  width: 15px;
+  height: 120px;
+  pointer-events: none;
+  animation: rickler-drop linear infinite;
+}
+
+.ricklerStem {
+  width: 1px;
+  height: 60%;
+  margin-left: 7px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(220, 235, 255, 0.35)
+  );
+  animation: rickler-stem linear infinite;
+}
+
+.ricklerSplat {
+  width: 15px;
+  height: 10px;
+  border-top: 2px dotted rgba(220, 235, 255, 0.55);
+  border-radius: 50%;
+  opacity: 1;
+  transform: scale(0);
+  animation: rickler-splat linear infinite;
 }
 
 .snowFlake {
@@ -138,15 +244,45 @@
 .lightningFlash {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
   pointer-events: none;
-  animation: flash 150ms ease-out;
+  animation: flash 180ms ease-out;
+}
+
+.lightningTint {
+  position: absolute;
+  inset: 0;
+  background: rgba(120, 140, 220, 0.5);
+  pointer-events: none;
+  animation: lightning-tint 220ms ease-out;
+}
+
+.lightningBolt {
+  position: absolute;
+  top: 8%;
+  width: 2px;
+  height: 28%;
+  margin-left: -1px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(200, 220, 255, 0.6) 60%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 8px rgba(255, 255, 255, 0.9),
+    -3px 0 6px rgba(180, 200, 255, 0.4),
+    3px 0 6px rgba(180, 200, 255, 0.4);
+  pointer-events: none;
+  animation: flash 180ms ease-out;
 }
 
 .petal {
   position: absolute;
+  left: 0;
   border-radius: 50% 20%;
   animation: petal-drift linear infinite;
+  animation-fill-mode: backwards;
 }
 
 .leaf {
@@ -206,4 +342,23 @@
 
 .locatingLabel {
   animation: pulse-locating 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rainFrontRow,
+  .rainBackRow,
+  .ricklerDrop,
+  .ricklerStem,
+  .ricklerSplat,
+  .rainSheet,
+  .petal,
+  .lightningFlash,
+  .lightningTint,
+  .lightningBolt {
+    animation: none !important;
+  }
+
+  .rainSheet {
+    opacity: 0.18 !important;
+  }
 }
