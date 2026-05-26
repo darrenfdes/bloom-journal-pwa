@@ -120,15 +120,31 @@ nextjs-portal {
 
 @keyframes cloud-drift {
   from {
-    transform: translateX(var(--cloud-start));
+    transform: translateX(var(--cloud-start)) scale(var(--cloud-scale, 1));
   }
   to {
-    transform: translateX(var(--cloud-end));
+    transform: translateX(var(--cloud-end)) scale(var(--cloud-scale, 1));
   }
 }
 
 .ambient-cloud {
   animation: cloud-drift var(--cloud-duration) var(--cloud-delay) linear infinite backwards;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+@keyframes cloud-drift-slow {
+  0%,
+  100% {
+    transform: translateX(var(--cloud-start)) scale(var(--cloud-scale, 1));
+  }
+  50% {
+    transform: translateX(calc(var(--cloud-start) + 24px)) scale(var(--cloud-scale, 1));
+  }
+}
+
+.ambient-cloud-static {
+  animation: cloud-drift-slow calc(var(--cloud-duration) * 2) var(--cloud-delay) ease-in-out infinite;
   will-change: transform;
 }
 
@@ -174,6 +190,7 @@ nextjs-portal {
   .flower-sway,
   .flower-bloom-in,
   .ambient-cloud,
+  .ambient-cloud-static,
   .ambient-sun {
     animation: none !important;
   }

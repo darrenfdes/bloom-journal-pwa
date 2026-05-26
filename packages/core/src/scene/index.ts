@@ -1,4 +1,7 @@
 export * from './types';
+export * from './rickler-rain';
+export * from './petal-drift';
+export * from './weather-effects';
 export * from './weather-mapping';
 export * from './time-phase';
 export * from './palette';

@@ -13,7 +13,14 @@ import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-na
 
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { getSeason } from '@/lib/theme/seasons';
-import { getWeatherClouds, isNightPhase, isSunPhase } from '@bloom/core/scene';
+import {
+  getWeatherClouds,
+  isNightPhase,
+  isPrecipitatingCategory,
+  isStormyCategory,
+  isSunPhase,
+} from '@bloom/core/scene';
+import type { CloudVariant } from '@bloom/core/scene';
 
 type CloudProps = {
   startX: number;
@@ -23,18 +30,61 @@ type CloudProps = {
   opacity: number;
   duration: number;
   delay: number;
+  variant: CloudVariant;
+  static?: boolean;
 };
 
-const AnimatedCloud = ({ startX, endX, y, scale, opacity, duration, delay }: CloudProps) => {
+const FAIR_FILLS = [
+  'rgba(255,255,255,0.72)',
+  'rgba(255,255,255,0.82)',
+  'rgba(255,255,255,0.68)',
+] as const;
+
+const STORM_FILLS = [
+  'rgba(230, 240, 252, 0.9)',
+  'rgba(175, 190, 210, 0.7)',
+  'rgba(115, 130, 150, 0.5)',
+] as const;
+
+const AnimatedCloud = ({
+  startX,
+  endX,
+  y,
+  scale,
+  opacity,
+  duration,
+  delay,
+  variant,
+  static: isStatic,
+}: CloudProps) => {
+  const fills = variant === 'storm' ? STORM_FILLS : FAIR_FILLS;
   const tx = useSharedValue(startX);
+  const driftSpan = isStatic ? 24 : endX - startX;
 
   useEffect(() => {
     tx.value = startX;
+    if (isStatic) {
+      tx.value = withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(startX + driftSpan * 0.5, {
+              duration: duration * 2,
+              easing: Easing.inOut(Easing.sin),
+            }),
+            withTiming(startX, { duration: duration * 2, easing: Easing.inOut(Easing.sin) })
+          ),
+          -1,
+          false
+        )
+      );
+      return;
+    }
     tx.value = withDelay(
       delay,
       withRepeat(withTiming(endX, { duration, easing: Easing.linear }), -1, false)
     );
-  }, [delay, duration, endX, startX, tx]);
+  }, [delay, driftSpan, duration, endX, isStatic, startX, tx]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { scale }],
@@ -44,9 +94,9 @@ const AnimatedCloud = ({ startX, endX, y, scale, opacity, duration, delay }: Clo
   return (
     <Animated.View style={[styles.cloudWrap, { left: 0, top: y }, style]}>
       <Svg width={120} height={50} viewBox="0 0 120 50">
-        <Ellipse cx="35" cy="32" rx="28" ry="14" fill="rgba(255,255,255,0.72)" />
-        <Ellipse cx="65" cy="24" rx="34" ry="18" fill="rgba(255,255,255,0.82)" />
-        <Ellipse cx="92" cy="32" rx="22" ry="12" fill="rgba(255,255,255,0.68)" />
+        <Ellipse cx="35" cy="32" rx="28" ry="14" fill={fills[0]} />
+        <Ellipse cx="65" cy="24" rx="34" ry="18" fill={fills[1]} />
+        <Ellipse cx="92" cy="32" rx="22" ry="12" fill={fills[2]} />
       </Svg>
     </Animated.View>
   );
@@ -69,12 +119,16 @@ export function AmbientSky({
   const isWarm = season === 'summer' || season === 'spring';
 
   const cloudCover = scene.weather?.cloudCover ?? 35;
+  const category = scene.weather?.category;
+  const stormy = isStormyCategory(category);
+  const precipitating = category != null && isPrecipitatingCategory(category);
+
   const clouds = useMemo(
     () =>
       scene.status === 'ready' && isNightPhase(scene.timePhase)
         ? []
-        : getWeatherClouds(cloudCover, width),
-    [cloudCover, width, scene.status, scene.timePhase]
+        : getWeatherClouds(cloudCover, width, category),
+    [cloudCover, width, scene.status, scene.timePhase, category]
   );
 
   const sunPulse = useSharedValue(1);
@@ -93,10 +147,22 @@ export function AmbientSky({
     transform: [{ scale: sunPulse.value }],
   }));
   const showSun =
-    scene.status === 'ready' && isSunPhase(scene.timePhase) && scene.timePhase !== 'dawn';
+    scene.status === 'ready' &&
+    isSunPhase(scene.timePhase) &&
+    scene.timePhase !== 'dawn' &&
+    !stormy;
 
   return (
     <View style={[styles.root, { height: skyHeight }]} pointerEvents="none">
+      {scene.status === 'ready' && precipitating && category !== 'drizzle' ? (
+        <View
+          style={[
+            styles.stormHaze,
+            { width, height: Math.round(skyHeight * 0.55) },
+          ]}
+        />
+      ) : null}
+
       {showSun ? (
         <Animated.View style={[styles.sunWrap, { left: sunX - sunR, top: sunY - sunR }, sunStyle]}>
           <Svg width={sunR * 2} height={sunR * 2}>
@@ -122,11 +188,11 @@ export function AmbientSky({
       >
         <Path
           d={`M 0 ${mountainH * 0.75} L ${width * 0.18} ${mountainH * 0.42} L ${width * 0.3} ${mountainH * 0.65} L ${width * 0.42} ${mountainH * 0.32} L ${width * 0.55} ${mountainH * 0.58} L ${width * 0.68} ${mountainH * 0.35} L ${width * 0.82} ${mountainH * 0.63} L ${width} ${mountainH * 0.47} L ${width} ${mountainH} L 0 ${mountainH} Z`}
-          fill="rgba(140, 160, 170, 0.38)"
+          fill={stormy ? 'rgba(90, 105, 115, 0.42)' : 'rgba(140, 160, 170, 0.38)'}
         />
         <Path
           d={`M 0 ${mountainH * 0.92} L ${width * 0.22} ${mountainH * 0.65} L ${width * 0.4} ${mountainH * 0.83} L ${width * 0.58} ${mountainH * 0.6} L ${width * 0.75} ${mountainH * 0.8} L ${width} ${mountainH * 0.67} L ${width} ${mountainH} L 0 ${mountainH} Z`}
-          fill="rgba(120, 145, 145, 0.45)"
+          fill={stormy ? 'rgba(70, 88, 95, 0.5)' : 'rgba(120, 145, 145, 0.45)'}
         />
       </Svg>
 
@@ -141,6 +207,12 @@ const styles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+  },
+  stormHaze: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: 'rgba(70, 85, 105, 0.22)',
   },
   sunWrap: {
     position: 'absolute',

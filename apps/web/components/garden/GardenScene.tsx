@@ -198,12 +198,15 @@ export function GardenScene({ meta, entries }: Props) {
       setActiveHighlightId(null);
       setHighlightEntryId(null);
       if (bloomParam) {
-        router.replace('/garden', { scroll: false });
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('bloom');
+        const qs = params.toString();
+        router.replace(qs ? `/garden?${qs}` : '/garden', { scroll: false });
       }
     }, 3000);
 
     return () => clearTimeout(clearTimer);
-  }, [highlightId, bloomParam, sortedLayout, setHighlightEntryId, router, width, contentWidth]);
+  }, [highlightId, bloomParam, sortedLayout, setHighlightEntryId, router, searchParams, width, contentWidth]);
 
   const openActionDrawer = useCallback((entry: EntryRecord, monthKey: string) => {
     setActionDrawerState({ entry, monthKey });
