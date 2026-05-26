@@ -3,11 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
-  getRainParticleCount,
+  generatePetalDriftSpecs,
+  generateRicklerRainRows,
+  getLightningIntervalMs,
+  isPrecipitatingCategory,
   shouldShowAutumnLeaves,
+  shouldShowLightning,
   shouldShowPetals,
 } from '@bloom/core/scene';
-import type { SceneState, WeatherCategory } from '@bloom/core/scene';
+import type { RicklerRainDropSpec, SceneState, WeatherCategory } from '@bloom/core/scene';
 
 import styles from './SceneFx.module.css';
 
@@ -23,33 +27,118 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function RainParticles({ category }: { category: WeatherCategory }) {
-  const count = getRainParticleCount(category);
-  const drops = useMemo(() => {
-    const rand = seededRandom(category.charCodeAt(0) + count);
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      left: rand() * 100,
-      delay: rand() * 0.8,
-      duration: 0.4 + rand() * 0.4,
-      height: 15 + rand() * 10,
-    }));
-  }, [category, count]);
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
+function useLightningFlash(category: WeatherCategory, reducedMotion: boolean) {
+  const [flash, setFlash] = useState(false);
+  const [boltX, setBoltX] = useState(50);
+
+  useEffect(() => {
+    if (!shouldShowLightning(category) || reducedMotion) {
+      setFlash(false);
+      return;
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const { min, max } = getLightningIntervalMs(category);
+
+    const schedule = () => {
+      const delay = min + Math.random() * (max - min);
+      timeoutId = setTimeout(() => {
+        setBoltX(8 + Math.random() * 84);
+        setFlash(true);
+        setTimeout(() => setFlash(false), 180);
+        schedule();
+      }, delay);
+    };
+
+    schedule();
+    return () => clearTimeout(timeoutId);
+  }, [category, reducedMotion]);
+
+  return { flash, boltX };
+}
+
+function RicklerDrop({ drop, side }: { drop: RicklerRainDropSpec; side: 'left' | 'right' }) {
+  const timing = {
+    animationDelay: `${drop.delaySec}s`,
+    animationDuration: `${drop.durationSec}s`,
+  };
+
+  return (
+    <div
+      className={styles.ricklerDrop}
+      style={{
+        ...(side === 'left'
+          ? { left: `${drop.horizontalPct}%` }
+          : { right: `${drop.horizontalPct}%` }),
+        bottom: `${drop.bottomPct}%`,
+        ...timing,
+      }}
+    >
+      <div className={styles.ricklerStem} style={timing} />
+      <div className={styles.ricklerSplat} style={timing} />
+    </div>
+  );
+}
+
+function RainParticles({
+  category,
+  reducedMotion,
+}: {
+  category: WeatherCategory;
+  reducedMotion: boolean;
+}) {
+  const rows = useMemo(() => generateRicklerRainRows(category), [category]);
+
+  if (reducedMotion) {
+    return (
+      <div className={styles.rainStaticOverlay} style={{ opacity: 0.25 }} aria-hidden />
+    );
+  }
 
   return (
     <>
-      {drops.map((d) => (
-        <span
-          key={d.id}
-          className={styles.rainDrop}
-          style={{
-            left: `${d.left}%`,
-            height: d.height,
-            animationDelay: `${d.delay}s`,
-            animationDuration: `${d.duration}s`,
-          }}
-        />
-      ))}
+      <div className={styles.rainFrontRow} aria-hidden>
+        {rows.front.map((drop) => (
+          <RicklerDrop key={drop.id} drop={drop} side="left" />
+        ))}
+      </div>
+      <div className={styles.rainBackRow} aria-hidden>
+        {rows.back.map((drop) => (
+          <RicklerDrop key={drop.id} drop={drop} side="right" />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function LightningLayer({
+  category,
+  reducedMotion,
+}: {
+  category: WeatherCategory;
+  reducedMotion: boolean;
+}) {
+  const { flash, boltX } = useLightningFlash(category, reducedMotion);
+
+  if (!flash || reducedMotion) return null;
+
+  return (
+    <>
+      <div className={styles.lightningFlash} aria-hidden />
+      <div className={styles.lightningTint} aria-hidden />
+      <div className={styles.lightningBolt} style={{ left: `${boltX}%` }} aria-hidden />
     </>
   );
 }
@@ -114,18 +203,10 @@ function FogParticles({ visibility }: { visibility: number }) {
   );
 }
 
-function PetalParticles() {
-  const petals = useMemo(() => {
-    const rand = seededRandom(99);
-    return Array.from({ length: 12 }, (_, i) => ({
-      id: i,
-      top: 10 + rand() * 60,
-      delay: rand() * 8,
-      duration: 10 + rand() * 6,
-      color: rand() > 0.5 ? '#f8bbd0' : '#fff',
-      size: 6 + rand() * 4,
-    }));
-  }, []);
+function PetalParticles({ reducedMotion }: { reducedMotion: boolean }) {
+  const petals = useMemo(() => generatePetalDriftSpecs(), []);
+
+  if (reducedMotion) return null;
 
   return (
     <>
@@ -134,12 +215,12 @@ function PetalParticles() {
           key={p.id}
           className={styles.petal}
           style={{
-            top: `${p.top}%`,
+            top: `${p.topPct}%`,
             width: p.size,
             height: p.size * 0.7,
             background: p.color,
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delaySec}s`,
+            animationDuration: `${p.durationSec}s`,
           }}
         />
       ))}
@@ -181,47 +262,29 @@ function LeafParticles() {
   );
 }
 
-function LightningFlash() {
-  const [flash, setFlash] = useState(false);
-
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const schedule = () => {
-      const delay = 4000 + Math.random() * 8000;
-      timeoutId = setTimeout(() => {
-        setFlash(true);
-        setTimeout(() => setFlash(false), 150);
-        schedule();
-      }, delay);
-    };
-    schedule();
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-  if (!flash) return null;
-  return <div className={styles.lightningFlash} aria-hidden />;
-}
-
 export function WeatherParticles({ scene }: Props) {
+  const reducedMotion = usePrefersReducedMotion();
+
   if (scene.status !== 'ready' || !scene.weather) return null;
 
   const { category, windSpeed, visibility } = scene.weather;
-  const showRain =
-    category === 'drizzle' || category === 'rain' || category === 'heavy_rain';
+  const showRain = isPrecipitatingCategory(category);
   const showPetals = shouldShowPetals(scene.season, category, windSpeed);
   const showLeaves = shouldShowAutumnLeaves(scene.season);
 
   return (
     <div
       className="pointer-events-none fixed inset-0 overflow-hidden"
-      style={{ zIndex: 5 }}
+      style={{ zIndex: 12 }}
       aria-hidden
     >
-      {showRain ? <RainParticles category={category} /> : null}
+      {showRain ? <RainParticles category={category} reducedMotion={reducedMotion} /> : null}
       {category === 'snow' ? <SnowParticles /> : null}
       {category === 'fog' ? <FogParticles visibility={visibility} /> : null}
-      {category === 'thunderstorm' ? <LightningFlash /> : null}
-      {showPetals ? <PetalParticles /> : null}
+      {shouldShowLightning(category) ? (
+        <LightningLayer category={category} reducedMotion={reducedMotion} />
+      ) : null}
+      {showPetals ? <PetalParticles reducedMotion={reducedMotion} /> : null}
       {showLeaves ? <LeafParticles /> : null}
     </div>
   );

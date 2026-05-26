@@ -11,7 +11,11 @@ type Props = {
 export function SkyTimePhaseLayer({ scene, className }: Props) {
   const ready = scene.status === 'ready';
   const cloudCover = scene.weather?.cloudCover ?? 0;
-  const background = getSkyCssBackground(scene.timePhase, cloudCover);
+  const background = getSkyCssBackground(
+    scene.timePhase,
+    cloudCover,
+    scene.weather?.category
+  );
 
   return (
     <div
