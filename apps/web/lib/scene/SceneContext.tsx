@@ -13,6 +13,17 @@ export function SceneProvider({ children }: { children: React.ReactNode }) {
   return <SceneContext.Provider value={scene}>{children}</SceneContext.Provider>;
 }
 
+/** Inject a fixed scene for dev/preview pages (e.g. weather FX previews). */
+export function ScenePreviewProvider({
+  scene,
+  children,
+}: {
+  scene: SceneState;
+  children: React.ReactNode;
+}) {
+  return <SceneContext.Provider value={scene}>{children}</SceneContext.Provider>;
+}
+
 export function useSceneContext(): SceneState {
   const ctx = useContext(SceneContext);
   if (!ctx) {

@@ -17,6 +17,8 @@ import styles from './SceneFx.module.css';
 
 type Props = {
   scene: SceneState;
+  /** Shorter lightning interval for preview/demo pages. */
+  demoLightning?: boolean;
 };
 
 function seededRandom(seed: number): () => number {
@@ -39,7 +41,11 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-function useLightningFlash(category: WeatherCategory, reducedMotion: boolean) {
+function useLightningFlash(
+  category: WeatherCategory,
+  reducedMotion: boolean,
+  demoLightning?: boolean
+) {
   const [flash, setFlash] = useState(false);
   const [boltX, setBoltX] = useState(50);
 
@@ -50,7 +56,9 @@ function useLightningFlash(category: WeatherCategory, reducedMotion: boolean) {
     }
 
     let timeoutId: ReturnType<typeof setTimeout>;
-    const { min, max } = getLightningIntervalMs(category);
+    const { min, max } = demoLightning
+      ? { min: 4000, max: 8000 }
+      : getLightningIntervalMs(category);
 
     const schedule = () => {
       const delay = min + Math.random() * (max - min);
@@ -64,7 +72,7 @@ function useLightningFlash(category: WeatherCategory, reducedMotion: boolean) {
 
     schedule();
     return () => clearTimeout(timeoutId);
-  }, [category, reducedMotion]);
+  }, [category, reducedMotion, demoLightning]);
 
   return { flash, boltX };
 }
@@ -126,11 +134,13 @@ function RainParticles({
 function LightningLayer({
   category,
   reducedMotion,
+  demoLightning,
 }: {
   category: WeatherCategory;
   reducedMotion: boolean;
+  demoLightning?: boolean;
 }) {
-  const { flash, boltX } = useLightningFlash(category, reducedMotion);
+  const { flash, boltX } = useLightningFlash(category, reducedMotion, demoLightning);
 
   if (!flash || reducedMotion) return null;
 
@@ -262,7 +272,7 @@ function LeafParticles() {
   );
 }
 
-export function WeatherParticles({ scene }: Props) {
+export function WeatherParticles({ scene, demoLightning }: Props) {
   const reducedMotion = usePrefersReducedMotion();
 
   if (scene.status !== 'ready' || !scene.weather) return null;
@@ -282,7 +292,11 @@ export function WeatherParticles({ scene }: Props) {
       {category === 'snow' ? <SnowParticles /> : null}
       {category === 'fog' ? <FogParticles visibility={visibility} /> : null}
       {shouldShowLightning(category) ? (
-        <LightningLayer category={category} reducedMotion={reducedMotion} />
+        <LightningLayer
+          category={category}
+          reducedMotion={reducedMotion}
+          demoLightning={demoLightning}
+        />
       ) : null}
       {showPetals ? <PetalParticles reducedMotion={reducedMotion} /> : null}
       {showLeaves ? <LeafParticles /> : null}
