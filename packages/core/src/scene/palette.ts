@@ -18,14 +18,25 @@ export interface AmbientOverlaySpec {
   opacity: number;
 }
 
+export const MOON_COLORS = {
+  core: '#F0F0F0',
+  glow: 'rgba(240, 240, 240, 0.4)',
+  shadow: 'rgba(180, 180, 190, 0.12)',
+} as const;
+
+export const NIGHT_CLOUD_COLORS = {
+  primary: 'rgba(170, 184, 194, 0.28)',
+  accent: 'rgba(189, 178, 255, 0.12)',
+} as const;
+
 const SKY_BY_PHASE: Record<TimePhase, SkyGradient> = {
-  deep_night: { top: '#020818', bottom: '#0a0f2e' },
-  pre_dawn: { top: '#0d0d2b', bottom: '#1a1040' },
+  deep_night: { top: '#0B0E1B', bottom: '#141824' },
+  pre_dawn: { top: '#0B0E1B', bottom: '#1E2840' },
   dawn: { top: '#ff7043', bottom: '#ffcc80' },
   day: { top: '#42a5f5', bottom: '#90caf9' },
   golden_hour: { top: '#ff6f00', bottom: '#ffca28' },
   dusk: { top: '#6a1b9a', bottom: '#e91e63' },
-  night: { top: '#0d1b4b', bottom: '#1a237e' },
+  night: { top: '#0B0E1B', bottom: '#1A2238' },
 };
 
 const HILLS_BY_SEASON: Record<Season, HillColors> = {
@@ -36,13 +47,13 @@ const HILLS_BY_SEASON: Record<Season, HillColors> = {
 };
 
 const AMBIENT_BY_PHASE: Record<TimePhase, AmbientOverlaySpec> = {
-  deep_night: { color: '#020b1a', opacity: 0.65 },
-  pre_dawn: { color: '#0d0828', opacity: 0.5 },
+  deep_night: { color: '#020b1a', opacity: 0.52 },
+  pre_dawn: { color: '#0d0828', opacity: 0.42 },
   dawn: { color: '#ff8f00', opacity: 0.15 },
   day: { color: 'transparent', opacity: 0 },
   golden_hour: { color: '#f57c00', opacity: 0.25 },
   dusk: { color: '#4a148c', opacity: 0.3 },
-  night: { color: '#01003a', opacity: 0.55 },
+  night: { color: '#01003a', opacity: 0.42 },
 };
 
 const CLOUD_BLEND = '#6b7280';

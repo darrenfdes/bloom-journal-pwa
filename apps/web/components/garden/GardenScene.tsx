@@ -37,6 +37,7 @@ import {
   getMonthClusters,
 } from '@bloom/core/garden/layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
+import { isMoonPhase, isNightPhase } from '@bloom/core/scene';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
 import type { EntryRecord, GardenMeta } from '@bloom/core';
@@ -235,6 +236,9 @@ export function GardenScene({ meta, entries }: Props) {
     [activeHighlightId, sortedLayout]
   );
 
+  const nightCanvasActive = sceneReady && isNightPhase(scene.timePhase);
+  const nightShowMoon = isMoonPhase(scene.timePhase);
+
   return (
     <SeasonBackground
       month={gardenMonth}
@@ -243,11 +247,15 @@ export function GardenScene({ meta, entries }: Props) {
       width={width}
       viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
       skyBandHeight={skyBandHeight}
+      nightCanvasActive={nightCanvasActive}
+      nightShowMoon={nightShowMoon}
       skyOverlays={
-        <>
-          <SkyTimePhaseLayer scene={scene} />
-          <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
-        </>
+        nightCanvasActive ? null : (
+          <>
+            <SkyTimePhaseLayer scene={scene} />
+            <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
+          </>
+        )
       }
     >
       <div className="relative z-10 shrink-0 pt-[calc(1rem+var(--safe-top))]">
@@ -271,26 +279,30 @@ export function GardenScene({ meta, entries }: Props) {
       </div>
 
       <div ref={panRef} className="relative z-[1] mt-2 min-h-0 flex-1">
-        <RepeatingSeasonGround
-          scrollLeft={scrollLeft}
-          tileWidth={width}
-          viewportHeight={sceneHeight}
-          month={gardenMonth}
-          groundVariant={groundVariant}
-          groundSeed={groundSeed}
-          sceneSeason={scene.season}
-          sceneReady={sceneReady}
-        />
+        {nightCanvasActive ? null : (
+          <RepeatingSeasonGround
+            scrollLeft={scrollLeft}
+            tileWidth={width}
+            viewportHeight={sceneHeight}
+            month={gardenMonth}
+            groundVariant={groundVariant}
+            groundSeed={groundSeed}
+            sceneSeason={scene.season}
+            sceneReady={sceneReady}
+          />
+        )}
 
         <div ref={scrollRef} className="garden-pan absolute inset-0 z-[1]">
-          <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
-            <PollenSparkles
-              width={width}
-              height={sceneHeight}
-              count={pollenCount}
-              seed={groundSeed}
-            />
-          </div>
+          {nightCanvasActive ? null : (
+            <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+              <PollenSparkles
+                width={width}
+                height={sceneHeight}
+                count={pollenCount}
+                seed={groundSeed}
+              />
+            </div>
+          )}
 
           <div
             className="relative shrink-0"
@@ -321,31 +333,33 @@ export function GardenScene({ meta, entries }: Props) {
                     transform: `translateX(${virtualColumn.start}px)`,
                   }}
                 >
-                  <div
-                    className="pointer-events-none absolute"
-                    style={{
-                      left: 0,
-                      width: GARDEN_CLUSTER_BAND_WIDTH,
-                      height: sceneHeight,
-                    }}
-                  >
-                    <GroundTexture
-                      width={GARDEN_CLUSTER_BAND_WIDTH}
-                      height={180}
-                      groundY={clusterGroundY}
-                      variant={clusterGround}
-                      seed={clusterSeed}
-                    />
-                    <GrassLayer
-                      width={GARDEN_CLUSTER_BAND_WIDTH}
-                      height={180}
-                      groundY={clusterGroundY}
-                      month={clusterMonth}
-                      seed={clusterSeed}
-                      density={grassDensity}
-                      groundVariant={clusterGround}
-                    />
-                  </div>
+                  {nightCanvasActive ? null : (
+                    <div
+                      className="pointer-events-none absolute"
+                      style={{
+                        left: 0,
+                        width: GARDEN_CLUSTER_BAND_WIDTH,
+                        height: sceneHeight,
+                      }}
+                    >
+                      <GroundTexture
+                        width={GARDEN_CLUSTER_BAND_WIDTH}
+                        height={180}
+                        groundY={clusterGroundY}
+                        variant={clusterGround}
+                        seed={clusterSeed}
+                      />
+                      <GrassLayer
+                        width={GARDEN_CLUSTER_BAND_WIDTH}
+                        height={180}
+                        groundY={clusterGroundY}
+                        month={clusterMonth}
+                        seed={clusterSeed}
+                        density={grassDensity}
+                        groundVariant={clusterGround}
+                      />
+                    </div>
+                  )}
 
                   <motion.p
                     initial={{ opacity: 0, y: 6 }}
@@ -408,7 +422,7 @@ export function GardenScene({ meta, entries }: Props) {
       </div>
 
       <WeatherParticles scene={scene} />
-      <AmbientOverlay scene={scene} />
+      {nightCanvasActive ? null : <AmbientOverlay scene={scene} />}
       <SceneLocatingLabel scene={scene} />
       <JournalPanel scene={scene} open={journalOpen} onClose={() => setJournalOpen(false)} />
 

@@ -8,5 +8,7 @@ export * from './palette';
 export * from './clouds';
 export * from './sway';
 export * from './stars';
+export * from './night-clouds';
+export * from './night-scene-canvas';
 export * from './open-meteo';
 export * from './nominatim';
