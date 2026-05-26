@@ -1,11 +1,21 @@
 import { useMemo } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
-import { getStarField, isMoonPhase, isNightPhase } from '@bloom/core/scene';
+import {
+  getNightCloudField,
+  getStarField,
+  isMoonPhase,
+  isNightPhase,
+  MOON_COLORS,
+  NIGHT_CLOUD_COLORS,
+} from '@bloom/core/scene';
 
 import { useSceneContext } from '@/lib/scene/SceneContext';
+
+const MOON_SIZE = 52;
+const MOON_GLOW_SIZE = 96;
 
 export function CelestialLayer() {
   const scene = useSceneContext();
@@ -13,16 +23,20 @@ export function CelestialLayer() {
   const skyH = getGardenSkyHeight(height);
 
   const stars = useMemo(() => getStarField(65), []);
+  const nightClouds = useMemo(() => getNightCloudField(10), []);
 
   if (scene.status !== 'ready') return null;
 
   const showSun = scene.timePhase === 'dawn';
   const showMoon = isMoonPhase(scene.timePhase);
   const showStars = isNightPhase(scene.timePhase);
+  const showNightClouds = isMoonPhase(scene.timePhase) || isNightPhase(scene.timePhase);
 
   const sunLeft = width * 0.12;
   const sunTop = skyH * 0.5;
   const sunSize = 80;
+  const moonRight = width * 0.12;
+  const moonTop = skyH * 0.12;
 
   return (
     <View style={[styles.layer, { height: skyH }]} pointerEvents="none">
@@ -39,21 +53,24 @@ export function CelestialLayer() {
         </Svg>
       ) : null}
 
-      {showMoon ? (
-        <View
-          style={{
-            position: 'absolute',
-            right: width * 0.12,
-            top: skyH * 0.12,
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            backgroundColor: '#dde2f0',
-            shadowColor: '#dce1f5',
-            shadowOpacity: 0.65,
-            shadowRadius: 16,
-          }}
-        />
+      {showNightClouds ? (
+        <Svg width={width} height={skyH} style={StyleSheet.absoluteFill}>
+          {nightClouds.map((wisp) => (
+            <Ellipse
+              key={wisp.id}
+              cx={(wisp.left / 100) * width + wisp.width / 2}
+              cy={(wisp.top / 100) * skyH + wisp.height / 2}
+              rx={wisp.width / 2}
+              ry={wisp.height / 2}
+              fill={
+                wisp.color === 'accent'
+                  ? NIGHT_CLOUD_COLORS.accent
+                  : NIGHT_CLOUD_COLORS.primary
+              }
+              opacity={wisp.opacity}
+            />
+          ))}
+        </Svg>
       ) : null}
 
       {showStars
@@ -80,6 +97,32 @@ export function CelestialLayer() {
             );
           })
         : null}
+
+      {showMoon ? (
+        <Svg
+          width={MOON_GLOW_SIZE}
+          height={MOON_GLOW_SIZE}
+          style={{
+            position: 'absolute',
+            right: moonRight - (MOON_GLOW_SIZE - MOON_SIZE) / 2,
+            top: moonTop - (MOON_GLOW_SIZE - MOON_SIZE) / 2,
+          }}
+        >
+          <Defs>
+            <RadialGradient id="moonGrad" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={MOON_COLORS.core} />
+              <Stop offset="55%" stopColor={MOON_COLORS.core} />
+              <Stop offset="100%" stopColor={MOON_COLORS.glow} />
+            </RadialGradient>
+          </Defs>
+          <Circle
+            cx={MOON_GLOW_SIZE / 2}
+            cy={MOON_GLOW_SIZE / 2}
+            r={MOON_SIZE / 2}
+            fill="url(#moonGrad)"
+          />
+        </Svg>
+      ) : null}
     </View>
   );
 }

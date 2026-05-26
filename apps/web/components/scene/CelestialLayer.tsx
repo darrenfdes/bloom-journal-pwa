@@ -2,7 +2,14 @@
 
 import { useMemo } from 'react';
 
-import { getStarField, isMoonPhase, isNightPhase } from '@bloom/core/scene';
+import {
+  getNightCloudField,
+  getStarField,
+  isMoonPhase,
+  isNightPhase,
+  MOON_COLORS,
+  NIGHT_CLOUD_COLORS,
+} from '@bloom/core/scene';
 import type { SceneState, TimePhase } from '@bloom/core/scene';
 
 import styles from './SceneFx.module.css';
@@ -30,6 +37,7 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
   const { timePhase } = scene;
 
   const stars = useMemo(() => getStarField(65), []);
+  const nightClouds = useMemo(() => getNightCloudField(10), []);
 
   if (!ready) return null;
 
@@ -37,6 +45,7 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
   const showSun = timePhase === 'dawn';
   const showMoon = isMoonPhase(timePhase);
   const showStars = isNightPhase(timePhase);
+  const showNightClouds = isMoonPhase(timePhase) || isNightPhase(timePhase);
   const sun = sunPosition(timePhase, width, skyHeight);
 
   return (
@@ -60,22 +69,26 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
         />
       ) : null}
 
-      {showMoon ? (
-        <div
-          style={{
-            position: 'absolute',
-            right: width * 0.12,
-            top: skyHeight * 0.12,
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background:
-              'radial-gradient(circle at 35% 32%, #f4f6ff 0%, #dde2f0 55%, #b8bfd4 100%)',
-            boxShadow:
-              'inset -6px -4px 12px rgba(90,98,130,0.2), 0 0 32px rgba(220,225,245,0.5)',
-          }}
-        />
-      ) : null}
+      {showNightClouds
+        ? nightClouds.map((wisp) => (
+            <div
+              key={wisp.id}
+              style={{
+                position: 'absolute',
+                left: `${wisp.left}%`,
+                top: `${wisp.top}%`,
+                width: wisp.width,
+                height: wisp.height,
+                borderRadius: 9999,
+                backgroundColor:
+                  wisp.color === 'accent'
+                    ? NIGHT_CLOUD_COLORS.accent
+                    : NIGHT_CLOUD_COLORS.primary,
+                opacity: wisp.opacity,
+              }}
+            />
+          ))
+        : null}
 
       {showStars
         ? stars.map((star) => {
@@ -104,6 +117,21 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
             );
           })
         : null}
+
+      {showMoon ? (
+        <div
+          style={{
+            position: 'absolute',
+            right: width * 0.12,
+            top: skyHeight * 0.12,
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            backgroundColor: MOON_COLORS.core,
+            boxShadow: `0 0 48px ${MOON_COLORS.glow}, inset -4px -3px 8px ${MOON_COLORS.shadow}`,
+          }}
+        />
+      ) : null}
     </div>
   );
 }
