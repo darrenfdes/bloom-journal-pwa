@@ -8,8 +8,8 @@ import { AppNav } from '@/components/nav/AppNav';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
-const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm'];
-const HIDE_NAV_PREFIXES = ['/plant-confirm'];
+const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview'];
+const HIDE_NAV_PREFIXES = ['/plant-confirm', '/preview'];
 
 function isFullWidthRoute(pathname: string): boolean {
   return FULL_WIDTH_PREFIXES.some(
