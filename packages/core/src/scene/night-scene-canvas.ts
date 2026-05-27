@@ -12,11 +12,6 @@ import {
   getGardenMeadowHeight,
   getGardenSkyHeight,
 } from '../garden/scene-layout';
-import {
-  getScaledHillLayerYFracs,
-  NIGHT_MOUNTAIN_SPEC,
-  scaleMeadowHillY,
-} from '../garden/season-hills';
 
 export type NightStar = {
   x: number;
@@ -198,17 +193,21 @@ function drawClouds(
 
 function drawMountains(ctx: CanvasRenderingContext2D, W: number, H: number) {
   const meadowTop = getGardenHillTop(H);
-  const { foot, base, yFracs, xFracs } = NIGHT_MOUNTAIN_SPEC;
-  const y = (frac: number) => nightMeadowY(H, scaleMeadowHillY(foot, frac));
-  const mountainBase = nightMeadowY(H, base);
+  const mountainBase = nightMeadowY(H, 0.20);
+  /** Double peak height from the base while preserving the ridge profile. */
+  const peak = (frac: number) => nightMeadowY(H, 0.20 - 2 * (0.20 - frac));
 
   ctx.fillStyle = '#172535';
   ctx.beginPath();
   ctx.moveTo(0, mountainBase);
-  ctx.lineTo(0, y(yFracs[0]!));
-  for (let i = 1; i < xFracs.length; i += 1) {
-    ctx.lineTo(W * xFracs[i]!, y(yFracs[i]!));
-  }
+  ctx.lineTo(0, peak(0.10));
+  ctx.lineTo(W * 0.13, peak(0.02));
+  ctx.lineTo(W * 0.29, peak(0.08));
+  ctx.lineTo(W * 0.43, peak(0.03));
+  ctx.lineTo(W * 0.58, peak(0.06));
+  ctx.lineTo(W * 0.70, peak(0.12));
+  ctx.lineTo(W * 0.83, peak(0.04));
+  ctx.lineTo(W, peak(0.02));
   ctx.lineTo(W, mountainBase);
   ctx.closePath();
   ctx.fill();
@@ -220,27 +219,45 @@ function drawMountains(ctx: CanvasRenderingContext2D, W: number, H: number) {
   ctx.fillRect(0, meadowTop, W, mountainBase - meadowTop + H * 0.02);
 }
 
-/** Hill silhouettes mirror scaled SVG `buildHillPaths` crests (see season-hills.ts). */
+/**
+ * Hill silhouettes mirror the SVG `buildHillPaths` crests so day/dawn/golden-hour
+ * and night previews share one consistent skyline — only palette and lighting change.
+ * Crest fractions are relative to the meadow band, matching season-hills.ts.
+ */
 function drawHills(ctx: CanvasRenderingContext2D, W: number, H: number) {
   const meadowTop = getGardenHillTop(H);
   const meadowH = getGardenMeadowHeight(H);
-  const yAt = (frac: number) => meadowTop + meadowH * frac;
-  const fills = ['#1c3c18', '#255022', '#306a29'] as const;
+  const y = (frac: number) => meadowTop + meadowH * frac;
 
-  getScaledHillLayerYFracs().forEach((layer, index) => {
-    const [y0, y1, y2, y3, y4, y5, y6] = layer.yFracs;
-    const [x0, x1, x2, x3, x4, x5, x6] = layer.xFracs;
+  ctx.fillStyle = '#1c3c18';
+  ctx.beginPath();
+  ctx.moveTo(0, y(0.10));
+  ctx.bezierCurveTo(W * 0.15, y(0.02), W * 0.32, y(0.14), W * 0.5, y(0.08));
+  ctx.bezierCurveTo(W * 0.7, y(0.0), W * 0.85, y(0.18), W, y(0.10));
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
 
-    ctx.fillStyle = fills[index] ?? fills[0];
-    ctx.beginPath();
-    ctx.moveTo(W * x0, yAt(y0));
-    ctx.bezierCurveTo(W * x1, yAt(y1), W * x2, yAt(y2), W * x3, yAt(y3));
-    ctx.bezierCurveTo(W * x4, yAt(y4), W * x5, yAt(y5), W * x6, yAt(y6));
-    ctx.lineTo(W, H);
-    ctx.lineTo(0, H);
-    ctx.closePath();
-    ctx.fill();
-  });
+  ctx.fillStyle = '#255022';
+  ctx.beginPath();
+  ctx.moveTo(0, y(0.35));
+  ctx.bezierCurveTo(W * 0.2, y(0.25), W * 0.4, y(0.40), W * 0.55, y(0.30));
+  ctx.bezierCurveTo(W * 0.75, y(0.20), W * 0.88, y(0.35), W, y(0.28));
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#306a29';
+  ctx.beginPath();
+  ctx.moveTo(0, y(0.55));
+  ctx.bezierCurveTo(W * 0.18, y(0.45), W * 0.35, y(0.57), W * 0.5, y(0.51));
+  ctx.bezierCurveTo(W * 0.72, y(0.43), W * 0.88, y(0.57), W, y(0.51));
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawGrass(
