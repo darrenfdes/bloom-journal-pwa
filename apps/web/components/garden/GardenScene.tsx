@@ -22,7 +22,7 @@ import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
 
 import { useElementSize } from '@/lib/hooks/useElementSize';
-import { useHorizontalDragPan } from '@/lib/hooks/useHorizontalDragPan';
+import { useGardenRubberBandPan } from '@/lib/hooks/useGardenRubberBandPan';
 import { useScrollMetrics } from '@/lib/hooks/useScrollMetrics';
 import { useWindowSize } from '@/lib/hooks/useWindowSize';
 import { applyGardenFilter } from '@bloom/core/garden/filters';
@@ -32,6 +32,7 @@ import {
   GARDEN_CLUSTER_GAP,
   computeGardenLayout,
   getGardenContentWidth,
+  getGardenFocusScrollX,
   getGardenGroundY,
   getGardenHorizontalPadding,
   getMonthClusters,
@@ -77,13 +78,9 @@ export function GardenScene({ meta, entries }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowSize();
   const { width: panWidth, height: panHeight } = useElementSize(panRef);
   const { scrollLeft, scrollWidth, clientWidth } = useScrollMetrics(scrollRef);
-  useHorizontalDragPan(scrollRef);
 
   const width = panWidth > 0 ? panWidth : windowWidth;
   const sceneHeight = panHeight > 0 ? panHeight : windowHeight;
-
-  const bloomParam = searchParams.get('bloom');
-  const highlightId = bloomParam ?? highlightEntryId;
 
   const filtered = useMemo(() => applyGardenFilter(entries, filter), [entries, filter]);
   const bounds = useMemo(() => ({ width, height: sceneHeight }), [width, sceneHeight]);
@@ -102,6 +99,14 @@ export function GardenScene({ meta, entries }: Props) {
     () => getGardenContentWidth(clusters.length, width),
     [clusters.length, width]
   );
+  const maxScroll = Math.max(0, contentWidth - width);
+  const rubberBandEnabled = maxScroll <= 0 && width > 0;
+  const { rubberBandOffset } = useGardenRubberBandPan({
+    scrollRef,
+    viewportWidth: width,
+    enabled: rubberBandEnabled,
+  });
+  const visualScrollLeft = scrollLeft + rubberBandOffset;
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;
   const meadowSkyHeight = useMemo(
@@ -110,6 +115,9 @@ export function GardenScene({ meta, entries }: Props) {
   );
   const [panTopOffset, setPanTopOffset] = useState(0);
   const skyBandHeight = panTopOffset + meadowSkyHeight;
+
+  const bloomParam = searchParams.get('bloom');
+  const highlightId = bloomParam ?? highlightEntryId;
 
   const flowersByMonth = useMemo(() => {
     const map = new Map<string, typeof sortedLayout>();
@@ -170,12 +178,8 @@ export function GardenScene({ meta, entries }: Props) {
   }, [filter.type, wilted, clusters.length, sceneHeight]);
 
   useLayoutEffect(() => {
-    if (!scrollRef.current || width <= 0 || clusters.length === 0 || highlightId) return;
-    const focus = clusters[clusters.length - 1];
-    if (!focus) return;
-    const maxScroll = Math.max(0, contentWidth - width);
-    const target = Math.min(Math.max(0, focus.centerX - width / 2), maxScroll);
-    scrollRef.current.scrollLeft = target;
+    if (!scrollRef.current || width <= 0 || highlightId) return;
+    scrollRef.current.scrollLeft = getGardenFocusScrollX(clusters, width, contentWidth);
   }, [clusters, contentWidth, width, highlightId]);
 
   React.useEffect(() => {
@@ -279,20 +283,29 @@ export function GardenScene({ meta, entries }: Props) {
       </div>
 
       <div ref={panRef} className="relative z-[1] mt-2 min-h-0 flex-1">
-        {nightCanvasActive ? null : (
-          <RepeatingSeasonGround
-            scrollLeft={scrollLeft}
-            tileWidth={width}
-            viewportHeight={sceneHeight}
-            month={gardenMonth}
-            groundVariant={groundVariant}
-            groundSeed={groundSeed}
-            sceneSeason={scene.season}
-            sceneReady={sceneReady}
-          />
-        )}
+        <div
+          className="absolute inset-0"
+          style={{
+            transform: rubberBandEnabled
+              ? `translateX(${-rubberBandOffset}px)`
+              : undefined,
+          }}
+        >
+          {nightCanvasActive ? null : (
+            <RepeatingSeasonGround
+              scrollLeft={visualScrollLeft}
+              wrapperOffset={rubberBandOffset}
+              tileWidth={width}
+              viewportHeight={sceneHeight}
+              month={gardenMonth}
+              groundVariant={groundVariant}
+              groundSeed={groundSeed}
+              sceneSeason={scene.season}
+              sceneReady={sceneReady}
+            />
+          )}
 
-        <div ref={scrollRef} className="garden-pan absolute inset-0 z-[1]">
+          <div ref={scrollRef} className="garden-pan absolute inset-0 z-[1]">
           {nightCanvasActive ? null : (
             <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
               <PollenSparkles
@@ -411,6 +424,7 @@ export function GardenScene({ meta, entries }: Props) {
             />
           ) : null}
           </div>
+        </div>
         </div>
 
         <GardenPanIndicator

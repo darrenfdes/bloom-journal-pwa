@@ -7,3 +7,26 @@ alwaysApply: false
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
+## Scene preview routes (dev)
+
+Use fixed-scene preview pages to test sky, weather FX, and garden panning without live APIs.
+
+```bash
+npm run dev:web
+```
+
+Index: [http://localhost:3000/preview](http://localhost:3000/preview)
+
+| Route | Scene |
+|-------|--------|
+| `/preview/dawn` | Dawn, partly cloudy |
+| `/preview/day` | Midday, clear |
+| `/preview/golden-hour` | Golden hour |
+| `/preview/heavy-rain` | Heavy rain + demo lightning |
+
+- Presets: `apps/web/lib/scene/preview-scenes.ts`
+- Renderer: `apps/web/components/scene/WeatherPreviewScene.tsx`
+- Pages: `apps/web/app/preview/<slug>/page.tsx`
+
+When adding a preview: export scene + add to `PREVIEW_ROUTES`, create a page with `WeatherPreviewScene`.

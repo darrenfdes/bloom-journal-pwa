@@ -6,6 +6,18 @@
  * frame (or once for a static render).
  */
 
+import {
+  getGardenGroundLineY,
+  getGardenHillTop,
+  getGardenMeadowHeight,
+  getGardenSkyHeight,
+} from '../garden/scene-layout';
+import {
+  getScaledHillLayerYFracs,
+  NIGHT_MOUNTAIN_SPEC,
+  scaleMeadowHillY,
+} from '../garden/season-hills';
+
 export type NightStar = {
   x: number;
   y: number;
@@ -53,6 +65,10 @@ export type RenderNightSceneOptions = {
   animate?: boolean;
 };
 
+function nightMeadowY(H: number, meadowFrac: number): number {
+  return getGardenHillTop(H) + getGardenMeadowHeight(H) * meadowFrac;
+}
+
 function initStars(W: number, H: number): NightStar[] {
   return Array.from({ length: 78 }, () => ({
     x: Math.random() * W,
@@ -74,9 +90,11 @@ function initClouds(W: number, H: number): NightCloud[] {
 }
 
 function initGrass(W: number, H: number): NightBlade[] {
+  const groundLine = getGardenGroundLineY(H);
+  const meadowHeight = getGardenMeadowHeight(H);
   return Array.from({ length: 38 }, () => ({
     x: Math.random() * W,
-    y: H * 0.843 + Math.random() * H * 0.06,
+    y: groundLine + meadowHeight * 0.08 + Math.random() * meadowHeight * 0.09,
     h: H * 0.024 + Math.random() * H * 0.038,
     off: Math.random() * Math.PI * 2,
     c: Math.random() > 0.5 ? '#4a8a3e' : '#2e6228',
@@ -84,9 +102,11 @@ function initGrass(W: number, H: number): NightBlade[] {
 }
 
 function initFireflies(W: number, H: number): NightFirefly[] {
+  const meadowTop = getGardenHillTop(H);
+  const meadowHeight = getGardenMeadowHeight(H);
   return Array.from({ length: 9 }, () => ({
     x: 60 + Math.random() * (W - 120),
-    y: H * 0.56 + Math.random() * H * 0.27,
+    y: meadowTop + meadowHeight * 0.18 + Math.random() * meadowHeight * 0.42,
     vx: (Math.random() - 0.5) * 0.38,
     vy: (Math.random() - 0.5) * 0.22,
     life: Math.random() * Math.PI * 2,
@@ -105,13 +125,14 @@ export function createNightSceneState(W: number, H: number): NightSceneState {
 }
 
 function drawSky(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  const g = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+  const skyHeight = getGardenSkyHeight(H);
+  const g = ctx.createLinearGradient(0, 0, 0, skyHeight);
   g.addColorStop(0, '#070d1c');
   g.addColorStop(1, '#11203a');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H * 0.66);
+  ctx.fillRect(0, 0, W, skyHeight);
   ctx.fillStyle = '#11203a';
-  ctx.fillRect(0, H * 0.66, W, H * 0.34);
+  ctx.fillRect(0, skyHeight, W, H - skyHeight);
 }
 
 function drawStars(ctx: CanvasRenderingContext2D, stars: NightStar[], t: number) {
@@ -176,83 +197,50 @@ function drawClouds(
 }
 
 function drawMountains(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  const meadowTop = getGardenHillTop(H);
+  const { foot, base, yFracs, xFracs } = NIGHT_MOUNTAIN_SPEC;
+  const y = (frac: number) => nightMeadowY(H, scaleMeadowHillY(foot, frac));
+  const mountainBase = nightMeadowY(H, base);
+
   ctx.fillStyle = '#172535';
   ctx.beginPath();
-  ctx.moveTo(0, H * 0.55);
-  ctx.lineTo(0, H * 0.41);
-  ctx.lineTo(W * 0.13, H * 0.25);
-  ctx.lineTo(W * 0.29, H * 0.37);
-  ctx.lineTo(W * 0.43, H * 0.27);
-  ctx.lineTo(W * 0.58, H * 0.195);
-  ctx.lineTo(W * 0.70, H * 0.32);
-  ctx.lineTo(W * 0.83, H * 0.37);
-  ctx.lineTo(W, H * 0.35);
-  ctx.lineTo(W, H * 0.55);
+  ctx.moveTo(0, mountainBase);
+  ctx.lineTo(0, y(yFracs[0]!));
+  for (let i = 1; i < xFracs.length; i += 1) {
+    ctx.lineTo(W * xFracs[i]!, y(yFracs[i]!));
+  }
+  ctx.lineTo(W, mountainBase);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = '#1c2e42';
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.55);
-  ctx.lineTo(0, H * 0.47);
-  ctx.lineTo(W * 0.09, H * 0.37);
-  ctx.lineTo(W * 0.23, H * 0.45);
-  ctx.lineTo(W * 0.37, H * 0.31);
-  ctx.lineTo(W * 0.51, H * 0.42);
-  ctx.lineTo(W * 0.65, H * 0.35);
-  ctx.lineTo(W * 0.79, H * 0.45);
-  ctx.lineTo(W, H * 0.43);
-  ctx.lineTo(W, H * 0.55);
-  ctx.closePath();
-  ctx.fill();
-
-  const mg = ctx.createLinearGradient(0, H * 0.50, 0, H * 0.59);
-  mg.addColorStop(0, 'rgba(90,112,138,0.16)');
+  const mg = ctx.createLinearGradient(0, meadowTop, 0, mountainBase + H * 0.02);
+  mg.addColorStop(0, 'rgba(90,112,138,0.12)');
   mg.addColorStop(1, 'rgba(90,112,138,0)');
   ctx.fillStyle = mg;
-  ctx.fillRect(0, H * 0.50, W, H * 0.10);
+  ctx.fillRect(0, meadowTop, W, mountainBase - meadowTop + H * 0.02);
 }
 
+/** Hill silhouettes mirror scaled SVG `buildHillPaths` crests (see season-hills.ts). */
 function drawHills(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  ctx.fillStyle = '#1c3c18';
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.65);
-  ctx.bezierCurveTo(W * 0.17, H * 0.52, W * 0.37, H * 0.57, W * 0.52, H * 0.54);
-  ctx.bezierCurveTo(W * 0.67, H * 0.51, W * 0.82, H * 0.57, W, H * 0.59);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
+  const meadowTop = getGardenHillTop(H);
+  const meadowH = getGardenMeadowHeight(H);
+  const yAt = (frac: number) => meadowTop + meadowH * frac;
+  const fills = ['#1c3c18', '#255022', '#306a29'] as const;
 
-  ctx.fillStyle = '#255022';
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.72);
-  ctx.bezierCurveTo(W * 0.12, H * 0.62, W * 0.27, H * 0.65, W * 0.45, H * 0.63);
-  ctx.bezierCurveTo(W * 0.61, H * 0.61, W * 0.76, H * 0.67, W, H * 0.68);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
+  getScaledHillLayerYFracs().forEach((layer, index) => {
+    const [y0, y1, y2, y3, y4, y5, y6] = layer.yFracs;
+    const [x0, x1, x2, x3, x4, x5, x6] = layer.xFracs;
 
-  ctx.fillStyle = '#306a29';
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.795);
-  ctx.bezierCurveTo(W * 0.13, H * 0.73, W * 0.31, H * 0.75, W * 0.50, H * 0.735);
-  ctx.bezierCurveTo(W * 0.69, H * 0.72, W * 0.84, H * 0.76, W, H * 0.75);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = '#194218';
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.878);
-  ctx.bezierCurveTo(W * 0.24, H * 0.856, W * 0.50, H * 0.868, W * 0.76, H * 0.856);
-  ctx.bezierCurveTo(W * 0.88, H * 0.848, W * 0.95, H * 0.868, W, H * 0.862);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
+    ctx.fillStyle = fills[index] ?? fills[0];
+    ctx.beginPath();
+    ctx.moveTo(W * x0, yAt(y0));
+    ctx.bezierCurveTo(W * x1, yAt(y1), W * x2, yAt(y2), W * x3, yAt(y3));
+    ctx.bezierCurveTo(W * x4, yAt(y4), W * x5, yAt(y5), W * x6, yAt(y6));
+    ctx.lineTo(W, H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
+    ctx.fill();
+  });
 }
 
 function drawGrass(
@@ -285,10 +273,14 @@ function drawFireflies(
       f.life += f.ls;
       f.x += f.vx + Math.sin(f.life * 1.2) * 0.32;
       f.y += f.vy + Math.cos(f.life * 0.85) * 0.20;
+      const meadowTop = getGardenHillTop(H);
+      const meadowHeight = getGardenMeadowHeight(H);
+      const minY = meadowTop + meadowHeight * 0.18;
+      const maxY = meadowTop + meadowHeight * 0.62;
       if (f.x < 0) f.x = W;
       if (f.x > W) f.x = 0;
-      if (f.y < H * 0.54) f.y = H * 0.84;
-      if (f.y > H * 0.86) f.y = H * 0.55;
+      if (f.y < minY) f.y = maxY;
+      if (f.y > maxY) f.y = minY;
     }
 
     const a = Math.max(0, Math.sin(f.life));
