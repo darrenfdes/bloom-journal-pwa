@@ -100,6 +100,23 @@ export function getGardenContentWidth(monthCount: number, viewportWidth = 0): nu
   return GARDEN_PADDING_LEFT + bandContent + GARDEN_PADDING_RIGHT;
 }
 
+/** Scroll position that centers the latest month (or empty-garden column) in the viewport. */
+export function getGardenFocusScrollX(
+  clusters: MonthCluster[],
+  viewportWidth: number,
+  contentWidth: number
+): number {
+  const maxScroll = Math.max(0, contentWidth - viewportWidth);
+  let centerX: number;
+  if (clusters.length > 0) {
+    centerX = clusters[clusters.length - 1]!.centerX;
+  } else {
+    const paddingLeft = getGardenPaddingLeft({ width: viewportWidth, height: 0 }, 0);
+    centerX = paddingLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
+  }
+  return Math.min(Math.max(0, centerX - viewportWidth / 2), maxScroll);
+}
+
 function monthColumnLeft(monthIndex: number, paddingLeft: number): number {
   return paddingLeft + monthIndex * (GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP);
 }

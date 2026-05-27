@@ -18,6 +18,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Scene previews (dev)
+
+Fixed scenes for sky/weather/pan testing — no live location or weather API required:
+
+- Index: [http://localhost:3000/preview](http://localhost:3000/preview)
+- Routes: `/preview/dawn`, `/preview/day`, `/preview/golden-hour`, `/preview/heavy-rain`
+- Presets: `lib/scene/preview-scenes.ts`; renderer: `components/scene/WeatherPreviewScene.tsx`
+
+See [apps/web/AGENTS.md](./AGENTS.md) for how to add new preview routes.
+
 ## Build
 
 ```bash

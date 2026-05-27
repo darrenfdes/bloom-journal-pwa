@@ -1,5 +1,5 @@
-/** Max share of pan height used for sky — meadow is at least 1 − this (≥ 2/3). */
-export const GARDEN_SKY_HEIGHT_FRAC = 1 / 3;
+/** Share of pan height used for sky — meadow occupies the remaining ~72%. */
+export const GARDEN_SKY_HEIGHT_FRAC = 0.28;
 
 /**
  * Flower stem-base Y within the meadow band (0 = sky/meadow line, 1 = pan bottom).

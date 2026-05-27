@@ -1,17 +1,17 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
@@ -33,9 +33,11 @@ import {
   GARDEN_CLUSTER_BAND_WIDTH,
   computeGardenLayout,
   getGardenContentWidth,
+  getGardenFocusScrollX,
   getGardenGroundY,
   getMonthClusters,
 } from '@/lib/garden/layout';
+import { useGardenRubberBandPan } from '@/lib/hooks/useGardenRubberBandPan';
 import { isXRangeVisible } from '@/lib/garden/visibility';
 import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
 import { isAnniversaryBlossom } from '@/lib/garden/anniversary';
@@ -68,7 +70,7 @@ export function GardenScene({ meta, entries }: Props) {
   const insets = useSafeAreaInsets();
   const filter = useBloomStore((s) => s.gardenFilter);
   const setGardenFilter = useBloomStore((s) => s.setGardenFilter);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof Animated.ScrollView>>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [actionDrawerState, setActionDrawerState] = useState<{
     entry: EntryRecord;
@@ -90,6 +92,13 @@ export function GardenScene({ meta, entries }: Props) {
     () => getGardenContentWidth(clusters.length, width),
     [clusters.length, width]
   );
+  const maxScroll = Math.max(0, contentWidth - width);
+  const rubberBandEnabled = maxScroll <= 0 && width > 0;
+  const { panHandlers, sceneTranslateStyle, rubberBandOffset } = useGardenRubberBandPan({
+    viewportWidth: width,
+    enabled: rubberBandEnabled,
+  });
+  const visualScrollLeft = scrollLeft + rubberBandOffset;
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;
 
@@ -117,6 +126,12 @@ export function GardenScene({ meta, entries }: Props) {
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     setScrollLeft(e.nativeEvent.contentOffset.x);
   };
+
+  useLayoutEffect(() => {
+    if (width <= 0) return;
+    const x = getGardenFocusScrollX(clusters, width, contentWidth);
+    scrollRef.current?.scrollTo({ x, animated: false });
+  }, [clusters, contentWidth, width]);
 
   const handleOpenActionDrawer = (entry: EntryRecord, monthKey: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -151,20 +166,13 @@ export function GardenScene({ meta, entries }: Props) {
         onJump={(x) => scrollRef.current?.scrollTo({ x, animated: true })}
       />
 
-      <View style={styles.panWrap}>
-        <PollenSparkles width={width} height={viewportHeight} count={Math.min(20, Math.max(8, sortedLayout.length))} />
+      <View style={styles.panWrap} {...(panHandlers ?? {})}>
+        <Animated.View style={[StyleSheet.absoluteFill, sceneTranslateStyle]}>
+          <PollenSparkles width={width} height={viewportHeight} count={Math.min(20, Math.max(8, sortedLayout.length))} />
 
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ width: contentWidth, height: viewportHeight }}
-        >
           <RepeatingSeasonGround
-            scrollLeft={scrollLeft}
+            scrollLeft={visualScrollLeft}
+            wrapperOffset={rubberBandOffset}
             tileWidth={width}
             viewportHeight={viewportHeight}
             month={gardenMonth}
@@ -174,6 +182,17 @@ export function GardenScene({ meta, entries }: Props) {
             sceneReady={sceneReady}
           />
 
+          <Animated.ScrollView
+            ref={scrollRef}
+            horizontal
+            scrollEnabled={!rubberBandEnabled}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={StyleSheet.absoluteFill}
+            contentContainerStyle={{ width: contentWidth, height: viewportHeight }}
+          >
           {clusters.map((c) => {
             if (!visibleClusterKeys.has(c.monthKey)) return null;
 
@@ -279,7 +298,8 @@ export function GardenScene({ meta, entries }: Props) {
               </Pressable>
             );
           })}
-        </ScrollView>
+          </Animated.ScrollView>
+        </Animated.View>
       </View>
 
       {!journalOpen ? (
@@ -367,6 +387,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 8,
     minHeight: 0,
+    overflow: 'hidden',
   },
   clusterLabel: {
     position: 'absolute',

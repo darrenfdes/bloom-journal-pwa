@@ -16,6 +16,8 @@ type Props = {
   scrollLeft: number;
   tileWidth: number;
   viewportHeight: number;
+  /** When hills sit inside a parent `translateX(-offset)` pan wrapper, add this so tile math is not applied twice. */
+  wrapperOffset?: number;
   month?: number;
   groundVariant?: GroundVariant;
   groundSeed?: number;
@@ -23,10 +25,16 @@ type Props = {
   sceneReady?: boolean;
 };
 
+function tileScrollOffset(scrollLeft: number, tileWidth: number): number {
+  if (tileWidth <= 0) return 0;
+  return ((scrollLeft % tileWidth) + tileWidth) % tileWidth;
+}
+
 export function RepeatingSeasonGround({
   scrollLeft,
   tileWidth,
   viewportHeight,
+  wrapperOffset = 0,
   month = new Date().getMonth() + 1,
   groundVariant,
   groundSeed = 0,
@@ -50,15 +58,15 @@ export function RepeatingSeasonGround({
   const hillTop = getGardenHillTop(viewportHeight);
   const hills = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
-  const offset = scrollLeft % tileWidth;
-  const startIndex = Math.floor(scrollLeft / tileWidth) - 1;
+  const offset = tileScrollOffset(scrollLeft, tileWidth);
+  const startIndex = tileWidth > 0 ? Math.floor(scrollLeft / tileWidth) - 1 : 0;
   const indices = [startIndex, startIndex + 1, startIndex + 2, startIndex + 3];
 
   return (
     <View style={[styles.root, { height: viewportHeight }]} pointerEvents="none">
       <View style={[styles.haze, { backgroundColor: groundStyle.haze, opacity: 0.22 }]} />
       {indices.map((tileIndex) => {
-        const x = tileIndex * tileWidth - offset;
+        const x = tileIndex * tileWidth - offset + wrapperOffset;
         const gradPrefix = `m-${tileIndex}-${groundSeed}`;
 
         return (

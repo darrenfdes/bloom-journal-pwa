@@ -23,6 +23,8 @@ npm run dev:web
 
 Open [http://localhost:3000](http://localhost:3000). Data is stored locally in IndexedDB; Supabase sync is wired but inactive until env vars are set (see `apps/web/.env.local.example`).
 
+**Scene previews:** [http://localhost:3000/preview](http://localhost:3000/preview) — fixed sky/weather scenes for dev (`apps/web/AGENTS.md`).
+
 ### Mobile (Expo)
 
 ```bash
