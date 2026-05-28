@@ -134,16 +134,111 @@ export type NightMoonCrater = {
   dx: number;
   dy: number;
   r: number;
-  shade?: number;
+  /** Horizontal stretch relative to base radius. */
+  rx?: number;
+  /** Vertical stretch relative to base radius. */
+  ry?: number;
+  /** 0–1 — deeper craters read darker in the bowl. */
+  depth?: number;
 };
+
+/** Craters below this normalized radius skip rim/shadow layers — bowl only reads cleaner. */
+export const NIGHT_MOON_CRATER_DETAIL_MIN_R = 0.04;
 
 /** Normalized crater positions relative to moon radius — shared by canvas + SVG. */
 export const NIGHT_MOON_CRATERS: NightMoonCrater[] = [
-  { dx: -0.34, dy: -0.24, r: 0.14, shade: 0.28 },
-  { dx: 0.3, dy: -0.2, r: 0.09, shade: 0.22 },
-  { dx: -0.2, dy: 0.3, r: 0.11, shade: 0.24 },
-  { dx: 0.26, dy: 0.24, r: 0.07, shade: 0.2 },
+  // Large prominent craters
+  { dx: -0.33, dy: -0.21, r: 0.13, rx: 1.12, ry: 0.76, depth: 0.72 },
+  { dx: 0.24, dy: -0.19, r: 0.095, rx: 0.94, ry: 0.86, depth: 0.58 },
+  { dx: -0.14, dy: 0.3, r: 0.105, rx: 1.06, ry: 0.74, depth: 0.64 },
+
+  // Medium craters — fill each quadrant
+  { dx: 0.3, dy: 0.22, r: 0.072, rx: 1, ry: 0.82, depth: 0.5 },
+  { dx: -0.38, dy: 0.04, r: 0.062, rx: 0.96, ry: 0.88, depth: 0.46 },
+  { dx: 0.06, dy: -0.36, r: 0.058, rx: 1.04, ry: 0.78, depth: 0.44 },
+  { dx: -0.06, dy: 0.08, r: 0.055, rx: 0.9, ry: 0.92, depth: 0.48 },
+  { dx: 0.36, dy: -0.06, r: 0.05, rx: 0.88, ry: 0.9, depth: 0.42 },
+
+  // Small craters — surface texture
+  { dx: -0.24, dy: -0.36, r: 0.042, rx: 1, ry: 0.86, depth: 0.4 },
+  { dx: 0.14, dy: -0.08, r: 0.038, rx: 0.92, ry: 0.94, depth: 0.38 },
+  { dx: -0.32, dy: 0.18, r: 0.035, rx: 1.08, ry: 0.8, depth: 0.36 },
+  { dx: 0.2, dy: 0.38, r: 0.033, rx: 0.94, ry: 0.88, depth: 0.35 },
+  { dx: -0.18, dy: -0.06, r: 0.03, rx: 1, ry: 0.9, depth: 0.34 },
+
+  // Micro pinpricks — bowl only
+  { dx: 0.4, dy: -0.28, r: 0.024, depth: 0.3 },
+  { dx: -0.42, dy: -0.14, r: 0.022, depth: 0.28 },
+  { dx: 0.08, dy: 0.2, r: 0.02, depth: 0.26 },
+  { dx: -0.08, dy: 0.4, r: 0.018, depth: 0.24 },
+  { dx: 0.28, dy: 0.06, r: 0.016, depth: 0.22 },
+  { dx: -0.02, dy: -0.14, r: 0.014, depth: 0.2 },
 ];
+
+export function getNightMoonCraterGeometry(
+  mx: number,
+  my: number,
+  mr: number,
+  crater: NightMoonCrater
+): { cx: number; cy: number; rx: number; ry: number; depth: number } {
+  const cx = mx + mr * crater.dx;
+  const cy = my + mr * crater.dy;
+  const baseR = mr * crater.r;
+  return {
+    cx,
+    cy,
+    rx: baseR * (crater.rx ?? 1),
+    ry: baseR * (crater.ry ?? 0.82),
+    depth: crater.depth ?? 0.55,
+  };
+}
+
+/** Soft elliptical bowls with a lit rim — matches the moon's upper-left light source. */
+export function drawNightMoonCraters(
+  ctx: CanvasRenderingContext2D,
+  mx: number,
+  my: number,
+  mr: number
+): void {
+  NIGHT_MOON_CRATERS.forEach((crater) => {
+    const { cx, cy, rx, ry, depth } = getNightMoonCraterGeometry(mx, my, mr, crater);
+    const bowlR = Math.max(rx, ry);
+    const showDetail = crater.r >= NIGHT_MOON_CRATER_DETAIL_MIN_R;
+
+    const bowl = ctx.createRadialGradient(cx, cy, 0, cx, cy, bowlR);
+    bowl.addColorStop(0, `rgba(58,64,88,${0.28 + depth * 0.3})`);
+    bowl.addColorStop(0.45, `rgba(78,84,108,${0.12 + depth * 0.14})`);
+    bowl.addColorStop(0.78, `rgba(108,116,142,${0.04 + depth * 0.06})`);
+    bowl.addColorStop(1, 'rgba(120,128,155,0)');
+    ctx.fillStyle = bowl;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!showDetail) return;
+
+    const rimCx = cx - rx * 0.28;
+    const rimCy = cy - ry * 0.32;
+    const rim = ctx.createRadialGradient(rimCx, rimCy, 0, rimCx, rimCy, bowlR * 0.72);
+    rim.addColorStop(0, `rgba(228,234,248,${0.16 + depth * 0.08})`);
+    rim.addColorStop(0.5, 'rgba(196,204,224,0.06)');
+    rim.addColorStop(1, 'rgba(196,204,224,0)');
+    ctx.fillStyle = rim;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 0.88, ry * 0.88, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const shadowCx = cx + rx * 0.22;
+    const shadowCy = cy + ry * 0.26;
+    const shadow = ctx.createRadialGradient(shadowCx, shadowCy, 0, shadowCx, shadowCy, bowlR * 0.55);
+    shadow.addColorStop(0, `rgba(48,54,76,${0.08 + depth * 0.1})`);
+    shadow.addColorStop(0.6, 'rgba(48,54,76,0)');
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 0.72, ry * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
 
 export function getNightMoonLayout(
   W: number,
@@ -184,12 +279,7 @@ function drawMoon(
   ctx.beginPath();
   ctx.arc(mx, my, mr, 0, Math.PI * 2);
   ctx.clip();
-  NIGHT_MOON_CRATERS.forEach(({ dx, dy, r, shade = 0.22 }) => {
-    ctx.fillStyle = `rgba(96,104,136,${shade})`;
-    ctx.beginPath();
-    ctx.arc(mx + mr * dx, my + mr * dy, mr * r, 0, Math.PI * 2);
-    ctx.fill();
-  });
+  drawNightMoonCraters(ctx, mx, my, mr);
   ctx.restore();
 }
 
