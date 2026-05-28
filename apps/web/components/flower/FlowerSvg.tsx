@@ -50,6 +50,7 @@ export function FlowerSvg({
   const isRipePumpkin = genome.specialBloom === 'pumpkin' && genome.pumpkinStage === 2;
   const stemRotate = isRipePumpkin ? 0 : genome.stemLean * 0.1;
   const swayTiming = useMemo(() => getFlowerSwayTiming(genome.seed), [genome.seed]);
+  const visualOpacity = Math.max(0.94, 1 - genome.fadeFactor * 0.4);
 
   return (
     <div
@@ -62,7 +63,7 @@ export function FlowerSvg({
         {
           width: size,
           height: size,
-          opacity: 1 - genome.fadeFactor,
+          opacity: visualOpacity,
           transform: animateSway || animateBloom ? undefined : `rotate(${stemRotate}deg) scale(${favScale})`,
           '--fav-scale': favScale,
           '--sway-base': `${stemRotate}deg`,
