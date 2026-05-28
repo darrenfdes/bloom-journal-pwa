@@ -81,4 +81,5 @@ export const PREVIEW_ROUTES = [
   { href: '/preview/day', label: 'Day (clear)' },
   { href: '/preview/golden-hour', label: 'Golden hour' },
   { href: '/preview/heavy-rain', label: 'Heavy rain' },
+  { href: '/preview/flowers', label: 'Flowers (all moods)' },
 ] as const;
