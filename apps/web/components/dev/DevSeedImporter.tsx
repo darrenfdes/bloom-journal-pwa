@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 
-import type { GardenMeta, LocalEntryRecord } from '@/lib/db/client';
+import type { LocalEntryRecord } from '@/lib/db/client';
+import type { GardenMeta } from '@bloom/core';
 import { getDb } from '@/lib/db/client';
 
 type SeedEntry = {
