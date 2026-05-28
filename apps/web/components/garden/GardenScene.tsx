@@ -17,7 +17,10 @@ import { GardenPanIndicator } from '@/components/garden/GardenPanIndicator';
 import { GrassLayer } from '@/components/garden/GrassLayer';
 import { GroundTexture } from '@/components/garden/GroundTexture';
 import { PollenSparkles } from '@/components/garden/PollenSparkles';
-import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
+import {
+  RepeatingSeasonGround,
+  gardenTileScrollOffset,
+} from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
 
@@ -29,15 +32,17 @@ import { applyGardenFilter } from '@bloom/core/garden/filters';
 import { computeGroundVariant } from '@bloom/core/garden/ground';
 import {
   GARDEN_CLUSTER_BAND_WIDTH,
-  GARDEN_CLUSTER_GAP,
+  GARDEN_INTER_MONTH_GAP,
   computeGardenLayout,
   getGardenContentWidth,
   getGardenFocusScrollX,
   getGardenGroundY,
   getGardenHorizontalPadding,
   getMonthClusters,
+  resolveClusterAtWorldX,
 } from '@bloom/core/garden/layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
+import { getSeason } from '@bloom/core/theme/seasons';
 import { isMoonPhase, isNightPhase } from '@bloom/core/scene';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
@@ -49,7 +54,19 @@ type Props = {
   entries: EntryRecord[];
 };
 const SWAY_ENTRY_LIMIT = 18;
-const COLUMN_SIZE = GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP;
+const DEFAULT_COLUMN_SIZE = GARDEN_CLUSTER_BAND_WIDTH + GARDEN_INTER_MONTH_GAP;
+
+function clusterGroundFromKey(monthKey: string) {
+  const month = new Date(`${monthKey}-01`).getMonth() + 1;
+  const groundSeed =
+    monthKey.charCodeAt(0) * 31 + monthKey.charCodeAt(monthKey.length - 1);
+  return {
+    month,
+    groundSeed,
+    groundVariant: computeGroundVariant(month, groundSeed),
+    season: getSeason(month),
+  };
+}
 
 function formatMonth(iso: string): string {
   const d = new Date(iso);
@@ -92,12 +109,12 @@ export function GardenScene({ meta, entries }: Props) {
   );
   const clusters = useMemo(() => getMonthClusters(filtered, bounds), [filtered, bounds]);
   const horizontalPadding = useMemo(
-    () => getGardenHorizontalPadding(bounds, clusters.length),
-    [bounds, clusters.length]
+    () => getGardenHorizontalPadding(bounds, clusters.length, clusters),
+    [bounds, clusters]
   );
   const contentWidth = useMemo(
-    () => getGardenContentWidth(clusters.length, width),
-    [clusters.length, width]
+    () => getGardenContentWidth(clusters, width, bounds),
+    [clusters, width, bounds]
   );
   const maxScroll = Math.max(0, contentWidth - width);
   const rubberBandEnabled = maxScroll <= 0 && width > 0;
@@ -145,7 +162,7 @@ export function GardenScene({ meta, entries }: Props) {
   const columnVirtualizer = useVirtualizer({
     count: clusters.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => COLUMN_SIZE,
+    estimateSize: (index) => clusters[index]?.columnWidth ?? DEFAULT_COLUMN_SIZE,
     horizontal: true,
     overscan: 2,
     paddingStart: horizontalPadding.paddingLeft,
@@ -155,7 +172,19 @@ export function GardenScene({ meta, entries }: Props) {
 
   useLayoutEffect(() => {
     columnVirtualizer.measure();
-  }, [columnVirtualizer, clusters.length, contentWidth, width, sceneHeight, horizontalPadding]);
+  }, [columnVirtualizer, clusters, contentWidth, width, sceneHeight, horizontalPadding]);
+
+  const getTileGround = useCallback(
+    (tileIndex: number) => {
+      if (width <= 0 || clusters.length === 0) return null;
+      const offset = gardenTileScrollOffset(visualScrollLeft, width);
+      const tileCenterX = tileIndex * width - offset + visualScrollLeft + width / 2;
+      const cluster = resolveClusterAtWorldX(tileCenterX, clusters);
+      if (!cluster) return null;
+      return clusterGroundFromKey(cluster.monthKey);
+    },
+    [clusters, visualScrollLeft, width]
+  );
 
   useLayoutEffect(() => {
     const measurePanTop = () => {
@@ -291,19 +320,18 @@ export function GardenScene({ meta, entries }: Props) {
               : undefined,
           }}
         >
-          {nightCanvasActive ? null : (
-            <RepeatingSeasonGround
-              scrollLeft={visualScrollLeft}
-              wrapperOffset={rubberBandOffset}
-              tileWidth={width}
-              viewportHeight={sceneHeight}
-              month={gardenMonth}
-              groundVariant={groundVariant}
-              groundSeed={groundSeed}
-              sceneSeason={scene.season}
-              sceneReady={sceneReady}
-            />
-          )}
+          <RepeatingSeasonGround
+            scrollLeft={visualScrollLeft}
+            wrapperOffset={rubberBandOffset}
+            tileWidth={width}
+            viewportHeight={sceneHeight}
+            month={gardenMonth}
+            groundVariant={groundVariant}
+            groundSeed={groundSeed}
+            sceneSeason={scene.season}
+            sceneReady={sceneReady}
+            getTileGround={getTileGround}
+          />
 
           <div ref={scrollRef} className="garden-pan absolute inset-0 z-[1]">
           {nightCanvasActive ? null : (
@@ -346,33 +374,31 @@ export function GardenScene({ meta, entries }: Props) {
                     transform: `translateX(${virtualColumn.start}px)`,
                   }}
                 >
-                  {nightCanvasActive ? null : (
-                    <div
-                      className="pointer-events-none absolute"
-                      style={{
-                        left: 0,
-                        width: GARDEN_CLUSTER_BAND_WIDTH,
-                        height: sceneHeight,
-                      }}
-                    >
-                      <GroundTexture
-                        width={GARDEN_CLUSTER_BAND_WIDTH}
-                        height={180}
-                        groundY={clusterGroundY}
-                        variant={clusterGround}
-                        seed={clusterSeed}
-                      />
-                      <GrassLayer
-                        width={GARDEN_CLUSTER_BAND_WIDTH}
-                        height={180}
-                        groundY={clusterGroundY}
-                        month={clusterMonth}
-                        seed={clusterSeed}
-                        density={grassDensity}
-                        groundVariant={clusterGround}
-                      />
-                    </div>
-                  )}
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      left: 0,
+                      width: virtualColumn.size,
+                      height: sceneHeight,
+                    }}
+                  >
+                    <GroundTexture
+                      width={virtualColumn.size}
+                      height={180}
+                      groundY={clusterGroundY}
+                      variant={clusterGround}
+                      seed={clusterSeed}
+                    />
+                    <GrassLayer
+                      width={virtualColumn.size}
+                      height={180}
+                      groundY={clusterGroundY}
+                      month={clusterMonth}
+                      seed={clusterSeed}
+                      density={grassDensity}
+                      groundVariant={clusterGround}
+                    />
+                  </div>
 
                   <motion.p
                     initial={{ opacity: 0, y: 6 }}
@@ -380,7 +406,7 @@ export function GardenScene({ meta, entries }: Props) {
                     transition={{ duration: 0.35, delay: 0.05 }}
                     className="pointer-events-none absolute w-[140px] rounded-full bg-white/80 px-2.5 py-1 text-center text-xs font-semibold uppercase tracking-wider text-ink shadow-sm backdrop-blur-sm"
                     style={{
-                      left: GARDEN_CLUSTER_BAND_WIDTH * 0.5 - 70,
+                      left: cluster.centerX - virtualColumn.start - 70,
                       top: cluster.groundY,
                     }}
                   >
