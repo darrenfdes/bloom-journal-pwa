@@ -2,12 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { createNightSceneState, renderNightScene } from '@bloom/core/scene';
+import {
+  createNightSceneState,
+  renderNightAtmosphere,
+  renderNightFireflies,
+  renderNightScene,
+} from '@bloom/core/scene';
 import type { NightSceneState } from '@bloom/core/scene';
 
 type Props = {
   active: boolean;
-  showMoon: boolean;
+  showMoon?: boolean;
+  /** atmosphere = fixed sky behind pan; fireflies = meadow FX in pan */
+  layer?: 'full' | 'atmosphere' | 'fireflies';
+  /** Fixed sky band height (atmosphere layer). */
+  bandHeight?: number;
+  /** Pan viewport height — fireflies and mountain layout. */
+  sceneHeight?: number;
   className?: string;
 };
 
@@ -23,11 +34,18 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-export function NightSceneCanvas({ active, showMoon, className }: Props) {
+export function NightSceneCanvas({
+  active,
+  showMoon = true,
+  layer = 'full',
+  bandHeight,
+  sceneHeight,
+  className,
+}: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<NightSceneState | null>(null);
-  const sizeRef = useRef({ W: 0, H: 0 });
+  const sizeRef = useRef({ W: 0, H: 0, sceneHeight: 0 });
   const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
@@ -45,32 +63,40 @@ export function NightSceneCanvas({ active, showMoon, className }: Props) {
       const W = wrapper.clientWidth;
       const H = wrapper.clientHeight;
       if (W <= 0 || H <= 0) return;
+      const panH = sceneHeight ?? H;
+      const skyH = layer === 'fireflies' ? H : (bandHeight ?? H);
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
       canvas.style.width = `${W}px`;
       canvas.style.height = `${H}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      sizeRef.current = { W, H };
-      stateRef.current = createNightSceneState(W, H);
+      sizeRef.current = { W, H, sceneHeight: panH };
+      stateRef.current = createNightSceneState(W, skyH, panH);
     };
 
     resize();
 
-    const drawOnce = () => {
-      const { W, H } = sizeRef.current;
+    const draw = (animate: boolean) => {
+      const { W, H, sceneHeight: panH } = sizeRef.current;
       const state = stateRef.current;
       if (!state || W <= 0 || H <= 0) return;
-      renderNightScene(ctx, W, H, frame, state, { showMoon, animate: false });
+      const skyH = bandHeight ?? H;
+      const opts = { showMoon, animate, sceneHeight: panH };
+      if (layer === 'atmosphere') {
+        renderNightAtmosphere(ctx, W, skyH, frame, state, opts);
+      } else if (layer === 'fireflies') {
+        renderNightFireflies(ctx, W, H, frame, state, opts);
+      } else {
+        renderNightScene(ctx, W, skyH, frame, state, opts);
+      }
     };
+
+    const drawOnce = () => draw(false);
 
     const tick = () => {
       frame += 1;
-      const { W, H } = sizeRef.current;
-      const state = stateRef.current;
-      if (state && W > 0 && H > 0) {
-        renderNightScene(ctx, W, H, frame, state, { showMoon, animate: true });
-      }
+      draw(true);
       raf = requestAnimationFrame(tick);
     };
 
@@ -90,7 +116,7 @@ export function NightSceneCanvas({ active, showMoon, className }: Props) {
       if (raf) cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [active, showMoon, reducedMotion]);
+  }, [active, showMoon, layer, bandHeight, sceneHeight, reducedMotion]);
 
   return (
     <div

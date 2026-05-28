@@ -22,6 +22,8 @@ import {
   RepeatingSeasonGround,
   gardenTileScrollOffset,
 } from '@/components/garden/RepeatingSeasonGround';
+import { SwayingGrassLayer } from '@/components/garden/SwayingGrassLayer';
+import { NightHorizonBand } from '@/components/scene/NightHorizonBand';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
 import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
@@ -47,6 +49,8 @@ import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
 import { isAnniversaryBlossom } from '@/lib/garden/anniversary';
 import {
   getWindSwayDegrees,
+  isMoonPhase,
+  isNightPhase,
   shouldHideFlowersForWinter,
 } from '@bloom/core';
 import { MOODS } from '@/lib/constants/moods';
@@ -81,10 +85,14 @@ export function GardenScene({ meta, entries }: Props) {
     monthKey: string;
   } | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
+  const panWrapRef = useRef<View>(null);
+  const [panTopOffset, setPanTopOffset] = useState(0);
+  const [panSceneHeight, setPanSceneHeight] = useState(0);
 
   const { width, height: viewportHeight } = Dimensions.get('window');
+  const sceneHeight = panSceneHeight > 0 ? panSceneHeight : viewportHeight;
   const filtered = useMemo(() => applyGardenFilter(entries, filter), [entries, filter]);
-  const bounds = useMemo(() => ({ width, height: viewportHeight }), [width, viewportHeight]);
+  const bounds = useMemo(() => ({ width, height: sceneHeight }), [width, sceneHeight]);
 
   const layout = useMemo(() => computeGardenLayout(filtered, bounds), [filtered, bounds]);
   const sortedLayout = useMemo(
@@ -163,8 +171,19 @@ export function GardenScene({ meta, entries }: Props) {
     setActionDrawerState({ entry, monthKey });
   };
 
+  const nightCanvasActive = sceneReady && isNightPhase(scene.timePhase);
+  const nightShowMoon = isMoonPhase(scene.timePhase);
+
   return (
-    <SeasonBackground groundVariant={groundVariant} groundSeed={groundSeed} month={gardenMonth}>
+    <SeasonBackground
+      groundVariant={groundVariant}
+      groundSeed={groundSeed}
+      month={gardenMonth}
+      nightCanvasActive={nightCanvasActive}
+      nightShowMoon={nightShowMoon}
+      panTopOffset={panTopOffset}
+      sceneHeight={sceneHeight}
+    >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
           onPress={() => router.push('/settings')}
@@ -191,21 +210,44 @@ export function GardenScene({ meta, entries }: Props) {
         onJump={(x) => scrollRef.current?.scrollTo({ x, animated: true })}
       />
 
-      <View style={styles.panWrap} {...(panHandlers ?? {})}>
+      <View
+        ref={panWrapRef}
+        style={styles.panWrap}
+        onLayout={(e) => {
+          setPanSceneHeight(e.nativeEvent.layout.height);
+          panWrapRef.current?.measureInWindow((_x, y) => {
+            if (y >= 0) setPanTopOffset(y);
+          });
+        }}
+        {...(panHandlers ?? {})}
+      >
         <Animated.View style={[StyleSheet.absoluteFill, sceneTranslateStyle]}>
-          <PollenSparkles width={width} height={viewportHeight} count={Math.min(20, Math.max(8, sortedLayout.length))} />
+          <PollenSparkles width={width} height={sceneHeight} count={Math.min(20, Math.max(8, sortedLayout.length))} />
 
           <RepeatingSeasonGround
             scrollLeft={visualScrollLeft}
             wrapperOffset={rubberBandOffset}
             tileWidth={width}
-            viewportHeight={viewportHeight}
+            viewportHeight={sceneHeight}
             month={gardenMonth}
             groundVariant={groundVariant}
             groundSeed={groundSeed}
             sceneSeason={scene.season}
             sceneReady={sceneReady}
+            nightMode={nightCanvasActive}
             getTileGround={getTileGround}
+          />
+
+          {nightCanvasActive ? (
+            <NightHorizonBand sceneHeight={sceneHeight} panTopOffset={panTopOffset} />
+          ) : null}
+
+          <SwayingGrassLayer
+            scrollLeft={visualScrollLeft}
+            wrapperOffset={rubberBandOffset}
+            tileWidth={width}
+            viewportHeight={sceneHeight}
+            seed={groundSeed}
           />
 
           <Animated.ScrollView
@@ -216,8 +258,8 @@ export function GardenScene({ meta, entries }: Props) {
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            style={StyleSheet.absoluteFill}
-            contentContainerStyle={{ width: contentWidth, height: viewportHeight }}
+            style={[StyleSheet.absoluteFill, styles.flowerScroll]}
+            contentContainerStyle={{ width: contentWidth, height: sceneHeight }}
           >
           {clusters.map((c) => {
             if (!visibleClusterKeys.has(c.monthKey)) return null;
@@ -414,6 +456,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     minHeight: 0,
     overflow: 'hidden',
+  },
+  flowerScroll: {
+    zIndex: 5,
   },
   clusterLabel: {
     position: 'absolute',

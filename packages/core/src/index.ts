@@ -14,6 +14,7 @@ export * from './garden/filters';
 export * from './garden/ground';
 export * from './garden/layout';
 export * from './garden/scatter';
+export * from './garden/swaying-grass-canvas';
 export * from './garden/wilt';
 export * from './sentiment/infer';
 export { palette } from './theme/colors';

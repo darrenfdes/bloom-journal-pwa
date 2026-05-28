@@ -7,6 +7,8 @@ import { GrassLayer } from '@/components/garden/GrassLayer';
 import { GroundTexture } from '@/components/garden/GroundTexture';
 import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
+import { SwayingGrassCanvas } from '@/components/garden/SwayingGrassCanvas';
+import { NightSceneCanvas } from '@/components/scene/NightSceneCanvas';
 import { AmbientOverlay } from '@/components/scene/AmbientOverlay';
 import { CelestialLayer } from '@/components/scene/CelestialLayer';
 import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
@@ -19,7 +21,7 @@ import { computeGroundVariant } from '@bloom/core/garden/ground';
 import { getGardenGroundY } from '@bloom/core/garden/layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeason } from '@bloom/core/theme/seasons';
-import type { SceneState } from '@bloom/core/scene';
+import { isMoonPhase, isNightPhase, type SceneState } from '@bloom/core/scene';
 
 /** Viewport-width tiles along the preview timeline (drag to pan). */
 const PREVIEW_TIMELINE_TILES = 16;
@@ -123,6 +125,9 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
     initialFocusRef.current = true;
   }, [contentWidth, width]);
 
+  const nightCanvasActive = scene.status === 'ready' && isNightPhase(scene.timePhase);
+  const nightShowMoon = isMoonPhase(scene.timePhase);
+
   return (
     <ScenePreviewProvider scene={scene}>
       <SeasonBackground
@@ -132,11 +137,15 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
         width={width}
         viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
         skyBandHeight={skyBandHeight}
+        nightCanvasActive={nightCanvasActive}
+        nightShowMoon={nightShowMoon}
         skyOverlays={
-          <>
-            <SkyTimePhaseLayer scene={scene} />
-            <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
-          </>
+          nightCanvasActive ? null : (
+            <>
+              <SkyTimePhaseLayer scene={scene} />
+              <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
+            </>
+          )
         }
       >
         {label ? (
@@ -152,12 +161,32 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
             scrollLeft={scrollLeft}
             tileWidth={width}
             viewportHeight={sceneHeight}
+            groundY={groundY}
             month={activeTile.month}
             groundVariant={activeTile.groundVariant}
             groundSeed={activeTile.groundSeed}
             sceneSeason={scene.season}
             sceneReady={scene.status === 'ready'}
+            nightMode={nightCanvasActive}
             getTileGround={(tileIndex) => previewMonths[tileIndex] ?? null}
+          />
+
+          {nightCanvasActive ? (
+            <NightSceneCanvas
+              active
+              layer="fireflies"
+              showMoon={false}
+              sceneHeight={sceneHeight}
+              className="pointer-events-none absolute inset-0 z-[2]"
+            />
+          ) : null}
+
+          <SwayingGrassCanvas
+            scrollLeft={scrollLeft}
+            tileWidth={width}
+            viewportHeight={sceneHeight}
+            seed={PREVIEW_GROUND_SEED}
+            className="pointer-events-none absolute inset-0 z-[3]"
           />
 
           <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
@@ -201,7 +230,7 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
 
           <div
             ref={scrollRef}
-            className="garden-pan absolute inset-0 z-[2]"
+            className="garden-pan absolute inset-0 z-[5]"
             onScroll={(e) => setScrollLeft(e.currentTarget.scrollLeft)}
           >
             <div

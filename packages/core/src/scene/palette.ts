@@ -123,6 +123,13 @@ export function getHillColors(season: Season): HillColors {
   return HILLS_BY_SEASON[season];
 }
 
+/** Night meadow hill fills — reference palette; SVG paths unchanged. */
+export function getNightHillColors(): HillColors {
+  return { far: '#1c3c18', mid: '#255022', near: '#306a29' };
+}
+
+export const NIGHT_MEADOW_BASE = '#194218';
+
 export function getAmbientOverlay(timePhase: TimePhase): AmbientOverlaySpec {
   return AMBIENT_BY_PHASE[timePhase];
 }

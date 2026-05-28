@@ -8,7 +8,6 @@ import {
   getStarField,
   isMoonPhase,
   isNightPhase,
-  MOON_COLORS,
   NIGHT_CLOUD_COLORS,
 } from '@bloom/core/scene';
 
@@ -17,10 +16,16 @@ import { useSceneContext } from '@/lib/scene/SceneContext';
 const MOON_SIZE = 52;
 const MOON_GLOW_SIZE = 96;
 
-export function CelestialLayer() {
+type Props = {
+  /** When set (night sky band), use instead of default sky fraction of window. */
+  skyHeight?: number;
+  showMoon?: boolean;
+};
+
+export function CelestialLayer({ skyHeight: skyHeightProp, showMoon = true }: Props = {} as Props) {
   const scene = useSceneContext();
   const { width, height } = Dimensions.get('window');
-  const skyH = getGardenSkyHeight(height);
+  const skyH = skyHeightProp ?? getGardenSkyHeight(height);
 
   const stars = useMemo(() => getStarField(65), []);
   const nightClouds = useMemo(() => getNightCloudField(10), []);
@@ -28,7 +33,7 @@ export function CelestialLayer() {
   if (scene.status !== 'ready') return null;
 
   const showSun = scene.timePhase === 'dawn';
-  const showMoon = isMoonPhase(scene.timePhase);
+  const showMoonDisc = showMoon && isMoonPhase(scene.timePhase);
   const showStars = isNightPhase(scene.timePhase);
   const showNightClouds = isMoonPhase(scene.timePhase) || isNightPhase(scene.timePhase);
 
@@ -98,7 +103,7 @@ export function CelestialLayer() {
           })
         : null}
 
-      {showMoon ? (
+      {showMoonDisc ? (
         <Svg
           width={MOON_GLOW_SIZE}
           height={MOON_GLOW_SIZE}
@@ -110,9 +115,9 @@ export function CelestialLayer() {
         >
           <Defs>
             <RadialGradient id="moonGrad" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={MOON_COLORS.core} />
-              <Stop offset="55%" stopColor={MOON_COLORS.core} />
-              <Stop offset="100%" stopColor={MOON_COLORS.glow} />
+              <Stop offset="0%" stopColor="#f4f6ff" />
+              <Stop offset="55%" stopColor="#dde2f0" />
+              <Stop offset="100%" stopColor="#b8bfd4" />
             </RadialGradient>
           </Defs>
           <Circle
