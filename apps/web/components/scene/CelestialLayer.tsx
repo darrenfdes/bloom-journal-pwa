@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 
 import {
   getMoonPhaseShadowSvgPath,
-  getMoonRotationDeg,
   getNightCloudField,
   getStarField,
   isMoonPhase,
@@ -59,9 +58,7 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
   const moonTop = skyHeight * 0.12;
   const moonR = MOON_SIZE / 2;
   const latitude = scene.weather?.coords.lat ?? 0;
-  const hour = new Date().getHours();
-  const moonRotation = getMoonRotationDeg(latitude, hour);
-  const moonShadowPath = getMoonPhaseShadowSvgPath(moonR, scene.moon, latitude, hour);
+  const moonShadowPath = getMoonPhaseShadowSvgPath(moonR, scene.moon, latitude);
 
   return (
     <div
@@ -141,8 +138,6 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
             position: 'absolute',
             right: moonRight,
             top: moonTop,
-            transform: `rotate(${moonRotation}deg)`,
-            transformOrigin: 'center center',
           }}
           aria-hidden
         >

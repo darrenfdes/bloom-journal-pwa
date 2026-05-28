@@ -36,7 +36,6 @@ export interface MoonPhaseMaskGeometry {
   shadowWidthFrac: number;
   /** Side the shadow grows from before latitude flip. */
   shadowSide: 'left' | 'right';
-  rotationDeg: number;
 }
 
 export function bucketPhaseName(phase: number): MoonPhaseName {
@@ -61,10 +60,6 @@ export function getMoonPhase(date: Date): MoonPhaseState {
   return { phase, illumination, name, waxing };
 }
 
-export function getMoonRotationDeg(latitude: number, hour: number): number {
-  return latitude * 1.5 + (hour - 12) * 15 * 0.7;
-}
-
 function resolveShadowSide(waxing: boolean, latitude: number): 'left' | 'right' {
   const northern = latitude >= 0;
   const litFromRight = northern ? waxing : !waxing;
@@ -74,13 +69,10 @@ function resolveShadowSide(waxing: boolean, latitude: number): 'left' | 'right' 
 /** Shadow mask geometry — crescent/quarter use outer overlay; gibbous uses inner cutout. */
 export function getMoonPhaseMaskGeometry(
   moon: MoonPhaseState,
-  latitude = 0,
-  hour = 12
+  latitude = 0
 ): MoonPhaseMaskGeometry {
-  const rotationDeg = getMoonRotationDeg(latitude, hour);
-
   if (moon.name === 'full_moon' || moon.illumination > 0.97) {
-    return { kind: 'none', shadowWidthFrac: 0, shadowSide: 'left', rotationDeg };
+    return { kind: 'none', shadowWidthFrac: 0, shadowSide: 'left' };
   }
 
   const shadowWidthFrac = Math.max(0, Math.min(1, 1 - moon.illumination));
@@ -91,7 +83,6 @@ export function getMoonPhaseMaskGeometry(
     kind: isGibbous ? 'inner' : 'outer',
     shadowWidthFrac,
     shadowSide,
-    rotationDeg,
   };
 }
 
@@ -154,16 +145,12 @@ export function applyMoonPhaseShadow(
   r: number,
   moon: MoonPhaseState,
   latitude = 0,
-  hour = 12,
   skyColor = '#070d1c'
 ): void {
-  const geom = getMoonPhaseMaskGeometry(moon, latitude, hour);
+  const geom = getMoonPhaseMaskGeometry(moon, latitude);
   if (geom.kind === 'none') return;
 
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate((geom.rotationDeg * Math.PI) / 180);
-  ctx.translate(-cx, -cy);
 
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -182,10 +169,9 @@ export function applyMoonPhaseShadow(
 export function getMoonPhaseShadowSvgPath(
   r: number,
   moon: MoonPhaseState,
-  latitude = 0,
-  hour = 12
+  latitude = 0
 ): string | null {
-  const geom = getMoonPhaseMaskGeometry(moon, latitude, hour);
+  const geom = getMoonPhaseMaskGeometry(moon, latitude);
   if (geom.kind === 'none') return null;
 
   const cx = r;

@@ -263,7 +263,6 @@ function drawMoon(
   latitude = 0
 ) {
   const { mx, my, mr } = getNightMoonLayout(W, skyBandHeight, sceneHeight);
-  const hour = new Date().getHours();
 
   const mg = ctx.createRadialGradient(
     mx - mr * 0.3,
@@ -289,7 +288,7 @@ function drawMoon(
   ctx.restore();
 
   if (moonPhase) {
-    applyMoonPhaseShadow(ctx, mx, my, mr, moonPhase, latitude, hour);
+    applyMoonPhaseShadow(ctx, mx, my, mr, moonPhase, latitude);
   }
 }
 

@@ -4,7 +4,6 @@ import Svg, { Circle, Defs, ClipPath, Ellipse, LinearGradient, Path, RadialGradi
 
 import {
   getMoonPhaseShadowSvgPath,
-  getMoonRotationDeg,
   getNightMoonCraterGeometry,
   getNightMoonLayout,
   getNightMountainSvgPaths,
@@ -87,11 +86,9 @@ export function NightMoonBand({
   const svgSize = mr * 2;
   const left = mx - mr;
   const top = my - mr;
-  const hour = new Date().getHours();
-  const rotation = getMoonRotationDeg(latitude, hour);
   const shadowPath = useMemo(
-    () => getMoonPhaseShadowSvgPath(mr, moonPhase, latitude, hour),
-    [mr, moonPhase, latitude, hour]
+    () => getMoonPhaseShadowSvgPath(mr, moonPhase, latitude),
+    [mr, moonPhase, latitude]
   );
 
   return (
@@ -99,17 +96,11 @@ export function NightMoonBand({
       style={[styles.skyRoot, styles.moonLayer, { height: skyBandHeight }]}
       pointerEvents="none"
     >
-      <View
-        style={{
-          position: 'absolute',
-          left,
-          top,
-          width: svgSize,
-          height: svgSize,
-          transform: [{ rotate: `${rotation}deg` }],
-        }}
+      <Svg
+        width={svgSize}
+        height={svgSize}
+        style={{ position: 'absolute', left, top }}
       >
-        <Svg width={svgSize} height={svgSize}>
         <Defs>
           <RadialGradient id="moonDisc" cx="35%" cy="32%" r="65%">
             <Stop offset="0%" stopColor="#f4f6ff" />
@@ -202,7 +193,6 @@ export function NightMoonBand({
             <Path d={shadowPath} fill="#070d1c" clipPath="url(#moonClip)" />
           ) : null}
         </Svg>
-      </View>
     </View>
   );
 }
