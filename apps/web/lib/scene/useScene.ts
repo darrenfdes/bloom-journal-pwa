@@ -10,12 +10,14 @@ import {
 } from '@bloom/core/scene';
 
 import { useGeolocation } from './useGeolocation';
+import { useMoonPhase } from './useMoonPhase';
 import { useTimePhase } from './useTimePhase';
 import { useWeather } from './useWeather';
 
 export function useScene(): SceneState {
   const geo = useGeolocation();
   const timePhase = useTimePhase();
+  const moon = useMoonPhase();
   const season = useMemo(() => getSeason(new Date().getMonth() + 1), []);
   const coords = geo.coords;
   const weather = useWeather(coords);
@@ -57,5 +59,6 @@ export function useScene(): SceneState {
     season,
     status,
     locationName,
+    moon,
   };
 }

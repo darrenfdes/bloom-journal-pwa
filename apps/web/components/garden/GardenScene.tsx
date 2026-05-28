@@ -43,7 +43,7 @@ import {
 } from '@bloom/core/garden/layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeason } from '@bloom/core/theme/seasons';
-import { isMoonPhase, isNightPhase } from '@bloom/core/scene';
+import { isNightPhase, shouldShowMoonDisc, type SceneState } from '@bloom/core/scene';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
 import type { EntryRecord, GardenMeta } from '@bloom/core';
@@ -269,7 +269,12 @@ export function GardenScene({ meta, entries }: Props) {
   );
 
   const nightCanvasActive = sceneReady && isNightPhase(scene.timePhase);
-  const nightShowMoon = isMoonPhase(scene.timePhase);
+  const nightShowMoon = shouldShowMoonDisc({
+    timePhase: scene.timePhase,
+    weatherCategory: scene.weather?.category,
+    moon: scene.moon,
+  });
+  const moonLatitude = scene.weather?.coords.lat ?? 0;
 
   return (
     <SeasonBackground
@@ -281,6 +286,8 @@ export function GardenScene({ meta, entries }: Props) {
       skyBandHeight={skyBandHeight}
       nightCanvasActive={nightCanvasActive}
       nightShowMoon={nightShowMoon}
+      moonPhase={scene.moon}
+      moonLatitude={moonLatitude}
       skyOverlays={
         nightCanvasActive ? null : (
           <>

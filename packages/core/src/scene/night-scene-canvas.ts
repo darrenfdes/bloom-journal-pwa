@@ -16,6 +16,7 @@ import {
   getGardenHillTop,
   getGardenMeadowHeight,
 } from '../garden/scene-layout';
+import { applyMoonPhaseShadow, type MoonPhaseState } from './moon-phase';
 
 export type NightStar = {
   x: number;
@@ -52,6 +53,8 @@ export type NightSceneState = {
 
 export type RenderNightSceneOptions = {
   showMoon?: boolean;
+  moonPhase?: MoonPhaseState;
+  latitude?: number;
   /** Pan height — required when sky band H differs (web with header offset). */
   sceneHeight?: number;
   /** When true, omit time-dependent motion (cloud drift, firefly path). */
@@ -255,9 +258,12 @@ function drawMoon(
   ctx: CanvasRenderingContext2D,
   W: number,
   skyBandHeight: number,
-  sceneHeight: number
+  sceneHeight: number,
+  moonPhase?: MoonPhaseState,
+  latitude = 0
 ) {
   const { mx, my, mr } = getNightMoonLayout(W, skyBandHeight, sceneHeight);
+  const hour = new Date().getHours();
 
   const mg = ctx.createRadialGradient(
     mx - mr * 0.3,
@@ -281,6 +287,10 @@ function drawMoon(
   ctx.clip();
   drawNightMoonCraters(ctx, mx, my, mr);
   ctx.restore();
+
+  if (moonPhase) {
+    applyMoonPhaseShadow(ctx, mx, my, mr, moonPhase, latitude, hour);
+  }
 }
 
 function drawCloud(
@@ -444,14 +454,14 @@ export function renderNightAtmosphere(
   state: NightSceneState,
   opts: RenderNightLayerOptions = {}
 ): void {
-  const { showMoon = true, animate = true, sceneHeight = skyBandHeight } = opts;
+  const { showMoon = true, animate = true, sceneHeight = skyBandHeight, moonPhase, latitude = 0 } = opts;
 
   ctx.clearRect(0, 0, W, skyBandHeight);
   drawSky(ctx, W, skyBandHeight);
   drawStars(ctx, state.stars, t);
   drawCloudsLayer(ctx, state.clouds, W, 'back', animate);
   drawMountains(ctx, W, sceneHeight, skyBandHeight);
-  if (showMoon) drawMoon(ctx, W, skyBandHeight, sceneHeight);
+  if (showMoon) drawMoon(ctx, W, skyBandHeight, sceneHeight, moonPhase, latitude);
   drawCloudsLayer(ctx, state.clouds, W, 'front', animate);
 }
 

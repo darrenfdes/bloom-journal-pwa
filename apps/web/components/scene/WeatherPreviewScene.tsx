@@ -21,7 +21,7 @@ import { computeGroundVariant } from '@bloom/core/garden/ground';
 import { getGardenGroundY } from '@bloom/core/garden/layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeason } from '@bloom/core/theme/seasons';
-import { isMoonPhase, isNightPhase, type SceneState } from '@bloom/core/scene';
+import { isNightPhase, shouldShowMoonDisc, type SceneState } from '@bloom/core/scene';
 
 /** Viewport-width tiles along the preview timeline (drag to pan). */
 const PREVIEW_TIMELINE_TILES = 16;
@@ -126,7 +126,12 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
   }, [contentWidth, width]);
 
   const nightCanvasActive = scene.status === 'ready' && isNightPhase(scene.timePhase);
-  const nightShowMoon = isMoonPhase(scene.timePhase);
+  const nightShowMoon = shouldShowMoonDisc({
+    timePhase: scene.timePhase,
+    weatherCategory: scene.weather?.category,
+    moon: scene.moon,
+  });
+  const moonLatitude = scene.weather?.coords.lat ?? 0;
 
   return (
     <ScenePreviewProvider scene={scene}>
@@ -139,6 +144,8 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
         skyBandHeight={skyBandHeight}
         nightCanvasActive={nightCanvasActive}
         nightShowMoon={nightShowMoon}
+        moonPhase={scene.moon}
+        moonLatitude={moonLatitude}
         skyOverlays={
           nightCanvasActive ? null : (
             <>

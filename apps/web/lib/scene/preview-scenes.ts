@@ -1,3 +1,4 @@
+import { getMoonPhase, type MoonPhaseState } from '@bloom/core/scene';
 import type { SceneState, TimePhase, WeatherState } from '@bloom/core/scene';
 
 const PREVIEW_COORDS = { lat: 51.5, lon: -0.1 };
@@ -16,14 +17,23 @@ function daytimeWeather(
   };
 }
 
-function daytimeScene(timePhase: TimePhase, weather: WeatherState): SceneState {
+function sceneState(
+  timePhase: TimePhase,
+  weather: WeatherState,
+  moon: MoonPhaseState = getMoonPhase(new Date())
+): SceneState {
   return {
     status: 'ready',
     timePhase,
     season: 'summer',
     locationName: null,
     weather,
+    moon,
   };
+}
+
+function daytimeScene(timePhase: TimePhase, weather: WeatherState): SceneState {
+  return sceneState(timePhase, weather);
 }
 
 export const DAWN_PREVIEW_SCENE = daytimeScene(
@@ -64,6 +74,7 @@ export const HEAVY_RAIN_PREVIEW_SCENE: SceneState = {
   timePhase: 'day',
   season: 'summer',
   locationName: null,
+  moon: getMoonPhase(new Date()),
   weather: {
     category: 'heavy_rain',
     windSpeed: 18,
@@ -76,10 +87,41 @@ export const HEAVY_RAIN_PREVIEW_SCENE: SceneState = {
   },
 };
 
+/** Night sky with heavy rain — moon should be hidden behind clouds. */
+export const NIGHT_STORM_PREVIEW_SCENE: SceneState = sceneState(
+  'night',
+  {
+    category: 'heavy_rain',
+    windSpeed: 18,
+    cloudCover: 92,
+    visibility: 6000,
+    precipitation: 8.5,
+    temperature: 14,
+    coords: PREVIEW_COORDS,
+    wmoCode: 65,
+  },
+  getMoonPhase(new Date('2026-05-29T22:00:00Z'))
+);
+
+/** Clear night with full moon (~14.77 days after 15 Jun 2026 new moon). */
+export const FULL_MOON_PREVIEW_SCENE: SceneState = sceneState(
+  'night',
+  daytimeWeather({
+    category: 'clear',
+    cloudCover: 5,
+    temperature: 14,
+    windSpeed: 4,
+    wmoCode: 0,
+  }),
+  getMoonPhase(new Date('2026-06-29T22:00:00Z'))
+);
+
 export const PREVIEW_ROUTES = [
   { href: '/preview/dawn', label: 'Dawn' },
   { href: '/preview/day', label: 'Day (clear)' },
   { href: '/preview/golden-hour', label: 'Golden hour' },
+  { href: '/preview/full-moon', label: 'Full moon (night)' },
   { href: '/preview/heavy-rain', label: 'Heavy rain' },
+  { href: '/preview/night-storm', label: 'Night storm (no moon)' },
   { href: '/preview/flowers', label: 'Flowers (all moods)' },
 ] as const;

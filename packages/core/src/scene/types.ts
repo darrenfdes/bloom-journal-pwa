@@ -1,4 +1,5 @@
 import type { Season } from '../theme/seasons';
+import type { MoonPhaseState } from './moon-phase';
 
 export type WeatherCategory =
   | 'clear'
@@ -44,6 +45,7 @@ export interface SceneState {
   season: Season;
   status: SceneStatus;
   locationName: string | null;
+  moon: MoonPhaseState;
 }
 
 /** Persisted snapshot on journal entries planted from the garden panel. */
