@@ -26,7 +26,7 @@ export function scatterInCluster(
     const angle = rng.next() * Math.PI * 2;
     const dist = Math.sqrt(rng.next());
     const x = centerX + Math.cos(angle) * radiusX * dist;
-    const y = centerY + Math.sin(angle) * radiusY * dist * 0.65;
+    const y = centerY + Math.sin(angle) * radiusY * dist;
 
     const tooClose = points.some((p) => {
       const dx = p.x - x;

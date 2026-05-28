@@ -1,5 +1,8 @@
 import { SeededRNG, hashString } from '../flowers/seeded-rng';
-import { getGardenGroundLineY } from '../garden/scene-layout';
+import {
+  getGardenFlowerVerticalRange,
+  getGardenGroundLineY,
+} from '../garden/scene-layout';
 import { scatterInCluster } from '../garden/scatter';
 import type { EntryRecord, GardenPosition } from '../types';
 import { format, parseISO } from 'date-fns';
@@ -50,6 +53,13 @@ interface MonthColumnPlan {
   centerY: number;
 }
 
+interface ClusterScatterParams {
+  radiusX: number;
+  radiusY: number;
+  minY: number;
+  maxY: number;
+}
+
 function monthKey(dateIso: string): string {
   const d = parseISO(dateIso);
   return format(d, 'yyyy-MM');
@@ -60,10 +70,38 @@ function monthLabel(key: string): string {
   return format(new Date(y!, m! - 1, 1), 'MMM yyyy');
 }
 
-function clusterCenterY(monthIndex: number, groundY: number): number {
-  const slots = [0.25, 0.5, 0.75];
-  const spread = 56;
-  return groundY - spread * slots[monthIndex % 3]!;
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function clusterCenterY(
+  monthIndex: number,
+  minY: number,
+  maxY: number,
+  monthCount: number
+): number {
+  const depthLanes = Math.max(5, Math.min(6, monthCount || 1));
+  const lane = monthIndex % depthLanes;
+  const laneT = depthLanes <= 1 ? 0 : lane / (depthLanes - 1);
+  const bandSpan = maxY - minY;
+  const easedT = 0.25 + laneT * 0.6;
+  return minY + bandSpan * easedT;
+}
+
+function getClusterScatterParams(
+  bounds: LayoutBounds,
+  monthIndex: number,
+  monthCount: number
+): ClusterScatterParams {
+  const { minY, maxY } = getGardenFlowerVerticalRange(bounds.height);
+  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
+  const radiusY = Math.max(36, (maxY - minY) * 0.38);
+  return {
+    radiusX,
+    radiusY,
+    minY,
+    maxY,
+  };
 }
 
 function depthScale(z: number, maxZ: number): number {
@@ -226,26 +264,30 @@ function computeMonthColumnPlans(
   bounds: LayoutBounds,
   paddingLeft: number
 ): MonthColumnPlan[] {
-  const groundY = getGardenGroundY(bounds);
-  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
-  const radiusY = 48;
   let cursorX = paddingLeft;
   const plans: MonthColumnPlan[] = [];
+  const monthCount = monthKeys.length;
 
   monthKeys.forEach((key, monthIndex) => {
     const clusterEntries = byMonth.get(key) ?? [];
     const columnLeft = cursorX;
     const anchor = monthIndex > 0 ? FLOW_CENTER_ANCHOR_NEXT : FLOW_CENTER_ANCHOR_FIRST;
     const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * anchor;
-    const centerY = clusterCenterY(monthIndex, groundY);
+    const scatterParams = getClusterScatterParams(bounds, monthIndex, monthCount);
+    const centerY = clusterCenterY(
+      monthIndex,
+      scatterParams.minY,
+      scatterParams.maxY,
+      monthCount
+    );
 
     const scatterSeed = hashString(key + String(clusterEntries.length));
     const points = scatterInCluster(
       clusterEntries.length,
       centerX,
       centerY,
-      radiusX,
-      radiusY,
+      scatterParams.radiusX,
+      scatterParams.radiusY,
       scatterSeed,
       78
     );
@@ -314,19 +356,19 @@ export function computeGardenLayout(
   const { byMonth, monthKeys } = groupEntriesByMonth(entries);
   const plans = resolveColumnPlans(byMonth, monthKeys, bounds);
   const placed: PlacedFlower[] = [];
-  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
-  const radiusY = 48;
   const maxMonthIndex = Math.max(monthKeys.length - 1, 0);
+  const monthCount = monthKeys.length;
 
   for (const plan of plans) {
     const clusterEntries = byMonth.get(plan.monthKey) ?? [];
+    const scatterParams = getClusterScatterParams(bounds, plan.monthIndex, monthCount);
     const scatterSeed = hashString(plan.monthKey + String(clusterEntries.length));
     const points = scatterInCluster(
       clusterEntries.length,
       plan.centerX,
       plan.centerY,
-      radiusX,
-      radiusY,
+      scatterParams.radiusX,
+      scatterParams.radiusY,
       scatterSeed,
       78
     );
@@ -340,7 +382,7 @@ export function computeGardenLayout(
 
       const position: GardenPosition = {
         x: pt.x + rng.range(-6, 6),
-        y: pt.y + rng.range(-4, 4),
+        y: clamp(pt.y + rng.range(-8, 8), scatterParams.minY, scatterParams.maxY),
         z,
         rotation: rng.range(-22, 22),
         scale,
@@ -387,7 +429,6 @@ export function assignPositionForNewEntry(
 ): GardenPosition {
   const key = monthKey(createdAt);
   const rng = new SeededRNG(hashString(newEntryId));
-  const groundY = getGardenGroundY(bounds);
 
   if (revisitOf) {
     const layout = computeGardenLayout(entries, bounds);
@@ -407,16 +448,33 @@ export function assignPositionForNewEntry(
   const sameMonth = layout.filter((p) => p.monthKey === key);
   const { byMonth, monthKeys } = groupEntriesByMonth(entries);
   const monthIndex = monthKeys.indexOf(key);
+  const scatterParams = getClusterScatterParams(
+    bounds,
+    monthIndex >= 0 ? monthIndex : monthKeys.length,
+    monthKeys.length
+  );
   const plans = resolveColumnPlans(byMonth, monthKeys, bounds);
   const plan = plans.find((p) => p.monthKey === key);
   const paddingLeft = plans[0]?.columnLeft ?? getGardenPaddingLeft(bounds, monthKeys.length);
 
   const centerX = plan?.centerX ?? paddingLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
-  const centerY =
-    plan?.centerY ?? (monthIndex >= 0 ? clusterCenterY(monthIndex, groundY) : groundY);
+  const centerY = plan?.centerY ?? clusterCenterY(
+    monthIndex >= 0 ? monthIndex : monthKeys.length,
+    scatterParams.minY,
+    scatterParams.maxY,
+    monthKeys.length
+  );
 
   const scatterSeed = hashString(key + newEntryId + String(sameMonth.length));
-  const [pt] = scatterInCluster(1, centerX, centerY, 80, 40, scatterSeed, 40);
+  const [pt] = scatterInCluster(
+    1,
+    centerX,
+    centerY,
+    scatterParams.radiusX * 0.66,
+    scatterParams.radiusY * 0.7,
+    scatterSeed,
+    40
+  );
 
   const z =
     (monthIndex >= 0 ? monthIndex : monthKeys.length) * 100 + sameMonth.length;
@@ -424,7 +482,7 @@ export function assignPositionForNewEntry(
 
   return {
     x: pt?.x ?? centerX,
-    y: pt?.y ?? centerY,
+    y: clamp(pt?.y ?? centerY, scatterParams.minY, scatterParams.maxY),
     z,
     rotation: rng.range(-18, 18),
     scale: depthScale(z, maxZ),

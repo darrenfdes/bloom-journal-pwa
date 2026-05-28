@@ -6,6 +6,7 @@ export const GARDEN_SKY_HEIGHT_FRAC = 0.28;
  * Tuned so stems sit on the front hill slope above the grass layer.
  */
 export const GARDEN_GROUND_LINE_IN_MEADOW_FRAC = 0.55;
+export const GARDEN_FLOWER_TOP_IN_MEADOW_FRAC = 0.1;
 
 export function getGardenSkyHeight(viewportHeight: number): number {
   return viewportHeight * GARDEN_SKY_HEIGHT_FRAC;
@@ -30,4 +31,23 @@ export function getGardenGroundLineY(viewportHeight: number): number {
   const meadowTop = getGardenSkyHeight(viewportHeight);
   const meadowHeight = getGardenMeadowHeight(viewportHeight);
   return meadowTop + meadowHeight * GARDEN_GROUND_LINE_IN_MEADOW_FRAC;
+}
+
+export function getGardenFlowerVerticalRange(viewportHeight: number): {
+  meadowTop: number;
+  meadowHeight: number;
+  groundY: number;
+  minY: number;
+  maxY: number;
+} {
+  const meadowTop = getGardenSkyHeight(viewportHeight);
+  const meadowHeight = getGardenMeadowHeight(viewportHeight);
+  const groundY = meadowTop + meadowHeight * GARDEN_GROUND_LINE_IN_MEADOW_FRAC;
+  return {
+    meadowTop,
+    meadowHeight,
+    groundY,
+    minY: meadowTop + meadowHeight * GARDEN_FLOWER_TOP_IN_MEADOW_FRAC,
+    maxY: groundY,
+  };
 }
