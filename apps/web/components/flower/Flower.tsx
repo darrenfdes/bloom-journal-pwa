@@ -127,17 +127,6 @@ export function Flower({
           </>
         ) : null}
 
-        {!isPumpkin ? (
-          <ellipse
-            cx={BLOOM_CX}
-            cy={bloomCy}
-            rx={24}
-            ry={26}
-            fill={palette.petalWash}
-            fillOpacity={0.92}
-          />
-        ) : null}
-
         {isPumpkin ? (
           <Pumpkin ns={ns} seed={seed} cx={BLOOM_CX} cy={bloomCy} stage={pumpkinStage!} />
         ) : (
