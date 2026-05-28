@@ -94,9 +94,16 @@ describe('shouldShowMoonDisc', () => {
 describe('getMoonPhaseMaskGeometry', () => {
   it('mirrors shadow side between hemispheres', () => {
     const moon = getMoonPhase(new Date('2026-05-29T12:00:00Z'));
-    const north = getMoonPhaseMaskGeometry(moon, 51.5, 22);
-    const south = getMoonPhaseMaskGeometry(moon, -33.86, 22);
+    const north = getMoonPhaseMaskGeometry(moon, 51.5);
+    const south = getMoonPhaseMaskGeometry(moon, -33.86);
     expect(north.shadowSide).not.toBe(south.shadowSide);
+  });
+
+  it('places waxing gibbous shadow on the left in the northern hemisphere', () => {
+    const moon = getMoonPhase(new Date('2026-05-29T12:00:00Z'));
+    const geom = getMoonPhaseMaskGeometry(moon, 51.5);
+    expect(geom.kind).toBe('inner');
+    expect(geom.shadowSide).toBe('left');
   });
 });
 

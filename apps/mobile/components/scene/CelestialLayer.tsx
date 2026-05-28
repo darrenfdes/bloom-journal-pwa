@@ -5,7 +5,6 @@ import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop, ClipPath } f
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import {
   getMoonPhaseShadowSvgPath,
-  getMoonRotationDeg,
   getNightCloudField,
   getStarField,
   isMoonPhase,
@@ -54,9 +53,7 @@ export function CelestialLayer({ skyHeight: skyHeightProp, showMoon = true }: Pr
   const moonR = MOON_SIZE / 2;
   const moonOffset = (MOON_GLOW_SIZE - MOON_SIZE) / 2;
   const latitude = scene.weather?.coords.lat ?? 0;
-  const hour = new Date().getHours();
-  const moonRotation = getMoonRotationDeg(latitude, hour);
-  const moonShadowPath = getMoonPhaseShadowSvgPath(moonR, scene.moon, latitude, hour);
+  const moonShadowPath = getMoonPhaseShadowSvgPath(moonR, scene.moon, latitude);
 
   return (
     <View style={[styles.layer, { height: skyH }]} pointerEvents="none">
@@ -126,7 +123,6 @@ export function CelestialLayer({ skyHeight: skyHeightProp, showMoon = true }: Pr
             top: moonTop - moonOffset,
             width: MOON_GLOW_SIZE,
             height: MOON_GLOW_SIZE,
-            transform: [{ rotate: `${moonRotation}deg` }],
           }}
         >
           <Svg width={MOON_GLOW_SIZE} height={MOON_GLOW_SIZE}>
