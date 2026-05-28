@@ -22,22 +22,25 @@ interface Bell {
 export function WistfulBluebells({ ns, palette, cx, cy }: BloomProps) {
   const bellGrad = nsId(ns, 'bellGrad');
   const innerShadow = nsId(ns, 'bellShadow');
+  const lipGrad = nsId(ns, 'bellLip');
 
-  const hub = { x: cx, y: cy - 18 };
+  const hub = { x: cx, y: cy - 20 };
 
   const bells: Bell[] = [
-    { x: cx - 14, y: cy - 4, scale: 0.95, rotation: -22 },
-    { x: cx + 12, y: cy - 8, scale: 0.85, rotation: 18 },
-    { x: cx - 10, y: cy + 12, scale: 1, rotation: -10 },
-    { x: cx + 14, y: cy + 6, scale: 0.9, rotation: 26 },
-    { x: cx + 2, y: cy + 16, scale: 1.05, rotation: 6 },
+    { x: cx - 15, y: cy - 8, scale: 0.9, rotation: -24 },
+    { x: cx + 13, y: cy - 11, scale: 0.82, rotation: 20 },
+    { x: cx - 13, y: cy + 7, scale: 1, rotation: -13 },
+    { x: cx + 15, y: cy + 4, scale: 0.92, rotation: 27 },
+    { x: cx - 2, y: cy + 16, scale: 1.08, rotation: -3 },
+    { x: cx + 7, y: cy + 13, scale: 0.78, rotation: 13 },
   ];
 
   return (
     <G>
       <Defs>
         <LinearGradient id={bellGrad} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={palette.petalMid} stopOpacity="1" />
+          <Stop offset="0%" stopColor={palette.petalHighlight} stopOpacity="0.9" />
+          <Stop offset="42%" stopColor={palette.petalMid} stopOpacity="1" />
           <Stop offset="55%" stopColor={palette.petalWash} stopOpacity="1" />
           <Stop offset="100%" stopColor={palette.petalDark} stopOpacity="1" />
         </LinearGradient>
@@ -45,16 +48,20 @@ export function WistfulBluebells({ ns, palette, cx, cy }: BloomProps) {
           <Stop offset="0%" stopColor={palette.petalDeepest} stopOpacity="0.75" />
           <Stop offset="100%" stopColor={palette.petalDeepest} stopOpacity="0" />
         </RadialGradient>
+        <LinearGradient id={lipGrad} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0%" stopColor={palette.petalHighlight} stopOpacity="0.85" />
+          <Stop offset="100%" stopColor={palette.pollen} stopOpacity="0.35" />
+        </LinearGradient>
       </Defs>
 
       <G>
         {bells.map((b, i) => (
           <Path
             key={`twig-${i}`}
-            d={`M ${hub.x.toFixed(2)} ${hub.y.toFixed(2)} Q ${((hub.x + b.x) / 2).toFixed(2)} ${(b.y - 4).toFixed(2)} ${b.x.toFixed(2)} ${(b.y - 4).toFixed(2)}`}
+            d={`M ${hub.x.toFixed(2)} ${hub.y.toFixed(2)} Q ${((hub.x + b.x) / 2).toFixed(2)} ${(b.y - 8).toFixed(2)} ${b.x.toFixed(2)} ${(b.y - 5).toFixed(2)}`}
             stroke={palette.stem}
-            strokeWidth={0.9}
-            strokeOpacity={0.85}
+            strokeWidth={0.95}
+            strokeOpacity={0.8}
             strokeLinecap="round"
             fill="none"
           />
@@ -62,7 +69,14 @@ export function WistfulBluebells({ ns, palette, cx, cy }: BloomProps) {
       </G>
 
       {bells.map((b, i) => (
-        <Bell key={`bell-${i}`} bell={b} palette={palette} bellGrad={bellGrad} innerShadow={innerShadow} />
+        <Bell
+          key={`bell-${i}`}
+          bell={b}
+          palette={palette}
+          bellGrad={bellGrad}
+          innerShadow={innerShadow}
+          lipGrad={lipGrad}
+        />
       ))}
     </G>
   );
@@ -73,35 +87,37 @@ function Bell({
   palette,
   bellGrad,
   innerShadow,
+  lipGrad,
 }: {
   bell: Bell;
   palette: BloomProps['palette'];
   bellGrad: string;
   innerShadow: string;
+  lipGrad: string;
 }) {
-  const w = 4.5 * bell.scale;
-  const h = 9 * bell.scale;
-  const lipDip = 1 * bell.scale;
-  const scallops = 5;
+  const w = 5.2 * bell.scale;
+  const h = 10.2 * bell.scale;
+  const lipDip = 1.15 * bell.scale;
+  const scallops = 6;
 
   const left = -w;
   const right = w;
   const top = -h * 0.5;
   const bottom = h * 0.5;
   const shoulderY = top + h * 0.2;
-  const flareY = top + h * 0.6;
+  const flareY = top + h * 0.62;
 
   let d = `M 0 ${top.toFixed(2)} `;
-  d += `C ${(w * 0.55).toFixed(2)} ${shoulderY.toFixed(2)} ${(w * 0.9).toFixed(2)} ${flareY.toFixed(2)} ${right.toFixed(2)} ${(bottom - lipDip).toFixed(2)} `;
+  d += `C ${(w * 0.42).toFixed(2)} ${shoulderY.toFixed(2)} ${(w * 0.98).toFixed(2)} ${flareY.toFixed(2)} ${right.toFixed(2)} ${(bottom - lipDip).toFixed(2)} `;
   for (let i = 0; i < scallops; i++) {
     const t0 = i / scallops;
     const t1 = (i + 1) / scallops;
     const xa = right + (left - right) * t0;
     const xb = right + (left - right) * t1;
     const midX = (xa + xb) / 2;
-    d += `Q ${midX.toFixed(2)} ${(bottom + lipDip * 1.4).toFixed(2)} ${xb.toFixed(2)} ${(bottom - lipDip).toFixed(2)} `;
+    d += `Q ${midX.toFixed(2)} ${(bottom + lipDip * 1.5).toFixed(2)} ${xb.toFixed(2)} ${(bottom - lipDip).toFixed(2)} `;
   }
-  d += `C ${(-w * 0.9).toFixed(2)} ${flareY.toFixed(2)} ${(-w * 0.55).toFixed(2)} ${shoulderY.toFixed(2)} 0 ${top.toFixed(2)} Z`;
+  d += `C ${(-w * 0.98).toFixed(2)} ${flareY.toFixed(2)} ${(-w * 0.42).toFixed(2)} ${shoulderY.toFixed(2)} 0 ${top.toFixed(2)} Z`;
 
   return (
     <G
@@ -115,6 +131,15 @@ function Bell({
         strokeWidth={0.45}
         strokeOpacity={0.7}
         strokeLinejoin="round"
+      />
+
+      <Path
+        d={`M ${left.toFixed(2)} ${(bottom - lipDip * 0.95).toFixed(2)} Q 0 ${(bottom + lipDip * 1.35).toFixed(2)} ${right.toFixed(2)} ${(bottom - lipDip * 0.95).toFixed(2)}`}
+        stroke={`url(#${lipGrad})`}
+        strokeWidth={1.15}
+        strokeOpacity={0.75}
+        strokeLinecap="round"
+        fill="none"
       />
 
       <Ellipse
@@ -133,8 +158,8 @@ function Bell({
             key={`vein-${i}`}
             d={`M ${x.toFixed(2)} ${(bottom - lipDip).toFixed(2)} Q ${(x * 0.4).toFixed(2)} ${(h * 0.15).toFixed(2)} 0 ${top.toFixed(2)}`}
             stroke={palette.petalDeepest}
-            strokeWidth={0.32}
-            strokeOpacity={0.45}
+            strokeWidth={0.3}
+            strokeOpacity={0.38}
             fill="none"
           />
         );
@@ -146,11 +171,11 @@ function Bell({
         rx={w * 0.18}
         ry={h * 0.35}
         fill={palette.petalHighlight}
-        fillOpacity={0.55}
+        fillOpacity={0.5}
       />
 
       {Array.from({ length: 5 }, (_, i) => {
-        const sx = (-w * 0.45) + (i * w * 0.225);
+        const sx = (-w * 0.43) + (i * w * 0.215);
         const sy = bottom - lipDip * 0.5;
         return (
           <G key={`stamen-${i}`}>
@@ -167,9 +192,9 @@ function Bell({
 
       <Ellipse
         cx={0}
-        cy={top - 0.6}
-        rx={w * 0.28}
-        ry={0.8}
+        cy={top - 0.7}
+        rx={w * 0.3}
+        ry={0.85}
         fill={palette.stem}
         fillOpacity={0.9}
       />
