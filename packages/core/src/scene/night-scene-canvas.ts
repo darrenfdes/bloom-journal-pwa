@@ -126,8 +126,6 @@ function drawSky(ctx: CanvasRenderingContext2D, W: number, H: number) {
   g.addColorStop(1, '#11203a');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, skyHeight);
-  ctx.fillStyle = '#11203a';
-  ctx.fillRect(0, skyHeight, W, H - skyHeight);
 }
 
 function drawStars(ctx: CanvasRenderingContext2D, stars: NightStar[], t: number) {
@@ -219,65 +217,6 @@ function drawMountains(ctx: CanvasRenderingContext2D, W: number, H: number) {
   ctx.fillRect(0, meadowTop, W, mountainBase - meadowTop + H * 0.02);
 }
 
-/**
- * Hill silhouettes mirror the SVG `buildHillPaths` crests so day/dawn/golden-hour
- * and night previews share one consistent skyline — only palette and lighting change.
- * Crest fractions are relative to the meadow band, matching season-hills.ts.
- */
-function drawHills(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  const meadowTop = getGardenHillTop(H);
-  const meadowH = getGardenMeadowHeight(H);
-  const y = (frac: number) => meadowTop + meadowH * frac;
-
-  ctx.fillStyle = '#1c3c18';
-  ctx.beginPath();
-  ctx.moveTo(0, y(0.10));
-  ctx.bezierCurveTo(W * 0.15, y(0.02), W * 0.32, y(0.14), W * 0.5, y(0.08));
-  ctx.bezierCurveTo(W * 0.7, y(0.0), W * 0.85, y(0.18), W, y(0.10));
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = '#255022';
-  ctx.beginPath();
-  ctx.moveTo(0, y(0.35));
-  ctx.bezierCurveTo(W * 0.2, y(0.25), W * 0.4, y(0.40), W * 0.55, y(0.30));
-  ctx.bezierCurveTo(W * 0.75, y(0.20), W * 0.88, y(0.35), W, y(0.28));
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = '#306a29';
-  ctx.beginPath();
-  ctx.moveTo(0, y(0.55));
-  ctx.bezierCurveTo(W * 0.18, y(0.45), W * 0.35, y(0.57), W * 0.5, y(0.51));
-  ctx.bezierCurveTo(W * 0.72, y(0.43), W * 0.88, y(0.57), W, y(0.51));
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawGrass(
-  ctx: CanvasRenderingContext2D,
-  grass: NightBlade[],
-  t: number,
-  animate: boolean
-) {
-  grass.forEach((g) => {
-    const sway = animate ? Math.sin(t * 0.021 + g.off) * g.h * 0.28 : 0;
-    ctx.strokeStyle = g.c;
-    ctx.lineWidth = 1.4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(g.x, g.y);
-    ctx.quadraticCurveTo(g.x + sway * 0.5, g.y - g.h * 0.55, g.x + sway, g.y - g.h);
-    ctx.stroke();
-  });
-}
-
 function drawFireflies(
   ctx: CanvasRenderingContext2D,
   flies: NightFirefly[],
@@ -333,7 +272,5 @@ export function renderNightScene(
   drawClouds(ctx, state.clouds, W, animate);
   if (showMoon) drawMoon(ctx, W, H);
   drawMountains(ctx, W, H);
-  drawHills(ctx, W, H);
-  drawGrass(ctx, state.grass, t, animate);
   drawFireflies(ctx, state.flies, W, H, animate);
 }

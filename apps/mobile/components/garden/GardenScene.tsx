@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   NativeScrollEvent,
@@ -18,7 +18,10 @@ import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { GrassLayer } from '@/components/garden/GrassLayer';
 import { GroundTexture } from '@/components/garden/GroundTexture';
 import { PollenSparkles } from '@/components/garden/PollenSparkles';
-import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
+import {
+  RepeatingSeasonGround,
+  gardenTileScrollOffset,
+} from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
 import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
@@ -30,13 +33,14 @@ import { useSceneContext } from '@/lib/scene/SceneContext';
 import { computeGroundVariant } from '@/lib/garden/ground';
 import { applyGardenFilter } from '@/lib/garden/filters';
 import {
-  GARDEN_CLUSTER_BAND_WIDTH,
   computeGardenLayout,
   getGardenContentWidth,
   getGardenFocusScrollX,
   getGardenGroundY,
   getMonthClusters,
+  resolveClusterAtWorldX,
 } from '@/lib/garden/layout';
+import { getSeason } from '@/lib/theme/seasons';
 import { useGardenRubberBandPan } from '@/lib/hooks/useGardenRubberBandPan';
 import { isXRangeVisible } from '@/lib/garden/visibility';
 import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
@@ -89,8 +93,8 @@ export function GardenScene({ meta, entries }: Props) {
   );
   const clusters = useMemo(() => getMonthClusters(filtered, bounds), [filtered, bounds]);
   const contentWidth = useMemo(
-    () => getGardenContentWidth(clusters.length, width),
-    [clusters.length, width]
+    () => getGardenContentWidth(clusters, width, bounds),
+    [clusters, width, bounds]
   );
   const maxScroll = Math.max(0, contentWidth - width);
   const rubberBandEnabled = maxScroll <= 0 && width > 0;
@@ -111,11 +115,32 @@ export function GardenScene({ meta, entries }: Props) {
   const groundSeed = meta.id.charCodeAt(0) + meta.id.charCodeAt(meta.id.length - 1);
   const groundVariant = computeGroundVariant(gardenMonth, groundSeed);
 
+  const getTileGround = useCallback(
+    (tileIndex: number) => {
+      if (width <= 0 || clusters.length === 0) return null;
+      const offset = gardenTileScrollOffset(visualScrollLeft, width);
+      const tileCenterX = tileIndex * width - offset + visualScrollLeft + width / 2;
+      const cluster = resolveClusterAtWorldX(tileCenterX, clusters);
+      if (!cluster) return null;
+      const month = new Date(`${cluster.monthKey}-01`).getMonth() + 1;
+      const groundSeed =
+        cluster.monthKey.charCodeAt(0) * 31 +
+        cluster.monthKey.charCodeAt(cluster.monthKey.length - 1);
+      return {
+        month,
+        groundSeed,
+        groundVariant: computeGroundVariant(month, groundSeed),
+        season: getSeason(month),
+      };
+    },
+    [clusters, visualScrollLeft, width]
+  );
+
   const visibleClusterKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const c of clusters) {
       const left = c.groundX;
-      const right = c.groundX + GARDEN_CLUSTER_BAND_WIDTH;
+      const right = c.groundX + c.columnWidth;
       if (isXRangeVisible(left, right, scrollLeft, width, VIEWPORT_BUFFER)) {
         keys.add(c.monthKey);
       }
@@ -180,6 +205,7 @@ export function GardenScene({ meta, entries }: Props) {
             groundSeed={groundSeed}
             sceneSeason={scene.season}
             sceneReady={sceneReady}
+            getTileGround={getTileGround}
           />
 
           <Animated.ScrollView
@@ -203,16 +229,16 @@ export function GardenScene({ meta, entries }: Props) {
 
             return (
               <React.Fragment key={`ground-${c.monthKey}`}>
-                <View style={{ position: 'absolute', left: c.groundX, width: GARDEN_CLUSTER_BAND_WIDTH }}>
+                <View style={{ position: 'absolute', left: c.groundX, width: c.columnWidth }}>
                   <GroundTexture
-                    width={GARDEN_CLUSTER_BAND_WIDTH}
+                    width={c.columnWidth}
                     height={180}
                     groundY={clusterGroundY}
                     variant={clusterGround}
                     seed={clusterSeed}
                   />
                   <GrassLayer
-                    width={GARDEN_CLUSTER_BAND_WIDTH}
+                    width={c.columnWidth}
                     height={180}
                     groundY={clusterGroundY}
                     month={clusterMonth}

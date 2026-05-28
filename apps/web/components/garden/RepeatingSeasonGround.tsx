@@ -34,7 +34,7 @@ type Props = {
   getTileGround?: (tileIndex: number) => TileGround | null;
 };
 
-function tileScrollOffset(scrollLeft: number, tileWidth: number): number {
+export function gardenTileScrollOffset(scrollLeft: number, tileWidth: number): number {
   if (tileWidth <= 0) return 0;
   return ((scrollLeft % tileWidth) + tileWidth) % tileWidth;
 }
@@ -60,7 +60,7 @@ export function RepeatingSeasonGround({
   const groundSvgH = getGardenHillSvgHeight(viewportHeight) + hillSkyOverlap;
   const hillPaths = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
-  const offset = tileScrollOffset(scrollLeft, tileWidth);
+  const offset = gardenTileScrollOffset(scrollLeft, tileWidth);
   const startIndex = tileWidth > 0 ? Math.floor(scrollLeft / tileWidth) - 1 : 0;
   const endIndex =
     tileWidth > 0 ? Math.ceil((scrollLeft + tileWidth) / tileWidth) + 1 : startIndex + 3;
@@ -100,6 +100,16 @@ export function RepeatingSeasonGround({
 
         return (
           <React.Fragment key={tileIndex}>
+            <div
+              className="absolute"
+              style={{
+                left: x,
+                top: hillTop,
+                width: tileWidth,
+                height: viewportHeight - hillTop,
+                backgroundColor: groundStyle.frontBottom,
+              }}
+            />
             <div
               className="absolute inset-y-0"
               style={{ left: x, width: tileWidth, backgroundColor: groundStyle.haze, opacity: 0.22 }}

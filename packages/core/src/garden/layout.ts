@@ -5,9 +5,16 @@ import type { EntryRecord, GardenPosition } from '../types';
 import { format, parseISO } from 'date-fns';
 
 export const GARDEN_CLUSTER_BAND_WIDTH = 320;
-export const GARDEN_CLUSTER_GAP = 60;
+/** Spacer between month columns after the rightmost bloom in the previous month. */
+export const GARDEN_INTER_MONTH_GAP = 20;
+/** @deprecated Use GARDEN_INTER_MONTH_GAP — kept for callers that still import the old name. */
+export const GARDEN_CLUSTER_GAP = GARDEN_INTER_MONTH_GAP;
 export const GARDEN_PADDING_LEFT = 200;
 export const GARDEN_PADDING_RIGHT = 200;
+
+const GARDEN_STEM_EDGE_MARGIN = 48;
+const FLOW_CENTER_ANCHOR_FIRST = 0.5;
+const FLOW_CENTER_ANCHOR_NEXT = 0.55;
 
 export interface LayoutBounds {
   width: number;
@@ -28,8 +35,19 @@ export interface MonthCluster {
   groundX: number;
   /** Horizontal center of the month column. */
   centerX: number;
+  /** Virtualizer / ground overlay width for this month band. */
+  columnWidth: number;
   /** Shared horizon Y for labels and ground overlays. */
   groundY: number;
+}
+
+interface MonthColumnPlan {
+  monthKey: string;
+  monthIndex: number;
+  columnLeft: number;
+  columnWidth: number;
+  centerX: number;
+  centerY: number;
 }
 
 function monthKey(dateIso: string): string {
@@ -58,11 +76,20 @@ export function getGardenGroundY(bounds: LayoutBounds): number {
   return getGardenGroundLineY(bounds.height);
 }
 
-function monthBandContentWidth(monthCount: number): number {
+function bandContentWidthFromClusters(
+  clusters: MonthCluster[],
+  paddingLeft: number
+): number {
+  if (clusters.length === 0) return GARDEN_CLUSTER_BAND_WIDTH;
+  const last = clusters[clusters.length - 1]!;
+  return last.groundX + last.columnWidth - paddingLeft;
+}
+
+function estimateBandContentWidth(monthCount: number): number {
   if (monthCount <= 0) return GARDEN_CLUSTER_BAND_WIDTH;
   return (
     monthCount * GARDEN_CLUSTER_BAND_WIDTH +
-    Math.max(0, monthCount - 1) * GARDEN_CLUSTER_GAP
+    Math.max(0, monthCount - 1) * GARDEN_INTER_MONTH_GAP
   );
 }
 
@@ -74,9 +101,14 @@ export interface GardenHorizontalPadding {
 /** Side padding — centers a single month column when the pan is wider than the band. */
 export function getGardenHorizontalPadding(
   bounds: LayoutBounds,
-  monthCount: number
+  monthCount: number,
+  clusters?: MonthCluster[]
 ): GardenHorizontalPadding {
-  const bandContent = monthBandContentWidth(monthCount);
+  const paddingLeft = GARDEN_PADDING_LEFT;
+  const bandContent =
+    clusters && clusters.length > 0
+      ? bandContentWidthFromClusters(clusters, paddingLeft)
+      : estimateBandContentWidth(monthCount);
   if (monthCount <= 1 && bounds.width > bandContent) {
     const side = Math.max(16, (bounds.width - bandContent) / 2);
     return { paddingLeft: side, paddingRight: side };
@@ -84,20 +116,36 @@ export function getGardenHorizontalPadding(
   return { paddingLeft: GARDEN_PADDING_LEFT, paddingRight: GARDEN_PADDING_RIGHT };
 }
 
-export function getGardenPaddingLeft(bounds: LayoutBounds, monthCount: number): number {
-  return getGardenHorizontalPadding(bounds, monthCount).paddingLeft;
+export function getGardenPaddingLeft(
+  bounds: LayoutBounds,
+  monthCount: number,
+  clusters?: MonthCluster[]
+): number {
+  return getGardenHorizontalPadding(bounds, monthCount, clusters).paddingLeft;
 }
 
 /** Total world width for the horizontal garden canvas. */
-export function getGardenContentWidth(monthCount: number, viewportWidth = 0): number {
-  const bandContent = monthBandContentWidth(monthCount);
+export function getGardenContentWidth(
+  clusters: MonthCluster[],
+  viewportWidth = 0,
+  bounds?: LayoutBounds
+): number {
+  const monthCount = clusters.length;
+  const padding = bounds
+    ? getGardenHorizontalPadding(bounds, monthCount, clusters)
+    : { paddingLeft: GARDEN_PADDING_LEFT, paddingRight: GARDEN_PADDING_RIGHT };
+  const bandContent =
+    monthCount > 0
+      ? bandContentWidthFromClusters(clusters, padding.paddingLeft)
+      : GARDEN_CLUSTER_BAND_WIDTH;
+
   if (monthCount <= 1 && viewportWidth > bandContent) {
     return viewportWidth;
   }
   if (monthCount <= 0) {
-    return GARDEN_PADDING_LEFT + GARDEN_PADDING_RIGHT + GARDEN_CLUSTER_BAND_WIDTH;
+    return padding.paddingLeft + padding.paddingRight + GARDEN_CLUSTER_BAND_WIDTH;
   }
-  return GARDEN_PADDING_LEFT + bandContent + GARDEN_PADDING_RIGHT;
+  return padding.paddingLeft + bandContent + padding.paddingRight;
 }
 
 /** Scroll position that centers the latest month (or empty-garden column) in the viewport. */
@@ -117,18 +165,34 @@ export function getGardenFocusScrollX(
   return Math.min(Math.max(0, centerX - viewportWidth / 2), maxScroll);
 }
 
-function monthColumnLeft(monthIndex: number, paddingLeft: number): number {
-  return paddingLeft + monthIndex * (GARDEN_CLUSTER_BAND_WIDTH + GARDEN_CLUSTER_GAP);
+/** Month cluster whose column band contains this world-space X. */
+export function resolveClusterAtWorldX(
+  worldX: number,
+  clusters: MonthCluster[]
+): MonthCluster | null {
+  for (const cluster of clusters) {
+    if (worldX >= cluster.groundX && worldX < cluster.groundX + cluster.columnWidth) {
+      return cluster;
+    }
+  }
+  if (clusters.length === 0) return null;
+  let best = clusters[0]!;
+  let bestDist = Math.abs(worldX - (best.groundX + best.columnWidth / 2));
+  for (let i = 1; i < clusters.length; i += 1) {
+    const c = clusters[i]!;
+    const dist = Math.abs(worldX - (c.groundX + c.columnWidth / 2));
+    if (dist < bestDist) {
+      best = c;
+      bestDist = dist;
+    }
+  }
+  return best;
 }
 
-/**
- * Deterministic layout — ignores stale DB coords for display.
- * Oldest months on the left, newest on the right; x/y = stem base on world canvas.
- */
-export function computeGardenLayout(
-  entries: EntryRecord[],
-  bounds: LayoutBounds
-): PlacedFlower[] {
+function groupEntriesByMonth(entries: EntryRecord[]): {
+  byMonth: Map<string, EntryRecord[]>;
+  monthKeys: string[];
+} {
   const active = entries.filter((e) => !e.isDeleted);
   const sorted = [...active].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -142,18 +206,37 @@ export function computeGardenLayout(
     byMonth.set(key, list);
   }
 
-  const monthKeys = [...byMonth.keys()].sort();
-  const placed: PlacedFlower[] = [];
+  return { byMonth, monthKeys: [...byMonth.keys()].sort() };
+}
+
+function plansToClusters(plans: MonthColumnPlan[], groundY: number): MonthCluster[] {
+  return plans.map((plan) => ({
+    monthKey: plan.monthKey,
+    label: monthLabel(plan.monthKey),
+    groundX: plan.columnLeft,
+    centerX: plan.centerX,
+    columnWidth: plan.columnWidth,
+    groundY: groundY - 48,
+  }));
+}
+
+function computeMonthColumnPlans(
+  byMonth: Map<string, EntryRecord[]>,
+  monthKeys: string[],
+  bounds: LayoutBounds,
+  paddingLeft: number
+): MonthColumnPlan[] {
   const groundY = getGardenGroundY(bounds);
-  const paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
   const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
   const radiusY = 48;
-  const maxMonthIndex = Math.max(monthKeys.length - 1, 0);
+  let cursorX = paddingLeft;
+  const plans: MonthColumnPlan[] = [];
 
   monthKeys.forEach((key, monthIndex) => {
     const clusterEntries = byMonth.get(key) ?? [];
-    const columnLeft = monthColumnLeft(monthIndex, paddingLeft);
-    const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
+    const columnLeft = cursorX;
+    const anchor = monthIndex > 0 ? FLOW_CENTER_ANCHOR_NEXT : FLOW_CENTER_ANCHOR_FIRST;
+    const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * anchor;
     const centerY = clusterCenterY(monthIndex, groundY);
 
     const scatterSeed = hashString(key + String(clusterEntries.length));
@@ -167,10 +250,91 @@ export function computeGardenLayout(
       78
     );
 
+    let maxFlowerX = columnLeft;
     clusterEntries.forEach((entry, index) => {
       const pt = points[index] ?? { x: centerX, y: centerY };
       const rng = new SeededRNG(hashString(entry.id + key));
-      const z = monthIndex * 100 + index;
+      const x = pt.x + rng.range(-6, 6);
+      maxFlowerX = Math.max(maxFlowerX, x);
+    });
+
+    const columnRight =
+      clusterEntries.length === 0
+        ? columnLeft + GARDEN_CLUSTER_BAND_WIDTH
+        : maxFlowerX + GARDEN_STEM_EDGE_MARGIN;
+    const columnWidth = Math.max(
+      GARDEN_CLUSTER_BAND_WIDTH * 0.5,
+      columnRight - columnLeft
+    );
+
+    plans.push({
+      monthKey: key,
+      monthIndex,
+      columnLeft,
+      columnWidth,
+      centerX,
+      centerY,
+    });
+
+    cursorX = columnLeft + columnWidth + GARDEN_INTER_MONTH_GAP;
+  });
+
+  return plans;
+}
+
+function resolveColumnPlans(
+  byMonth: Map<string, EntryRecord[]>,
+  monthKeys: string[],
+  bounds: LayoutBounds
+): MonthColumnPlan[] {
+  let paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
+  let plans = computeMonthColumnPlans(byMonth, monthKeys, bounds, paddingLeft);
+
+  if (monthKeys.length <= 1) {
+    const groundY = getGardenGroundY(bounds);
+    const preliminary = plansToClusters(plans, groundY);
+    const padding = getGardenHorizontalPadding(bounds, monthKeys.length, preliminary);
+    if (padding.paddingLeft !== paddingLeft) {
+      paddingLeft = padding.paddingLeft;
+      plans = computeMonthColumnPlans(byMonth, monthKeys, bounds, paddingLeft);
+    }
+  }
+
+  return plans;
+}
+
+/**
+ * Deterministic layout — ignores stale DB coords for display.
+ * Oldest months on the left, newest on the right; x/y = stem base on world canvas.
+ */
+export function computeGardenLayout(
+  entries: EntryRecord[],
+  bounds: LayoutBounds
+): PlacedFlower[] {
+  const { byMonth, monthKeys } = groupEntriesByMonth(entries);
+  const plans = resolveColumnPlans(byMonth, monthKeys, bounds);
+  const placed: PlacedFlower[] = [];
+  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
+  const radiusY = 48;
+  const maxMonthIndex = Math.max(monthKeys.length - 1, 0);
+
+  for (const plan of plans) {
+    const clusterEntries = byMonth.get(plan.monthKey) ?? [];
+    const scatterSeed = hashString(plan.monthKey + String(clusterEntries.length));
+    const points = scatterInCluster(
+      clusterEntries.length,
+      plan.centerX,
+      plan.centerY,
+      radiusX,
+      radiusY,
+      scatterSeed,
+      78
+    );
+
+    clusterEntries.forEach((entry, index) => {
+      const pt = points[index] ?? { x: plan.centerX, y: plan.centerY };
+      const rng = new SeededRNG(hashString(entry.id + plan.monthKey));
+      const z = plan.monthIndex * 100 + index;
       const maxZ = maxMonthIndex * 100 + clusterEntries.length;
       const scale = depthScale(z, maxZ);
 
@@ -182,9 +346,9 @@ export function computeGardenLayout(
         scale,
       };
 
-      placed.push({ entry, position, monthKey: key });
+      placed.push({ entry, position, monthKey: plan.monthKey });
     });
-  });
+  }
 
   return placed;
 }
@@ -194,31 +358,24 @@ export function getMonthClusters(
   bounds: LayoutBounds
 ): MonthCluster[] {
   const layout = computeGardenLayout(entries, bounds);
-  const seen = new Set<string>();
-  const clusters: MonthCluster[] = [];
+  const { byMonth, monthKeys } = groupEntriesByMonth(entries);
+  const plans = resolveColumnPlans(byMonth, monthKeys, bounds);
   const groundY = getGardenGroundY(bounds);
-  const monthKeys = [...new Set(layout.map((p) => p.monthKey))].sort();
-  const paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
 
-  for (const key of monthKeys) {
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const monthIndex = monthKeys.indexOf(key);
-    const inMonth = layout.filter((x) => x.monthKey === key);
-    const columnLeft = monthColumnLeft(monthIndex, paddingLeft);
+  return plans.map((plan) => {
+    const inMonth = layout.filter((x) => x.monthKey === plan.monthKey);
     const centerX =
       inMonth.reduce((s, x) => s + x.position.x, 0) / Math.max(inMonth.length, 1);
 
-    clusters.push({
-      monthKey: key,
-      label: monthLabel(key),
-      groundX: columnLeft,
+    return {
+      monthKey: plan.monthKey,
+      label: monthLabel(plan.monthKey),
+      groundX: plan.columnLeft,
       centerX,
+      columnWidth: plan.columnWidth,
       groundY: groundY - 48,
-    });
-  }
-
-  return clusters;
+    };
+  });
 }
 
 export function assignPositionForNewEntry(
@@ -248,25 +405,18 @@ export function assignPositionForNewEntry(
 
   const layout = computeGardenLayout(entries, bounds);
   const sameMonth = layout.filter((p) => p.monthKey === key);
-  const monthKeys = [...new Set(layout.map((p) => p.monthKey))].sort();
+  const { byMonth, monthKeys } = groupEntriesByMonth(entries);
   const monthIndex = monthKeys.indexOf(key);
-  const paddingLeft = getGardenPaddingLeft(bounds, monthKeys.length);
-  const columnLeft =
-    monthIndex >= 0 ? monthColumnLeft(monthIndex, paddingLeft) : paddingLeft;
-  const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
+  const plans = resolveColumnPlans(byMonth, monthKeys, bounds);
+  const plan = plans.find((p) => p.monthKey === key);
+  const paddingLeft = plans[0]?.columnLeft ?? getGardenPaddingLeft(bounds, monthKeys.length);
+
+  const centerX = plan?.centerX ?? paddingLeft + GARDEN_CLUSTER_BAND_WIDTH * 0.5;
   const centerY =
-    monthIndex >= 0 ? clusterCenterY(monthIndex, groundY) : groundY;
+    plan?.centerY ?? (monthIndex >= 0 ? clusterCenterY(monthIndex, groundY) : groundY);
 
   const scatterSeed = hashString(key + newEntryId + String(sameMonth.length));
-  const [pt] = scatterInCluster(
-    1,
-    centerX,
-    centerY,
-    80,
-    40,
-    scatterSeed,
-    40
-  );
+  const [pt] = scatterInCluster(1, centerX, centerY, 80, 40, scatterSeed, 40);
 
   const z =
     (monthIndex >= 0 ? monthIndex : monthKeys.length) * 100 + sameMonth.length;
