@@ -35,6 +35,7 @@ export function GrassLayer({
     const rng = new SeededRNG(seed);
     const tufts: { d: string; opacity: number; fill: string }[] = [];
     const blossoms: { cx: number; cy: number; r: number; fill: string }[] = [];
+    const microGrass: { d: string; opacity: number; stroke: string }[] = [];
 
     const greenBase =
       groundVariant === 3
@@ -75,7 +76,30 @@ export function GrassLayer({
       }
     }
 
-    return { tufts, blossoms };
+    // Tiny micro-grass blades to fill the meadow (similar to night scene grass)
+    const microCount = Math.round(effectiveDensity * 1.6);
+    const microGreens =
+      groundVariant === 3
+        ? ['rgba(50, 85, 42, 0.45)', 'rgba(62, 95, 50, 0.4)']
+        : groundVariant === 4
+          ? ['rgba(130, 115, 60, 0.4)', 'rgba(150, 135, 75, 0.35)']
+          : ['rgba(85, 120, 68, 0.42)', 'rgba(110, 145, 85, 0.38)'];
+
+    for (let i = 0; i < microCount; i++) {
+      const x = rng.range(0, width);
+      const baseY = groundY + rng.range(-6, Math.max(8, height - groundY - 8));
+      const h = rng.range(3, 8);
+      const lean = rng.range(-3, 3);
+      const stroke = rng.next() < 0.5 ? microGreens[0]! : microGreens[1]!;
+
+      microGrass.push({
+        d: `M ${x} ${baseY + h} Q ${x + lean} ${baseY + h * 0.35} ${x + lean * 0.5} ${baseY}`,
+        opacity: rng.range(0.35, 0.65),
+        stroke,
+      });
+    }
+
+    return { tufts, blossoms, microGrass };
   }, [effectiveDensity, groundVariant, groundY, height, params, seed, width]);
 
   return (
@@ -84,6 +108,17 @@ export function GrassLayer({
       style={{ width, height: height - groundY + 24, top: groundY - 24 }}
     >
       <svg width={width} height={height - groundY + 24}>
+        {elements.microGrass.map((mg, i) => (
+          <path
+            key={`mg-${i}`}
+            d={mg.d}
+            stroke={mg.stroke}
+            strokeWidth={0.8}
+            fill="none"
+            opacity={mg.opacity}
+            strokeLinecap="round"
+          />
+        ))}
         {elements.tufts.map((t, i) => (
           <path key={`g-${i}`} d={t.d} fill={t.fill} opacity={t.opacity} />
         ))}

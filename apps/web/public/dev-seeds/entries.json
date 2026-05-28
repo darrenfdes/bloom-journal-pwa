@@ -1,0 +1,65 @@
+{
+  "gardenMeta": {
+    "theme": "watercolor",
+    "layoutMode": "organic",
+    "lastEntryAt": "2026-06-15T09:30:00.000Z",
+    "hasPlantedFirst": true,
+    "unlockedSeasons": []
+  },
+  "entries": [
+    {
+      "id": "seed-entry-april-2026",
+      "title": "April test bloom",
+      "content": "Writing after spring rain. The air felt clear and hopeful.",
+      "mood": "calm",
+      "inferredSentiment": "positive",
+      "tags": ["seed", "april"],
+      "createdAt": "2026-04-12T08:10:00.000Z",
+      "updatedAt": "2026-04-12T08:10:00.000Z",
+      "flowerSeed": 12041,
+      "flowerStyle": {
+        "speciesSeed": 1
+      },
+      "gardenPosition": {
+        "x": 260,
+        "y": 470,
+        "z": 0,
+        "rotation": -6,
+        "scale": 0.92
+      },
+      "isFavourited": false,
+      "revisitOf": null,
+      "isDeleted": false,
+      "weather": null,
+      "timePhase": "dawn",
+      "sceneSeason": "spring"
+    },
+    {
+      "id": "seed-entry-june-2026",
+      "title": "June test bloom",
+      "content": "Long daylight walk and a bright, energized mood.",
+      "mood": "joyful",
+      "inferredSentiment": "positive",
+      "tags": ["seed", "june"],
+      "createdAt": "2026-06-15T09:30:00.000Z",
+      "updatedAt": "2026-06-15T09:30:00.000Z",
+      "flowerSeed": 12099,
+      "flowerStyle": {
+        "speciesSeed": 3
+      },
+      "gardenPosition": {
+        "x": 610,
+        "y": 465,
+        "z": 100,
+        "rotation": 8,
+        "scale": 1.04
+      },
+      "isFavourited": false,
+      "revisitOf": null,
+      "isDeleted": false,
+      "weather": null,
+      "timePhase": "day",
+      "sceneSeason": "summer"
+    }
+  ]
+}

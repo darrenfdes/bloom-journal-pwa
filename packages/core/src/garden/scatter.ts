@@ -8,6 +8,10 @@ export interface ScatterPoint {
 /**
  * Deterministic organic scatter inside an ellipse.
  * minDistance keeps blooms from overlapping.
+ *
+ * Progressive radius: early points cluster tightly near center,
+ * expanding outward as more points are placed. This fills the area
+ * around the month tag first.
  */
 export function scatterInCluster(
   count: number,
@@ -24,7 +28,14 @@ export function scatterInCluster(
 
   for (let attempt = 0; attempt < count * 40 && points.length < count; attempt++) {
     const angle = rng.next() * Math.PI * 2;
-    const dist = Math.sqrt(rng.next());
+    const rawDist = Math.sqrt(rng.next());
+
+    // Progressive radius: early points stay in the inner ellipse,
+    // later points expand toward the full radius.
+    const progress = count <= 1 ? 1 : points.length / (count - 1);
+    const radiusFrac = 0.45 + 0.55 * progress;
+    const dist = rawDist * radiusFrac;
+
     const x = centerX + Math.cos(angle) * radiusX * dist;
     const y = centerY + Math.sin(angle) * radiusY * dist;
 

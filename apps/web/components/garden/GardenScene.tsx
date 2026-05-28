@@ -17,10 +17,7 @@ import { GardenPanIndicator } from '@/components/garden/GardenPanIndicator';
 import { GrassLayer } from '@/components/garden/GrassLayer';
 import { GroundTexture } from '@/components/garden/GroundTexture';
 import { PollenSparkles } from '@/components/garden/PollenSparkles';
-import {
-  RepeatingSeasonGround,
-  gardenTileScrollOffset,
-} from '@/components/garden/RepeatingSeasonGround';
+import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
 
@@ -123,7 +120,6 @@ export function GardenScene({ meta, entries }: Props) {
     viewportWidth: width,
     enabled: rubberBandEnabled,
   });
-  const visualScrollLeft = scrollLeft + rubberBandOffset;
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const clusterGroundY = groundY + 4;
   const meadowSkyHeight = useMemo(
@@ -164,7 +160,7 @@ export function GardenScene({ meta, entries }: Props) {
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) => clusters[index]?.columnWidth ?? DEFAULT_COLUMN_SIZE,
     horizontal: true,
-    overscan: 2,
+    overscan: 3,
     paddingStart: horizontalPadding.paddingLeft,
     paddingEnd: horizontalPadding.paddingRight,
     scrollMargin: 0,
@@ -177,13 +173,12 @@ export function GardenScene({ meta, entries }: Props) {
   const getTileGround = useCallback(
     (tileIndex: number) => {
       if (width <= 0 || clusters.length === 0) return null;
-      const offset = gardenTileScrollOffset(visualScrollLeft, width);
-      const tileCenterX = tileIndex * width - offset + visualScrollLeft + width / 2;
+      const tileCenterX = tileIndex * width + width / 2;
       const cluster = resolveClusterAtWorldX(tileCenterX, clusters);
       if (!cluster) return null;
       return clusterGroundFromKey(cluster.monthKey);
     },
-    [clusters, visualScrollLeft, width]
+    [clusters, width]
   );
 
   useLayoutEffect(() => {
@@ -312,47 +307,45 @@ export function GardenScene({ meta, entries }: Props) {
       </div>
 
       <div ref={panRef} className="relative z-[1] mt-2 min-h-0 flex-1">
-        <div
-          className="absolute inset-0"
-          style={{
-            transform: rubberBandEnabled
-              ? `translateX(${-rubberBandOffset}px)`
-              : undefined,
-          }}
-        >
-          <RepeatingSeasonGround
-            scrollLeft={visualScrollLeft}
-            wrapperOffset={rubberBandOffset}
-            tileWidth={width}
-            viewportHeight={sceneHeight}
-            month={gardenMonth}
-            groundVariant={groundVariant}
-            groundSeed={groundSeed}
-            sceneSeason={scene.season}
-            sceneReady={sceneReady}
-            getTileGround={getTileGround}
-          />
-
-          <div ref={scrollRef} className="garden-pan absolute inset-0 z-[1]">
-          {nightCanvasActive ? null : (
-            <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
-              <PollenSparkles
-                width={width}
-                height={sceneHeight}
-                count={pollenCount}
-                seed={groundSeed}
-              />
-            </div>
-          )}
-
+        {/* Scroll container — hills, meadow, flowers all scroll together */}
+        <div ref={scrollRef} className="garden-pan absolute inset-0">
           <div
             className="relative shrink-0"
             style={{
               width: contentWidth,
               minWidth: contentWidth,
               height: sceneHeight,
+              transform: rubberBandEnabled
+                ? `translateX(${-rubberBandOffset}px)`
+                : undefined,
             }}
           >
+            {/* Hills + meadow ground — scrolls with content */}
+            <RepeatingSeasonGround
+              contentWidth={contentWidth}
+              tileWidth={width}
+              viewportHeight={sceneHeight}
+              month={gardenMonth}
+              groundVariant={groundVariant}
+              groundSeed={groundSeed}
+              sceneSeason={scene.season}
+              sceneReady={sceneReady}
+              getTileGround={getTileGround}
+            />
+
+            {/* Pollen sparkles — scroll with the flowers */}
+            {nightCanvasActive ? null : (
+              <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+                <PollenSparkles
+                  width={contentWidth}
+                  height={sceneHeight}
+                  count={pollenCount}
+                  seed={groundSeed}
+                />
+              </div>
+            )}
+
+            {/* Virtualized month columns */}
             {columnVirtualizer.getVirtualItems().map((virtualColumn) => {
               const cluster = clusters[virtualColumn.index];
               if (!cluster) return null;
@@ -450,7 +443,6 @@ export function GardenScene({ meta, entries }: Props) {
             />
           ) : null}
           </div>
-        </div>
         </div>
 
         <GardenPanIndicator
