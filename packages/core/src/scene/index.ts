@@ -12,3 +12,4 @@ export * from './night-clouds';
 export * from './night-scene-canvas';
 export * from './open-meteo';
 export * from './nominatim';
+export * from './moon-phase';

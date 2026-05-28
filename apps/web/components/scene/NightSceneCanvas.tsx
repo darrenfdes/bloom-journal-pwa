@@ -8,11 +8,13 @@ import {
   renderNightFireflies,
   renderNightScene,
 } from '@bloom/core/scene';
-import type { NightSceneState } from '@bloom/core/scene';
+import type { MoonPhaseState, NightSceneState } from '@bloom/core/scene';
 
 type Props = {
   active: boolean;
   showMoon?: boolean;
+  moonPhase?: MoonPhaseState;
+  latitude?: number;
   /** atmosphere = fixed sky behind pan; fireflies = meadow FX in pan */
   layer?: 'full' | 'atmosphere' | 'fireflies';
   /** Fixed sky band height (atmosphere layer). */
@@ -37,6 +39,8 @@ function usePrefersReducedMotion(): boolean {
 export function NightSceneCanvas({
   active,
   showMoon = true,
+  moonPhase,
+  latitude = 0,
   layer = 'full',
   bandHeight,
   sceneHeight,
@@ -82,7 +86,7 @@ export function NightSceneCanvas({
       const state = stateRef.current;
       if (!state || W <= 0 || H <= 0) return;
       const skyH = bandHeight ?? H;
-      const opts = { showMoon, animate, sceneHeight: panH };
+      const opts = { showMoon, moonPhase, latitude, animate, sceneHeight: panH };
       if (layer === 'atmosphere') {
         renderNightAtmosphere(ctx, W, skyH, frame, state, opts);
       } else if (layer === 'fireflies') {
@@ -116,7 +120,7 @@ export function NightSceneCanvas({
       if (raf) cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [active, showMoon, layer, bandHeight, sceneHeight, reducedMotion]);
+  }, [active, showMoon, moonPhase, latitude, layer, bandHeight, sceneHeight, reducedMotion]);
 
   return (
     <div

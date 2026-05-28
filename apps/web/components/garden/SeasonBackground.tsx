@@ -9,6 +9,7 @@ import { getHorizonGlow } from '@bloom/core/garden/season-hills';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeasonPalette } from '@bloom/core/theme/seasons';
 import type { GroundVariant } from '@bloom/core';
+import type { MoonPhaseState } from '@bloom/core/scene';
 
 type Props = {
   month?: number;
@@ -24,6 +25,8 @@ type Props = {
   nightCanvasActive?: boolean;
   /** Whether the night canvas should render the moon (passed when nightCanvasActive). */
   nightShowMoon?: boolean;
+  moonPhase?: MoonPhaseState;
+  moonLatitude?: number;
   children: React.ReactNode;
 };
 
@@ -38,6 +41,8 @@ export function SeasonBackground({
   skyOverlays,
   nightCanvasActive = false,
   nightShowMoon = true,
+  moonPhase,
+  moonLatitude = 0,
   children,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
@@ -56,6 +61,8 @@ export function SeasonBackground({
             active
             layer="atmosphere"
             showMoon={nightShowMoon}
+            moonPhase={moonPhase}
+            latitude={moonLatitude}
             bandHeight={skyH}
             sceneHeight={viewportHeight}
             className="absolute inset-0"

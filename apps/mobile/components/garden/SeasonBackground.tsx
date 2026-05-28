@@ -11,6 +11,7 @@ import { getHorizonGlow } from '@bloom/core/garden/season-hills';
 import { computeSkyBandHeight } from '@bloom/core/garden/horizon-layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeasonPalette } from '@/lib/theme/seasons';
+import type { MoonPhaseState } from '@bloom/core/scene';
 import type { GroundVariant } from '@/lib/types';
 
 type Props = {
@@ -19,6 +20,8 @@ type Props = {
   groundSeed?: number;
   nightCanvasActive?: boolean;
   nightShowMoon?: boolean;
+  moonPhase?: MoonPhaseState;
+  moonLatitude?: number;
   /** Pan top offset from screen top (header + chrome). */
   panTopOffset?: number;
   /** Pan viewport height. */
@@ -33,6 +36,8 @@ export function SeasonBackground({
   groundSeed = 0,
   nightCanvasActive = false,
   nightShowMoon: _nightShowMoon = true,
+  moonPhase,
+  moonLatitude = 0,
   panTopOffset = 0,
   sceneHeight: sceneHeightProp,
   children,
@@ -85,11 +90,13 @@ export function SeasonBackground({
             skyBandHeight={skyBandHeight}
             sceneHeight={sceneHeight}
           />
-          {_nightShowMoon ? (
+          {_nightShowMoon && moonPhase ? (
             <NightMoonBand
               width={width}
               skyBandHeight={skyBandHeight}
               sceneHeight={sceneHeight}
+              moonPhase={moonPhase}
+              latitude={moonLatitude}
             />
           ) : null}
         </>

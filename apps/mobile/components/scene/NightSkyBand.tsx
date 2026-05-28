@@ -1,13 +1,16 @@
 import React, { useMemo } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, ClipPath, Ellipse, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, ClipPath, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import {
+  getMoonPhaseShadowSvgPath,
+  getMoonRotationDeg,
   getNightMoonCraterGeometry,
   getNightMoonLayout,
   getNightMountainSvgPaths,
   NIGHT_MOON_CRATER_DETAIL_MIN_R,
   NIGHT_MOON_CRATERS,
+  type MoonPhaseState,
 } from '@bloom/core/scene';
 
 type SkyBandProps = {
@@ -64,10 +67,18 @@ export function NightMountainBand({ width, skyBandHeight, sceneHeight }: Mountai
 
 type MoonBandProps = SkyBandProps & {
   sceneHeight: number;
+  moonPhase: MoonPhaseState;
+  latitude?: number;
 };
 
 /** Moon with craters — rendered above distant mountain silhouettes. */
-export function NightMoonBand({ width, skyBandHeight, sceneHeight }: MoonBandProps) {
+export function NightMoonBand({
+  width,
+  skyBandHeight,
+  sceneHeight,
+  moonPhase,
+  latitude = 0,
+}: MoonBandProps) {
   const W = width ?? Dimensions.get('window').width;
   const { mx, my, mr } = useMemo(
     () => getNightMoonLayout(W, skyBandHeight, sceneHeight),
@@ -76,17 +87,29 @@ export function NightMoonBand({ width, skyBandHeight, sceneHeight }: MoonBandPro
   const svgSize = mr * 2;
   const left = mx - mr;
   const top = my - mr;
+  const hour = new Date().getHours();
+  const rotation = getMoonRotationDeg(latitude, hour);
+  const shadowPath = useMemo(
+    () => getMoonPhaseShadowSvgPath(mr, moonPhase, latitude, hour),
+    [mr, moonPhase, latitude, hour]
+  );
 
   return (
     <View
       style={[styles.skyRoot, styles.moonLayer, { height: skyBandHeight }]}
       pointerEvents="none"
     >
-      <Svg
-        width={svgSize}
-        height={svgSize}
-        style={{ position: 'absolute', left, top }}
+      <View
+        style={{
+          position: 'absolute',
+          left,
+          top,
+          width: svgSize,
+          height: svgSize,
+          transform: [{ rotate: `${rotation}deg` }],
+        }}
       >
+        <Svg width={svgSize} height={svgSize}>
         <Defs>
           <RadialGradient id="moonDisc" cx="35%" cy="32%" r="65%">
             <Stop offset="0%" stopColor="#f4f6ff" />
@@ -175,7 +198,11 @@ export function NightMoonBand({ width, skyBandHeight, sceneHeight }: MoonBandPro
             </React.Fragment>
           );
         })}
-      </Svg>
+          {shadowPath ? (
+            <Path d={shadowPath} fill="#070d1c" clipPath="url(#moonClip)" />
+          ) : null}
+        </Svg>
+      </View>
     </View>
   );
 }

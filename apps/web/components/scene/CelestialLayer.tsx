@@ -3,11 +3,14 @@
 import { useMemo } from 'react';
 
 import {
+  getMoonPhaseShadowSvgPath,
+  getMoonRotationDeg,
   getNightCloudField,
   getStarField,
   isMoonPhase,
   isNightPhase,
   NIGHT_CLOUD_COLORS,
+  shouldShowMoonDisc,
 } from '@bloom/core/scene';
 import type { SceneState, TimePhase } from '@bloom/core/scene';
 
@@ -18,6 +21,8 @@ type Props = {
   width: number;
   skyHeight: number;
 };
+
+const MOON_SIZE = 52;
 
 function sunPosition(phase: TimePhase, width: number, skyHeight: number) {
   switch (phase) {
@@ -40,12 +45,23 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
 
   if (!ready) return null;
 
-  // Daytime sun is AmbientSky (upper right); only show rising sun here at dawn.
   const showSun = timePhase === 'dawn';
-  const showMoon = isMoonPhase(timePhase);
+  const showMoonDisc = shouldShowMoonDisc({
+    timePhase,
+    weatherCategory: scene.weather?.category,
+    moon: scene.moon,
+  });
   const showStars = isNightPhase(timePhase);
   const showNightClouds = isMoonPhase(timePhase) || isNightPhase(timePhase);
   const sun = sunPosition(timePhase, width, skyHeight);
+
+  const moonRight = width * 0.12;
+  const moonTop = skyHeight * 0.12;
+  const moonR = MOON_SIZE / 2;
+  const latitude = scene.weather?.coords.lat ?? 0;
+  const hour = new Date().getHours();
+  const moonRotation = getMoonRotationDeg(latitude, hour);
+  const moonShadowPath = getMoonPhaseShadowSvgPath(moonR, scene.moon, latitude, hour);
 
   return (
     <div
@@ -117,21 +133,34 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
           })
         : null}
 
-      {showMoon ? (
-        <div
+      {showMoonDisc ? (
+        <svg
+          width={MOON_SIZE}
+          height={MOON_SIZE}
           style={{
             position: 'absolute',
-            right: width * 0.12,
-            top: skyHeight * 0.12,
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background:
-              'radial-gradient(circle at 35% 32%, #f4f6ff 0%, #dde2f0 55%, #b8bfd4 100%)',
-            boxShadow:
-              'inset -6px -4px 12px rgba(90,98,130,0.2), 0 0 32px rgba(220,225,245,0.5)',
+            right: moonRight,
+            top: moonTop,
+            transform: `rotate(${moonRotation}deg)`,
+            transformOrigin: 'center center',
           }}
-        />
+          aria-hidden
+        >
+          <defs>
+            <radialGradient id="celestialMoonGrad" cx="35%" cy="32%" r="65%">
+              <stop offset="0%" stopColor="#f4f6ff" />
+              <stop offset="55%" stopColor="#dde2f0" />
+              <stop offset="100%" stopColor="#b8bfd4" />
+            </radialGradient>
+            <clipPath id="celestialMoonClip">
+              <circle cx={moonR} cy={moonR} r={moonR} />
+            </clipPath>
+          </defs>
+          <circle cx={moonR} cy={moonR} r={moonR} fill="url(#celestialMoonGrad)" />
+          {moonShadowPath ? (
+            <path d={moonShadowPath} fill="#070d1c" clipPath="url(#celestialMoonClip)" />
+          ) : null}
+        </svg>
       ) : null}
     </div>
   );

@@ -242,6 +242,7 @@ export function shouldHideFlowersForWinter(season: Season): boolean {
   return season === 'winter';
 }
 
+/** True when the time-of-day window can show a moon disc (not the lunar phase). */
 export function isMoonPhase(timePhase: TimePhase): boolean {
   return (
     timePhase === 'dusk' ||

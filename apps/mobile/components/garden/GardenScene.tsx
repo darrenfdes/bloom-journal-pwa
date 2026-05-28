@@ -49,9 +49,9 @@ import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
 import { isAnniversaryBlossom } from '@/lib/garden/anniversary';
 import {
   getWindSwayDegrees,
-  isMoonPhase,
   isNightPhase,
   shouldHideFlowersForWinter,
+  shouldShowMoonDisc,
 } from '@bloom/core';
 import { MOODS } from '@/lib/constants/moods';
 import { fonts, palette } from '@/lib/theme';
@@ -172,7 +172,12 @@ export function GardenScene({ meta, entries }: Props) {
   };
 
   const nightCanvasActive = sceneReady && isNightPhase(scene.timePhase);
-  const nightShowMoon = isMoonPhase(scene.timePhase);
+  const nightShowMoon = shouldShowMoonDisc({
+    timePhase: scene.timePhase,
+    weatherCategory: scene.weather?.category,
+    moon: scene.moon,
+  });
+  const moonLatitude = scene.weather?.coords.lat ?? 0;
 
   return (
     <SeasonBackground
@@ -181,6 +186,8 @@ export function GardenScene({ meta, entries }: Props) {
       month={gardenMonth}
       nightCanvasActive={nightCanvasActive}
       nightShowMoon={nightShowMoon}
+      moonPhase={scene.moon}
+      moonLatitude={moonLatitude}
       panTopOffset={panTopOffset}
       sceneHeight={sceneHeight}
     >
