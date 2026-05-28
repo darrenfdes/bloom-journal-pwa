@@ -2,15 +2,19 @@
  * Imperative canvas 2D renderer for the night garden scene.
  *
  * Pure draw/init logic — no React, no DOM ownership. Consumers create a state
- * via `createNightSceneState(W, H)` and call `renderNightScene` on each animation
- * frame (or once for a static render).
+ * via `createNightSceneState(W, skyBandHeight, sceneHeight)` and call
+ * `renderNightAtmosphere` on each animation frame (or once for a static render).
+ *
+ * Hill geometry stays in SVG (buildHillPaths); this draws sky, mountains, and FX only.
  */
 
 import {
-  getGardenGroundLineY,
+  getGardenHorizonLayout,
+  MOUNTAIN_REF_MAX,
+} from '../garden/horizon-layout';
+import {
   getGardenHillTop,
   getGardenMeadowHeight,
-  getGardenSkyHeight,
 } from '../garden/scene-layout';
 
 export type NightStar = {
@@ -27,14 +31,7 @@ export type NightCloud = {
   w: number;
   h: number;
   spd: number;
-};
-
-export type NightBlade = {
-  x: number;
-  y: number;
-  h: number;
-  off: number;
-  c: string;
+  layer: 'back' | 'front';
 };
 
 export type NightFirefly = {
@@ -50,55 +47,48 @@ export type NightFirefly = {
 export type NightSceneState = {
   stars: NightStar[];
   clouds: NightCloud[];
-  grass: NightBlade[];
   flies: NightFirefly[];
 };
 
 export type RenderNightSceneOptions = {
   showMoon?: boolean;
-  /** When true, omit time-dependent motion (cloud drift, sway, firefly path). */
+  /** Pan height — required when sky band H differs (web with header offset). */
+  sceneHeight?: number;
+  /** When true, omit time-dependent motion (cloud drift, firefly path). */
   animate?: boolean;
 };
 
-function nightMeadowY(H: number, meadowFrac: number): number {
-  return getGardenHillTop(H) + getGardenMeadowHeight(H) * meadowFrac;
-}
+export type RenderNightLayerOptions = RenderNightSceneOptions;
 
-function initStars(W: number, H: number): NightStar[] {
+const CLOUD_BACK_Y_FRAC = 0.38;
+
+function initStars(W: number, skyBandHeight: number): NightStar[] {
   return Array.from({ length: 78 }, () => ({
     x: Math.random() * W,
-    y: Math.random() * H * 0.52,
+    y: Math.random() * skyBandHeight * 0.92,
     r: 0.4 + Math.random() * 1.1,
     t0: Math.random() * Math.PI * 2,
     ts: 0.007 + Math.random() * 0.016,
   }));
 }
 
-function initClouds(W: number, H: number): NightCloud[] {
-  return Array.from({ length: 4 }, (_, i) => ({
-    x: (i / 4) * W * 1.6 - W * 0.1,
-    y: H * 0.06 + Math.random() * H * 0.22,
-    w: 90 + Math.random() * 160,
-    h: 16 + Math.random() * 30,
-    spd: 0.10 + Math.random() * 0.18,
-  }));
+function initClouds(W: number, skyBandHeight: number): NightCloud[] {
+  return Array.from({ length: 4 }, (_, i) => {
+    const y = skyBandHeight * 0.06 + Math.random() * skyBandHeight * 0.22;
+    return {
+      x: (i / 4) * W * 1.6 - W * 0.1,
+      y,
+      w: 90 + Math.random() * 160,
+      h: 16 + Math.random() * 30,
+      spd: 0.1 + Math.random() * 0.18,
+      layer: y < skyBandHeight * CLOUD_BACK_Y_FRAC ? 'back' : 'front',
+    };
+  });
 }
 
-function initGrass(W: number, H: number): NightBlade[] {
-  const groundLine = getGardenGroundLineY(H);
-  const meadowHeight = getGardenMeadowHeight(H);
-  return Array.from({ length: 38 }, () => ({
-    x: Math.random() * W,
-    y: groundLine + meadowHeight * 0.08 + Math.random() * meadowHeight * 0.09,
-    h: H * 0.024 + Math.random() * H * 0.038,
-    off: Math.random() * Math.PI * 2,
-    c: Math.random() > 0.5 ? '#4a8a3e' : '#2e6228',
-  }));
-}
-
-function initFireflies(W: number, H: number): NightFirefly[] {
-  const meadowTop = getGardenHillTop(H);
-  const meadowHeight = getGardenMeadowHeight(H);
+function initFireflies(W: number, sceneHeight: number): NightFirefly[] {
+  const meadowTop = getGardenHillTop(sceneHeight);
+  const meadowHeight = getGardenMeadowHeight(sceneHeight);
   return Array.from({ length: 9 }, () => ({
     x: 60 + Math.random() * (W - 120),
     y: meadowTop + meadowHeight * 0.18 + Math.random() * meadowHeight * 0.42,
@@ -110,22 +100,24 @@ function initFireflies(W: number, H: number): NightFirefly[] {
   }));
 }
 
-export function createNightSceneState(W: number, H: number): NightSceneState {
+export function createNightSceneState(
+  W: number,
+  skyBandHeight: number,
+  sceneHeight: number = skyBandHeight
+): NightSceneState {
   return {
-    stars: initStars(W, H),
-    clouds: initClouds(W, H),
-    grass: initGrass(W, H),
-    flies: initFireflies(W, H),
+    stars: initStars(W, skyBandHeight),
+    clouds: initClouds(W, skyBandHeight),
+    flies: initFireflies(W, sceneHeight),
   };
 }
 
-function drawSky(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  const skyHeight = getGardenSkyHeight(H);
-  const g = ctx.createLinearGradient(0, 0, 0, skyHeight);
+function drawSky(ctx: CanvasRenderingContext2D, W: number, skyBandHeight: number) {
+  const g = ctx.createLinearGradient(0, 0, 0, skyBandHeight);
   g.addColorStop(0, '#070d1c');
   g.addColorStop(1, '#11203a');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, skyHeight);
+  ctx.fillRect(0, 0, W, skyBandHeight);
 }
 
 function drawStars(ctx: CanvasRenderingContext2D, stars: NightStar[], t: number) {
@@ -138,99 +130,155 @@ function drawStars(ctx: CanvasRenderingContext2D, stars: NightStar[], t: number)
   });
 }
 
-function drawMoon(ctx: CanvasRenderingContext2D, W: number, H: number) {
+export type NightMoonCrater = {
+  dx: number;
+  dy: number;
+  r: number;
+  shade?: number;
+};
+
+/** Normalized crater positions relative to moon radius — shared by canvas + SVG. */
+export const NIGHT_MOON_CRATERS: NightMoonCrater[] = [
+  { dx: -0.34, dy: -0.24, r: 0.14, shade: 0.28 },
+  { dx: 0.3, dy: -0.2, r: 0.09, shade: 0.22 },
+  { dx: -0.2, dy: 0.3, r: 0.11, shade: 0.24 },
+  { dx: 0.26, dy: 0.24, r: 0.07, shade: 0.2 },
+];
+
+export function getNightMoonLayout(
+  W: number,
+  skyBandHeight: number,
+  sceneHeight: number
+): { mx: number; my: number; mr: number } {
+  const mr = sceneHeight * 0.053;
   const mx = W * 0.87;
-  const my = H * 0.09;
-  const mr = H * 0.053;
+  const my = Math.min(sceneHeight * 0.09, skyBandHeight * 0.32);
+  return { mx, my, mr };
+}
 
-  const hg = ctx.createRadialGradient(mx, my, mr * 0.85, mx, my, mr * 2.8);
-  hg.addColorStop(0, 'rgba(190,208,228,0.11)');
-  hg.addColorStop(1, 'rgba(190,208,228,0)');
-  ctx.fillStyle = hg;
-  ctx.beginPath();
-  ctx.arc(mx, my, mr * 2.8, 0, Math.PI * 2);
-  ctx.fill();
+function drawMoon(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  skyBandHeight: number,
+  sceneHeight: number
+) {
+  const { mx, my, mr } = getNightMoonLayout(W, skyBandHeight, sceneHeight);
 
-  ctx.fillStyle = '#c5d0dc';
+  const mg = ctx.createRadialGradient(
+    mx - mr * 0.3,
+    my - mr * 0.36,
+    mr * 0.05,
+    mx,
+    my,
+    mr
+  );
+  mg.addColorStop(0, '#f4f6ff');
+  mg.addColorStop(0.55, '#dde2f0');
+  mg.addColorStop(1, '#b8bfd4');
+  ctx.fillStyle = mg;
   ctx.beginPath();
   ctx.arc(mx, my, mr, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(165,178,192,0.42)';
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(mx - mr * 0.27, my + mr * 0.13, mr * 0.17, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(mx + mr * 0.21, my - mr * 0.24, mr * 0.10, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(mx, my, mr, 0, Math.PI * 2);
+  ctx.clip();
+  NIGHT_MOON_CRATERS.forEach(({ dx, dy, r, shade = 0.22 }) => {
+    ctx.fillStyle = `rgba(96,104,136,${shade})`;
+    ctx.beginPath();
+    ctx.arc(mx + mr * dx, my + mr * dy, mr * r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
 }
 
-function drawClouds(
+function drawCloud(
   ctx: CanvasRenderingContext2D,
-  clouds: NightCloud[],
+  c: NightCloud,
   W: number,
   animate: boolean
 ) {
-  clouds.forEach((c) => {
-    if (animate) {
-      c.x += c.spd;
-      if (c.x > W + c.w) c.x = -c.w;
-    }
-    ctx.fillStyle = 'rgba(130,148,168,0.08)';
-    ctx.beginPath();
-    ctx.ellipse(c.x, c.y, c.w, c.h * 0.48, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(c.x - c.w * 0.28, c.y + c.h * 0.12, c.w * 0.56, c.h * 0.38, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(c.x + c.w * 0.22, c.y + c.h * 0.08, c.w * 0.46, c.h * 0.34, 0, 0, Math.PI * 2);
-    ctx.fill();
-  });
+  if (animate) {
+    c.x += c.spd;
+    if (c.x > W + c.w) c.x = -c.w;
+  }
+  ctx.fillStyle = 'rgba(130,148,168,0.08)';
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, c.w, c.h * 0.48, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(c.x - c.w * 0.28, c.y + c.h * 0.12, c.w * 0.56, c.h * 0.38, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(c.x + c.w * 0.22, c.y + c.h * 0.08, c.w * 0.46, c.h * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
-function drawMountains(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  const meadowTop = getGardenHillTop(H);
-  const mountainBase = nightMeadowY(H, 0.20);
-  /** Double peak height from the base while preserving the ridge profile. */
-  const peak = (frac: number) => nightMeadowY(H, 0.20 - 2 * (0.20 - frac));
+function drawCloudsLayer(
+  ctx: CanvasRenderingContext2D,
+  clouds: NightCloud[],
+  W: number,
+  layer: 'back' | 'front',
+  animate: boolean
+) {
+  clouds.filter((c) => c.layer === layer).forEach((c) => drawCloud(ctx, c, W, animate));
+}
+
+function drawMountains(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  sceneHeight: number,
+  skyBandHeight: number
+) {
+  const { mountainY } = getGardenHorizonLayout(sceneHeight, skyBandHeight);
+  const base = mountainY(MOUNTAIN_REF_MAX);
 
   ctx.fillStyle = '#172535';
   ctx.beginPath();
-  ctx.moveTo(0, mountainBase);
-  ctx.lineTo(0, peak(0.10));
-  ctx.lineTo(W * 0.13, peak(0.02));
-  ctx.lineTo(W * 0.29, peak(0.08));
-  ctx.lineTo(W * 0.43, peak(0.03));
-  ctx.lineTo(W * 0.58, peak(0.06));
-  ctx.lineTo(W * 0.70, peak(0.12));
-  ctx.lineTo(W * 0.83, peak(0.04));
-  ctx.lineTo(W, peak(0.02));
-  ctx.lineTo(W, mountainBase);
+  ctx.moveTo(0, base);
+  ctx.lineTo(0, mountainY(0.41));
+  ctx.lineTo(W * 0.13, mountainY(0.25));
+  ctx.lineTo(W * 0.29, mountainY(0.37));
+  ctx.lineTo(W * 0.43, mountainY(0.27));
+  ctx.lineTo(W * 0.58, mountainY(0.195));
+  ctx.lineTo(W * 0.7, mountainY(0.32));
+  ctx.lineTo(W * 0.83, mountainY(0.37));
+  ctx.lineTo(W, mountainY(0.35));
+  ctx.lineTo(W, base);
   ctx.closePath();
   ctx.fill();
 
-  const mg = ctx.createLinearGradient(0, meadowTop, 0, mountainBase + H * 0.02);
-  mg.addColorStop(0, 'rgba(90,112,138,0.12)');
-  mg.addColorStop(1, 'rgba(90,112,138,0)');
-  ctx.fillStyle = mg;
-  ctx.fillRect(0, meadowTop, W, mountainBase - meadowTop + H * 0.02);
+  ctx.fillStyle = '#1c2e42';
+  ctx.beginPath();
+  ctx.moveTo(0, base);
+  ctx.lineTo(0, mountainY(0.47));
+  ctx.lineTo(W * 0.09, mountainY(0.37));
+  ctx.lineTo(W * 0.23, mountainY(0.45));
+  ctx.lineTo(W * 0.37, mountainY(0.31));
+  ctx.lineTo(W * 0.51, mountainY(0.42));
+  ctx.lineTo(W * 0.65, mountainY(0.35));
+  ctx.lineTo(W * 0.79, mountainY(0.45));
+  ctx.lineTo(W, mountainY(0.43));
+  ctx.lineTo(W, base);
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawFireflies(
   ctx: CanvasRenderingContext2D,
   flies: NightFirefly[],
   W: number,
-  H: number,
+  sceneHeight: number,
   animate: boolean
 ) {
   flies.forEach((f) => {
     if (animate) {
       f.life += f.ls;
       f.x += f.vx + Math.sin(f.life * 1.2) * 0.32;
-      f.y += f.vy + Math.cos(f.life * 0.85) * 0.20;
-      const meadowTop = getGardenHillTop(H);
-      const meadowHeight = getGardenMeadowHeight(H);
+      f.y += f.vy + Math.cos(f.life * 0.85) * 0.2;
+      const meadowTop = getGardenHillTop(sceneHeight);
+      const meadowHeight = getGardenMeadowHeight(sceneHeight);
       const minY = meadowTop + meadowHeight * 0.18;
       const maxY = meadowTop + meadowHeight * 0.62;
       if (f.x < 0) f.x = W;
@@ -244,7 +292,7 @@ function drawFireflies(
 
     const fg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.sz * 5.5);
     fg.addColorStop(0, `rgba(160,228,72,${a * 0.72})`);
-    fg.addColorStop(1, `rgba(160,228,72,0)`);
+    fg.addColorStop(1, 'rgba(160,228,72,0)');
     ctx.fillStyle = fg;
     ctx.beginPath();
     ctx.arc(f.x, f.y, f.sz * 5.5, 0, Math.PI * 2);
@@ -257,20 +305,102 @@ function drawFireflies(
   });
 }
 
-export function renderNightScene(
+/** SVG path data for mobile / static overlays — same geometry as canvas mountains. */
+export function getNightMountainSvgPaths(
+  W: number,
+  sceneHeight: number,
+  skyBandHeight: number
+): { back: string; mid: string } {
+  const { mountainY } = getGardenHorizonLayout(sceneHeight, skyBandHeight);
+  const base = mountainY(MOUNTAIN_REF_MAX);
+  const back = [
+    `M 0 ${base}`,
+    `L 0 ${mountainY(0.41)}`,
+    `L ${W * 0.13} ${mountainY(0.25)}`,
+    `L ${W * 0.29} ${mountainY(0.37)}`,
+    `L ${W * 0.43} ${mountainY(0.27)}`,
+    `L ${W * 0.58} ${mountainY(0.195)}`,
+    `L ${W * 0.7} ${mountainY(0.32)}`,
+    `L ${W * 0.83} ${mountainY(0.37)}`,
+    `L ${W} ${mountainY(0.35)}`,
+    `L ${W} ${base}`,
+    'Z',
+  ].join(' ');
+  const mid = [
+    `M 0 ${base}`,
+    `L 0 ${mountainY(0.47)}`,
+    `L ${W * 0.09} ${mountainY(0.37)}`,
+    `L ${W * 0.23} ${mountainY(0.45)}`,
+    `L ${W * 0.37} ${mountainY(0.31)}`,
+    `L ${W * 0.51} ${mountainY(0.42)}`,
+    `L ${W * 0.65} ${mountainY(0.35)}`,
+    `L ${W * 0.79} ${mountainY(0.45)}`,
+    `L ${W} ${mountainY(0.43)}`,
+    `L ${W} ${base}`,
+    'Z',
+  ].join(' ');
+  return { back, mid };
+}
+
+/**
+ * Fixed background: sky → stars → back clouds → mountains → moon → front clouds.
+ * Moon sits above distant peaks so it reads in front of the ridge line.
+ */
+export function renderNightAtmosphere(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  skyBandHeight: number,
+  t: number,
+  state: NightSceneState,
+  opts: RenderNightLayerOptions = {}
+): void {
+  const { showMoon = true, animate = true, sceneHeight = skyBandHeight } = opts;
+
+  ctx.clearRect(0, 0, W, skyBandHeight);
+  drawSky(ctx, W, skyBandHeight);
+  drawStars(ctx, state.stars, t);
+  drawCloudsLayer(ctx, state.clouds, W, 'back', animate);
+  drawMountains(ctx, W, sceneHeight, skyBandHeight);
+  if (showMoon) drawMoon(ctx, W, skyBandHeight, sceneHeight);
+  drawCloudsLayer(ctx, state.clouds, W, 'front', animate);
+}
+
+/** Meadow fireflies only — render in the pan above hills, below flowers. */
+export function renderNightFireflies(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
   t: number,
   state: NightSceneState,
+  opts: RenderNightLayerOptions = {}
+): void {
+  const { animate = true, sceneHeight = H } = opts;
+
+  ctx.clearRect(0, 0, W, H);
+  drawFireflies(ctx, state.flies, W, sceneHeight, animate);
+}
+
+/** @deprecated Use renderNightFireflies — horizon layer is fireflies-only. */
+export function renderNightHorizon(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  t: number,
+  state: NightSceneState,
+  opts: RenderNightLayerOptions = {}
+): void {
+  renderNightFireflies(ctx, W, H, t, state, opts);
+}
+
+export function renderNightScene(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  skyBandHeight: number,
+  t: number,
+  state: NightSceneState,
   opts: RenderNightSceneOptions = {}
 ): void {
-  const { showMoon = true, animate = true } = opts;
-
-  drawSky(ctx, W, H);
-  drawStars(ctx, state.stars, t);
-  drawClouds(ctx, state.clouds, W, animate);
-  if (showMoon) drawMoon(ctx, W, H);
-  drawMountains(ctx, W, H);
-  drawFireflies(ctx, state.flies, W, H, animate);
+  const { sceneHeight = skyBandHeight } = opts;
+  renderNightAtmosphere(ctx, W, skyBandHeight, t, state, opts);
+  renderNightFireflies(ctx, W, sceneHeight, t, state, opts);
 }

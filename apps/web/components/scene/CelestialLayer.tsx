@@ -7,7 +7,6 @@ import {
   getStarField,
   isMoonPhase,
   isNightPhase,
-  MOON_COLORS,
   NIGHT_CLOUD_COLORS,
 } from '@bloom/core/scene';
 import type { SceneState, TimePhase } from '@bloom/core/scene';
@@ -127,8 +126,10 @@ export function CelestialLayer({ scene, width, skyHeight }: Props) {
             width: 52,
             height: 52,
             borderRadius: '50%',
-            backgroundColor: MOON_COLORS.core,
-            boxShadow: `0 0 48px ${MOON_COLORS.glow}, inset -4px -3px 8px ${MOON_COLORS.shadow}`,
+            background:
+              'radial-gradient(circle at 35% 32%, #f4f6ff 0%, #dde2f0 55%, #b8bfd4 100%)',
+            boxShadow:
+              'inset -6px -4px 12px rgba(90,98,130,0.2), 0 0 32px rgba(220,225,245,0.5)',
           }}
         />
       ) : null}

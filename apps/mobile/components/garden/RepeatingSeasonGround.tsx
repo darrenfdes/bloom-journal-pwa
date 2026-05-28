@@ -3,12 +3,13 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { buildHillPaths } from '@bloom/core/garden/season-hills';
+import { GARDEN_HILL_SKY_OVERLAP } from '@bloom/core/garden/horizon-layout';
 import {
   getGardenHillSvgHeight,
   getGardenHillTop,
 } from '@bloom/core/garden/scene-layout';
 import { computeGroundVariant, getGroundStyle } from '@/lib/garden/ground';
-import { getHillColors, type Season } from '@bloom/core';
+import { getHillColors, getNightHillColors, NIGHT_MEADOW_BASE, type Season } from '@bloom/core';
 import { getSeason } from '@/lib/theme/seasons';
 import type { GroundVariant } from '@/lib/types';
 
@@ -30,6 +31,7 @@ type Props = {
   groundSeed?: number;
   sceneSeason?: Season | null;
   sceneReady?: boolean;
+  nightMode?: boolean;
   getTileGround?: (tileIndex: number) => TileGround | null;
 };
 
@@ -51,12 +53,12 @@ export function RepeatingSeasonGround({
   groundVariant,
   groundSeed = 0,
   sceneSeason = null,
+  nightMode = false,
   getTileGround,
 }: Props) {
   const variant = groundVariant ?? computeGroundVariant(month, groundSeed);
-  const hillSkyOverlap = 12;
-  const hillTop = getGardenHillTop(viewportHeight) - hillSkyOverlap;
-  const groundSvgH = getGardenHillSvgHeight(viewportHeight) + hillSkyOverlap;
+  const hillTop = getGardenHillTop(viewportHeight) - GARDEN_HILL_SKY_OVERLAP;
+  const groundSvgH = getGardenHillSvgHeight(viewportHeight) + GARDEN_HILL_SKY_OVERLAP;
   const hills = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
   const offset = tileScrollOffset(scrollLeft, tileWidth);
@@ -80,7 +82,7 @@ export function RepeatingSeasonGround({
         const tileVariant = tileGround?.groundVariant ?? variant;
         const baseGroundStyle = getGroundStyle(tileVariant);
         const hillsSeason = tileGround?.season ?? sceneSeason ?? getSeason(tileMonth);
-        const sceneHills = getHillColors(hillsSeason);
+        const sceneHills = nightMode ? getNightHillColors() : getHillColors(hillsSeason);
         const groundStyle = {
           ...baseGroundStyle,
           backTop: sceneHills.far,
@@ -88,7 +90,7 @@ export function RepeatingSeasonGround({
           midTop: sceneHills.mid,
           midBottom: sceneHills.mid,
           frontTop: sceneHills.near,
-          frontBottom: sceneHills.near,
+          frontBottom: nightMode ? NIGHT_MEADOW_BASE : sceneHills.near,
         };
         const x = tileIndex * tileWidth - offset + wrapperOffset;
         const gradPrefix = `m-${tileIndex}-${tileSeed}`;
@@ -107,10 +109,31 @@ export function RepeatingSeasonGround({
                 },
               ]}
             />
+            {nightMode ? (
+              <View
+                style={[
+                  styles.horizonSeam,
+                  {
+                    left: x,
+                    top: Math.max(0, hillTop - GARDEN_HILL_SKY_OVERLAP),
+                    width: tileWidth,
+                    height: GARDEN_HILL_SKY_OVERLAP,
+                    backgroundColor: NIGHT_MEADOW_BASE,
+                  },
+                ]}
+              />
+            ) : null}
             <View
               style={[
                 styles.hazeTile,
-                { left: x, width: tileWidth, backgroundColor: groundStyle.haze, opacity: 0.22 },
+                {
+                  left: x,
+                  top: hillTop,
+                  width: tileWidth,
+                  height: viewportHeight - hillTop,
+                  backgroundColor: nightMode ? 'rgba(25, 66, 24, 0.18)' : groundStyle.haze,
+                  opacity: nightMode ? 1 : 0.22,
+                },
               ]}
             />
             <Svg
@@ -160,9 +183,10 @@ const styles = StyleSheet.create({
   meadowBase: {
     position: 'absolute',
   },
+  horizonSeam: {
+    position: 'absolute',
+  },
   hazeTile: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
   },
 });
