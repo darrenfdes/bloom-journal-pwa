@@ -18,6 +18,7 @@ export const GARDEN_PADDING_RIGHT = 200;
 const GARDEN_STEM_EDGE_MARGIN = 48;
 const FLOW_CENTER_ANCHOR_FIRST = 0.5;
 const FLOW_CENTER_ANCHOR_NEXT = 0.55;
+const GARDEN_CLUSTER_MIN_DISTANCE = 96;
 
 export interface LayoutBounds {
   width: number;
@@ -95,8 +96,8 @@ function getClusterScatterParams(
   monthCount: number
 ): ClusterScatterParams {
   const { minY, maxY } = getGardenFlowerVerticalRange(bounds.height);
-  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.38, 120);
-  const radiusY = Math.max(36, (maxY - minY) * 0.38);
+  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.46, 148);
+  const radiusY = Math.max(44, (maxY - minY) * 0.46);
   return {
     radiusX,
     radiusY,
@@ -290,14 +291,14 @@ function computeMonthColumnPlans(
       scatterParams.radiusX,
       scatterParams.radiusY,
       scatterSeed,
-      78
+      GARDEN_CLUSTER_MIN_DISTANCE
     );
 
     let maxFlowerX = columnLeft;
     clusterEntries.forEach((entry, index) => {
       const pt = points[index] ?? { x: centerX, y: centerY };
       const rng = new SeededRNG(hashString(entry.id + key));
-      const x = pt.x + rng.range(-6, 6);
+      const x = pt.x + rng.range(-4, 4);
       maxFlowerX = Math.max(maxFlowerX, x);
     });
 
@@ -371,7 +372,7 @@ export function computeGardenLayout(
       scatterParams.radiusX,
       scatterParams.radiusY,
       scatterSeed,
-      78
+      GARDEN_CLUSTER_MIN_DISTANCE
     );
 
     clusterEntries.forEach((entry, index) => {
@@ -382,8 +383,8 @@ export function computeGardenLayout(
       const scale = depthScale(z, maxZ);
 
       const position: GardenPosition = {
-        x: pt.x + rng.range(-6, 6),
-        y: clamp(pt.y + rng.range(-8, 8), scatterParams.minY, scatterParams.maxY),
+        x: pt.x + rng.range(-4, 4),
+        y: clamp(pt.y + rng.range(-6, 6), scatterParams.minY, scatterParams.maxY),
         z,
         rotation: rng.range(-22, 22),
         scale,
