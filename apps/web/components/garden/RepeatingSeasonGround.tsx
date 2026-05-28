@@ -4,6 +4,8 @@ import React, { useMemo } from 'react';
 
 import { buildHillPaths } from '@bloom/core/garden/season-hills';
 import { computeGroundVariant, getGroundStyle } from '@bloom/core/garden/ground';
+import { GrassLayer } from '@/components/garden/GrassLayer';
+import { GroundTexture } from '@/components/garden/GroundTexture';
 import {
   getGardenHillSvgHeight,
   getGardenHillTop,
@@ -36,6 +38,7 @@ type Props = {
   /** Pan viewport width — each hill tile matches this width. */
   tileWidth: number;
   viewportHeight: number;
+  groundY?: number;
   /** When hills sit inside a parent `translateX(-offset)` pan wrapper, add this so tile math is not applied twice. */
   wrapperOffset?: number;
   month?: number;
@@ -55,6 +58,7 @@ export function RepeatingSeasonGround({
   scrollLeft,
   tileWidth,
   viewportHeight,
+  groundY,
   wrapperOffset = 0,
   month = new Date().getMonth() + 1,
   groundVariant,
@@ -162,6 +166,36 @@ export function RepeatingSeasonGround({
               <path d={hillPaths.midHill} fill={`url(#${gradId}-mid)`} opacity={0.88} />
               <path d={hillPaths.frontHill} fill={`url(#${gradId}-front)`} />
             </svg>
+            <div
+              className="pointer-events-none absolute"
+              style={{
+                left: x,
+                width: tileWidth,
+                height: viewportHeight,
+                top: 0,
+              }}
+            >
+              {groundY !== undefined && (
+                <>
+                  <GroundTexture
+                    width={tileWidth}
+                    height={180}
+                    groundY={groundY + 4}
+                    variant={tileVariant}
+                    seed={tileSeed}
+                  />
+                  <GrassLayer
+                    width={tileWidth}
+                    height={180}
+                    groundY={groundY + 4}
+                    month={tileMonth}
+                    seed={tileSeed}
+                    density={24}
+                    groundVariant={tileVariant}
+                  />
+                </>
+              )}
+            </div>
           </React.Fragment>
         );
       })}
