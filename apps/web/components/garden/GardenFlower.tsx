@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import React, { memo } from 'react';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
@@ -31,6 +30,7 @@ type Props = {
   position: Position;
   /** World X of the virtual column container (0 when placed on the world root). */
   worldOffsetX?: number;
+  zBoost?: number;
   index: number;
   totalEntries: number;
   daysSince: number | null;
@@ -50,6 +50,7 @@ function GardenFlowerInner({
   entry,
   position,
   worldOffsetX = 0,
+  zBoost = 0,
   index,
   totalEntries,
   daysSince,
@@ -73,8 +74,8 @@ function GardenFlowerInner({
     .filter(Boolean)
     .join(' ');
   const favHalo = entry.isFavourited ? 14 : 0;
-  const plotWidth = flowerSize + favHalo * 2;
-  const plotHeight = flowerSize * 1.15 + favHalo;
+  const visualWidth = flowerSize + favHalo * 2;
+  const visualHeight = flowerSize * 1.15 + favHalo;
   const baseScale = position.scale;
   const baseRotate = position.rotation;
   const isRipePumpkin =
@@ -86,27 +87,38 @@ function GardenFlowerInner({
     }) && computePumpkinStage(entry.createdAt) === 2;
 
   return (
-    <motion.button
-      type="button"
-      data-garden-interactive
-      className="garden-flower absolute flex flex-col items-center justify-end border-0 bg-transparent p-0"
+    <motion.div
+      className="garden-flower absolute"
       style={{
-        left: position.x - worldOffsetX - plotWidth / 2,
-        top: position.y - plotHeight,
-        width: plotWidth,
-        height: plotHeight,
-        zIndex: isHighlighted ? 9999 : position.z,
+        left: position.x - worldOffsetX - visualWidth / 2,
+        top: position.y - visualHeight,
+        width: visualWidth,
+        height: visualHeight,
+        zIndex: isHighlighted ? 9999 : position.z + zBoost,
       }}
       animate={{
         scale: isHighlighted ? baseScale * 1.08 : baseScale,
         rotate: baseRotate,
       }}
       transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-      onClick={() => onOpenAction(entry, monthKey)}
-      title={entry.title ?? 'Memory'}
     >
+      <button
+        type="button"
+        data-garden-interactive
+        onClick={() => onOpenAction(entry, monthKey)}
+        title={entry.title ?? 'Memory'}
+        aria-label={entry.title ?? 'Memory'}
+        className="absolute inset-0 z-20 border-0 bg-transparent p-0"
+        style={{
+          // Bloom-focused hit region: generous on petals, excludes most stem overlap.
+          clipPath: 'ellipse(40% 35% at 50% 34%)',
+        }}
+      />
       <motion.div
-        className={cn('relative overflow-visible', isHighlighted && 'rounded-full ring-4 ring-sage/60')}
+        className={cn(
+          'pointer-events-none relative z-10 overflow-visible',
+          isHighlighted && 'rounded-full ring-4 ring-sage/60'
+        )}
         style={{
           filter: filters || undefined,
           transform: rainDroop && !isRipePumpkin ? 'rotate(15deg)' : undefined,
@@ -127,7 +139,7 @@ function GardenFlowerInner({
             style={{
               width: flowerSize * 0.9,
               height: flowerSize * 0.9,
-              left: (plotWidth - flowerSize * 0.9) / 2,
+              left: (visualWidth - flowerSize * 0.9) / 2,
               bottom: 0,
             }}
           />
@@ -145,9 +157,11 @@ function GardenFlowerInner({
         />
       </motion.div>
       {isAnniversaryBlossom(entry.createdAt) ? (
-        <span className="mt-0.5 text-[9px] italic text-ink-muted">✦ anniversary</span>
+        <span className="pointer-events-none mt-0.5 text-[9px] italic text-ink-muted">
+          ✦ anniversary
+        </span>
       ) : null}
-    </motion.button>
+    </motion.div>
   );
 }
 

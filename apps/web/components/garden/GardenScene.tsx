@@ -41,7 +41,6 @@ import {
 } from '@bloom/core/garden/layout';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeason } from '@bloom/core/theme/seasons';
-import { isMoonPhase, isNightPhase } from '@bloom/core/scene';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
 import type { EntryRecord, GardenMeta } from '@bloom/core';
@@ -121,6 +120,7 @@ export function GardenScene({ meta, entries }: Props) {
     viewportWidth: width,
     enabled: rubberBandEnabled,
   });
+  const visualScrollLeft = scrollLeft + rubberBandOffset;
   const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
   const meadowSkyHeight = useMemo(
     () => getGardenSkyHeight(sceneHeight > 0 ? sceneHeight : windowHeight),
@@ -265,9 +265,6 @@ export function GardenScene({ meta, entries }: Props) {
     [activeHighlightId, sortedLayout]
   );
 
-  const nightCanvasActive = sceneReady && isNightPhase(scene.timePhase);
-  const nightShowMoon = isMoonPhase(scene.timePhase);
-
   return (
     <SeasonBackground
       month={gardenMonth}
@@ -276,15 +273,11 @@ export function GardenScene({ meta, entries }: Props) {
       width={width}
       viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
       skyBandHeight={skyBandHeight}
-      nightCanvasActive={nightCanvasActive}
-      nightShowMoon={nightShowMoon}
       skyOverlays={
-        nightCanvasActive ? null : (
-          <>
-            <SkyTimePhaseLayer scene={scene} />
-            <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
-          </>
-        )
+        <>
+          <SkyTimePhaseLayer scene={scene} />
+          <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
+        </>
       }
     >
       <div className="relative z-10 shrink-0 pt-[calc(1rem+var(--safe-top))]">
@@ -337,16 +330,14 @@ export function GardenScene({ meta, entries }: Props) {
             }}
           >
             {/* Pollen sparkles — scroll with the flowers */}
-            {nightCanvasActive ? null : (
-              <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
-                <PollenSparkles
-                  width={contentWidth}
-                  height={sceneHeight}
-                  count={pollenCount}
-                  seed={groundSeed}
-                />
-              </div>
-            )}
+            <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+              <PollenSparkles
+                width={contentWidth}
+                height={sceneHeight}
+                count={pollenCount}
+                seed={groundSeed}
+              />
+            </div>
 
             {/* Virtualized month columns */}
             {columnVirtualizer.getVirtualItems().map((virtualColumn) => {
@@ -386,6 +377,7 @@ export function GardenScene({ meta, entries }: Props) {
                         entry={entry}
                         position={position}
                         worldOffsetX={virtualColumn.start}
+                        zBoost={entry.isFavourited ? 60 : 0}
                         index={index}
                         totalEntries={filtered.length}
                         daysSince={daysSince}
@@ -405,6 +397,7 @@ export function GardenScene({ meta, entries }: Props) {
               key={`highlight-${highlightedPlot.entry.id}`}
               entry={highlightedPlot.entry}
               position={highlightedPlot.position}
+              zBoost={highlightedPlot.entry.isFavourited ? 60 : 0}
               index={0}
               totalEntries={filtered.length}
               daysSince={daysSince}
@@ -426,7 +419,7 @@ export function GardenScene({ meta, entries }: Props) {
       </div>
 
       <WeatherParticles scene={scene} />
-      {nightCanvasActive ? null : <AmbientOverlay scene={scene} />}
+      <AmbientOverlay scene={scene} />
       <SceneLocatingLabel scene={scene} />
       <JournalPanel scene={scene} open={journalOpen} onClose={() => setJournalOpen(false)} />
 
