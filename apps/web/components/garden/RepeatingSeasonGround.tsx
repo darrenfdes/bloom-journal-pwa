@@ -19,8 +19,20 @@ type TileGround = {
   season?: Season | null;
 };
 
+export function gardenTileScrollOffset(scrollLeft: number, tileWidth: number): number {
+  if (tileWidth <= 0) return 0;
+  return ((scrollLeft % tileWidth) + tileWidth) % tileWidth;
+}
+
 type Props = {
-  scrollLeft: number;
+  /**
+   * Total world content width — hill tiles fill this width.
+   * When placed inside the scroll container, the browser's native scroll
+   * moves the hills with the flowers.
+   */
+  contentWidth?: number;
+  /** When using a simulated horizontal-scroll viewport (like in WeatherPreviewScene), pass scrollLeft. */
+  scrollLeft?: number;
   /** Pan viewport width — each hill tile matches this width. */
   tileWidth: number;
   viewportHeight: number;
@@ -34,16 +46,12 @@ type Props = {
   getTileGround?: (tileIndex: number) => TileGround | null;
 };
 
-export function gardenTileScrollOffset(scrollLeft: number, tileWidth: number): number {
-  if (tileWidth <= 0) return 0;
-  return ((scrollLeft % tileWidth) + tileWidth) % tileWidth;
-}
-
 /**
- * Viewport-fixed tiling hill SVG segments synced to horizontal pan offset.
- * Renders adjacent tiles based on scrollLeft so the meadow always fills the pan width.
+ * Hill SVG segments that tile either across the full content width (native scroll),
+ * or based on viewport-offset tiling (simulated scroll).
  */
 export function RepeatingSeasonGround({
+  contentWidth,
   scrollLeft,
   tileWidth,
   viewportHeight,
@@ -60,10 +68,16 @@ export function RepeatingSeasonGround({
   const groundSvgH = getGardenHillSvgHeight(viewportHeight) + hillSkyOverlap;
   const hillPaths = useMemo(() => buildHillPaths(tileWidth, groundSvgH), [tileWidth, groundSvgH]);
 
-  const offset = gardenTileScrollOffset(scrollLeft, tileWidth);
-  const startIndex = tileWidth > 0 ? Math.floor(scrollLeft / tileWidth) - 1 : 0;
-  const endIndex =
-    tileWidth > 0 ? Math.ceil((scrollLeft + tileWidth) / tileWidth) + 1 : startIndex + 3;
+  const isSimulatedMode = scrollLeft !== undefined;
+
+  const offset = isSimulatedMode ? gardenTileScrollOffset(scrollLeft, tileWidth) : 0;
+  const startIndex = isSimulatedMode
+    ? (tileWidth > 0 ? Math.floor(scrollLeft / tileWidth) - 1 : 0)
+    : 0;
+  const endIndex = isSimulatedMode
+    ? (tileWidth > 0 ? Math.ceil((scrollLeft + tileWidth) / tileWidth) + 1 : startIndex + 3)
+    : (tileWidth > 0 ? Math.ceil((contentWidth ?? tileWidth) / tileWidth) : 1);
+
   const indices = useMemo(() => {
     const list: number[] = [];
     for (let i = startIndex; i <= endIndex; i += 1) {
@@ -72,11 +86,13 @@ export function RepeatingSeasonGround({
     return list;
   }, [startIndex, endIndex]);
 
+  const containerWidth = isSimulatedMode ? '100%' : (contentWidth ?? '100%');
+
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      className="pointer-events-none absolute left-0 top-0 z-0 overflow-hidden"
       aria-hidden
-      style={{ height: viewportHeight }}
+      style={{ width: containerWidth, height: viewportHeight }}
     >
       {indices.map((tileIndex) => {
         const tileGround = getTileGround?.(tileIndex);
@@ -95,7 +111,9 @@ export function RepeatingSeasonGround({
           frontTop: sceneHills.near,
           frontBottom: sceneHills.near,
         };
-        const x = tileIndex * tileWidth - offset + wrapperOffset;
+        const x = isSimulatedMode
+          ? tileIndex * tileWidth - offset + wrapperOffset
+          : tileIndex * tileWidth;
         const gradId = `hill-${tileIndex}-${tileSeed}`;
 
         return (

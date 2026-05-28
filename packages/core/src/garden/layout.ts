@@ -84,7 +84,8 @@ function clusterCenterY(
   const lane = monthIndex % depthLanes;
   const laneT = depthLanes <= 1 ? 0 : lane / (depthLanes - 1);
   const bandSpan = maxY - minY;
-  const easedT = 0.25 + laneT * 0.6;
+  // Bias toward the lower meadow (near groundY / month tag) — anchor at 55-75%
+  const easedT = 0.55 + laneT * 0.2;
   return minY + bandSpan * easedT;
 }
 

@@ -23,7 +23,7 @@ export function GroundTexture({ width, height, groundY, variant, seed = 42 }: Pr
     const specks: { cx: number; cy: number; r: number; fill: string }[] = [];
 
     const bladeCount =
-      variant === 1 ? 18 : variant === 3 ? 14 : variant === 4 ? 12 : 10;
+      variant === 1 ? 28 : variant === 3 ? 22 : variant === 4 ? 18 : 16;
 
     for (let i = 0; i < bladeCount; i++) {
       const x = rng.range(0, width);
@@ -44,21 +44,25 @@ export function GroundTexture({ width, height, groundY, variant, seed = 42 }: Pr
       });
     }
 
-    if (variant === 2 || variant === 4) {
-      const speckCount = variant === 2 ? 16 : 10;
-      const colors =
-        variant === 2
-          ? ['#F5C68C', '#E48BA0', '#C8B0DE', '#F0E58A', '#FFFFFF', '#FFB6C1']
-          : ['#F5D78E', '#E8B86D', '#FFF8DC', '#FADADD'];
+    // Stipple dots for all variants — sparser for muted grounds
+    const speckCount =
+      variant === 2 ? 18 : variant === 4 ? 12 : variant === 1 ? 14 : 10;
+    const colors =
+      variant === 2
+        ? ['#F5C68C', '#E48BA0', '#C8B0DE', '#F0E58A', '#FFFFFF', '#FFB6C1']
+        : variant === 4
+          ? ['#F5D78E', '#E8B86D', '#FFF8DC', '#FADADD']
+          : variant === 3
+            ? ['#8AA878', '#A5C490', '#C8DDB8']
+            : ['#D4C9A8', '#E8DFC2', '#F0EAD6', '#C5D4A8', '#FFFFFF'];
 
-      for (let i = 0; i < speckCount; i++) {
-        specks.push({
-          cx: rng.range(0, width),
-          cy: groundY + rng.range(4, 60),
-          r: rng.range(1, 2.2),
-          fill: colors[Math.floor(rng.next() * colors.length)]!,
-        });
-      }
+    for (let i = 0; i < speckCount; i++) {
+      specks.push({
+        cx: rng.range(0, width),
+        cy: groundY + rng.range(4, 60),
+        r: rng.range(0.8, 2.0),
+        fill: colors[Math.floor(rng.next() * colors.length)]!,
+      });
     }
 
     return { blades, specks };

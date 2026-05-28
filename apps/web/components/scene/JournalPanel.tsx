@@ -13,6 +13,7 @@ import {
   type SceneState,
 } from '@bloom/core/scene';
 import { Textarea } from '@/components/ui/textarea';
+import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { plantEntry, type PlantSceneSnapshot } from '@/lib/db/repositories/entries';
 import { useWindowSize } from '@/lib/hooks/useWindowSize';
 import { cn } from '@/lib/utils';
@@ -266,42 +267,50 @@ export function JournalPanel({ scene, open, onClose }: Props) {
                   </li>
                 ) : (
                   recentEntries.map((entry: EntryRecord) => (
-                    <li
-                      key={entry.id}
-                      className={cn(
-                        'rounded-lg px-3 py-2 text-xs',
-                        dark ? 'bg-white/10 text-white/85' : 'bg-white/60 text-ink-soft'
-                      )}
-                    >
-                      <div
+                    <li key={entry.id}>
+                      <Link
+                        href={`/entry/${entry.id}`}
+                        onClick={onClose}
                         className={cn(
-                          'mb-1 flex flex-wrap gap-2 font-medium',
-                          dark ? 'text-white' : 'text-ink'
+                          'flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition hover:opacity-90',
+                          dark ? 'bg-white/10 text-white/85' : 'bg-white/60 text-ink-soft'
                         )}
                       >
-                        <span>{formatEntryDate(entry.createdAt)}</span>
-                        {entry.sceneSeason ? (
-                          <span
+                        <div className="shrink-0 rounded-full bg-white/50 p-1">
+                          <FlowerSvg entry={entry} size={40} />
+                        </div>
+                        <div className="min-w-0">
+                          <div
                             className={cn(
-                              'rounded px-1.5 py-0.5 capitalize',
-                              dark ? 'bg-white/15' : 'bg-white/80'
+                              'mb-1 flex flex-wrap gap-2 font-medium',
+                              dark ? 'text-white' : 'text-ink'
                             )}
                           >
-                            {entry.sceneSeason}
-                          </span>
-                        ) : null}
-                        {entry.weather ? (
-                          <span
-                            className={cn(
-                              'rounded px-1.5 py-0.5',
-                              dark ? 'bg-white/15' : 'bg-white/80'
-                            )}
-                          >
-                            {weatherCategoryLabel(entry.weather.category)}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="line-clamp-2">{entry.content}</p>
+                            <span>{formatEntryDate(entry.createdAt)}</span>
+                            {entry.sceneSeason ? (
+                              <span
+                                className={cn(
+                                  'rounded px-1.5 py-0.5 capitalize',
+                                  dark ? 'bg-white/15' : 'bg-white/80'
+                                )}
+                              >
+                                {entry.sceneSeason}
+                              </span>
+                            ) : null}
+                            {entry.weather ? (
+                              <span
+                                className={cn(
+                                  'rounded px-1.5 py-0.5',
+                                  dark ? 'bg-white/15' : 'bg-white/80'
+                                )}
+                              >
+                                {weatherCategoryLabel(entry.weather.category)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="line-clamp-2">{entry.content}</p>
+                        </div>
+                      </Link>
                     </li>
                   ))
                 )}
