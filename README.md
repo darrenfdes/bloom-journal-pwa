@@ -2,6 +2,8 @@
 
 A monorepo for Bloom Journal — a mood-aware journaling app where each entry grows a flower in your garden.
 
+**Product spec (current state):** [docs/product-spec.md](docs/product-spec.md)
+
 ## Apps
 
 | App | Path | Stack |
@@ -41,9 +43,16 @@ bloom-journal-pwa/
 └── packages/       # Shared packages (future: @bloom/core)
 ```
 
+## Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [docs/product-spec.md](docs/product-spec.md) | Product specification — features, flows, data model |
+| [docs/flower-decision-spec.md](docs/flower-decision-spec.md) | How entries become procedural flowers |
+| [apps/web/docs/sync.md](apps/web/docs/sync.md) | Supabase auth and LWW sync |
+
 ## Roadmap
 
-- `packages/core` — shared types, flower genome, garden layout
-- Supabase auth + LWW sync (see `apps/web/docs/sync.md`)
-- Web flower SVG rendering
-- Service worker + offline install
+- Service worker + offline install (PWA manifest exists; no service worker yet)
+- Web PIN lock and daily reminders (mobile has both)
+- File/image attachments (see sync doc)
