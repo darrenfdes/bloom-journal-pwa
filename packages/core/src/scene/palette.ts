@@ -156,12 +156,23 @@ export function getSeasonFlowerFilter(season: Season): string {
 
 export function getNightFlowerFilter(timePhase: TimePhase): string {
   if (timePhase === 'deep_night' || timePhase === 'night' || timePhase === 'pre_dawn') {
-    return 'brightness(0.4) saturate(0.6)';
+    return 'brightness(0.72) saturate(0.85)';
   }
   if (timePhase === 'dusk') {
-    return 'brightness(0.7) saturate(0.8)';
+    return 'brightness(0.85) saturate(0.9)';
   }
   return 'none';
+}
+
+/** RN-compatible brightness proxy matching {@link getNightFlowerFilter}. */
+export function getNightFlowerOpacity(timePhase: TimePhase): number {
+  if (timePhase === 'deep_night' || timePhase === 'night' || timePhase === 'pre_dawn') {
+    return 0.72;
+  }
+  if (timePhase === 'dusk') {
+    return 0.85;
+  }
+  return 1;
 }
 
 export function combineFlowerFilters(...filters: string[]): string {

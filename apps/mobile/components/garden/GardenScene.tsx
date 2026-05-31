@@ -69,6 +69,7 @@ import {
   writeMemoryReplayDismiss,
 } from '@/lib/memory-replay/dismiss';
 import {
+  getNightFlowerOpacity,
   getWindSwayDegrees,
   isNightPhase,
   shouldHideFlowersForWinter,
@@ -438,7 +439,9 @@ export function GardenScene({ meta, entries }: Props) {
                       { rotate: `${position.rotation}deg` },
                       { scale: position.scale },
                     ],
-                    opacity: shouldHideFlowersForWinter(scene.season) ? 0 : 1,
+                    opacity: shouldHideFlowersForWinter(scene.season)
+                      ? 0
+                      : getNightFlowerOpacity(scene.timePhase),
                   },
                 ]}
               >
@@ -581,6 +584,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     minHeight: 0,
     overflow: 'hidden',
+    zIndex: 7,
   },
   flowerScroll: {
     zIndex: 5,
