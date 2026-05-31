@@ -401,7 +401,7 @@ export function GardenScene({ meta, entries }: Props) {
         <TimelineScrubber clusters={clusters} onJump={jumpToMonth} />
       </div>
 
-      <div ref={panRef} className="relative z-[1] mt-2 min-h-0 flex-1">
+      <div ref={panRef} className="relative z-[7] mt-2 min-h-0 flex-1">
         {/* Infinite fixed-viewport hills & meadow */}
         <RepeatingSeasonGround
           scrollLeft={visualScrollLeft}
