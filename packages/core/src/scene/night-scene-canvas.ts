@@ -324,6 +324,23 @@ function drawCloudsLayer(
   clouds.filter((c) => c.layer === layer).forEach((c) => drawCloud(ctx, c, W, animate));
 }
 
+/** Peak anchors: x fraction of width → reference Y fraction (lower = taller). */
+const NIGHT_MOUNTAIN_PEAKS: ReadonlyArray<{ xFrac: number; refFrac: number }> = [
+  { xFrac: 0, refFrac: 0.47 },
+  { xFrac: 0.09, refFrac: 0.37 },
+  { xFrac: 0.23, refFrac: 0.45 },
+  { xFrac: 0.37, refFrac: 0.31 },
+  { xFrac: 0.51, refFrac: 0.42 },
+  { xFrac: 0.65, refFrac: 0.35 },
+  { xFrac: 0.79, refFrac: 0.45 },
+  { xFrac: 1, refFrac: 0.43 },
+];
+
+/** Move peak ref toward the base — 0.2 = 20% shorter ridge. */
+function flattenMountainPeak(refFrac: number, reduceBy = 0.2): number {
+  return refFrac + reduceBy * (MOUNTAIN_REF_MAX - refFrac);
+}
+
 function drawMountains(
   ctx: CanvasRenderingContext2D,
   W: number,
@@ -333,32 +350,12 @@ function drawMountains(
   const { mountainY } = getGardenHorizonLayout(sceneHeight, skyBandHeight);
   const base = mountainY(MOUNTAIN_REF_MAX);
 
-  ctx.fillStyle = '#172535';
-  ctx.beginPath();
-  ctx.moveTo(0, base);
-  ctx.lineTo(0, mountainY(0.41));
-  ctx.lineTo(W * 0.13, mountainY(0.25));
-  ctx.lineTo(W * 0.29, mountainY(0.37));
-  ctx.lineTo(W * 0.43, mountainY(0.27));
-  ctx.lineTo(W * 0.58, mountainY(0.195));
-  ctx.lineTo(W * 0.7, mountainY(0.32));
-  ctx.lineTo(W * 0.83, mountainY(0.37));
-  ctx.lineTo(W, mountainY(0.35));
-  ctx.lineTo(W, base);
-  ctx.closePath();
-  ctx.fill();
-
   ctx.fillStyle = '#1c2e42';
   ctx.beginPath();
   ctx.moveTo(0, base);
-  ctx.lineTo(0, mountainY(0.47));
-  ctx.lineTo(W * 0.09, mountainY(0.37));
-  ctx.lineTo(W * 0.23, mountainY(0.45));
-  ctx.lineTo(W * 0.37, mountainY(0.31));
-  ctx.lineTo(W * 0.51, mountainY(0.42));
-  ctx.lineTo(W * 0.65, mountainY(0.35));
-  ctx.lineTo(W * 0.79, mountainY(0.45));
-  ctx.lineTo(W, mountainY(0.43));
+  for (const { xFrac, refFrac } of NIGHT_MOUNTAIN_PEAKS) {
+    ctx.lineTo(W * xFrac, mountainY(flattenMountainPeak(refFrac)));
+  }
   ctx.lineTo(W, base);
   ctx.closePath();
   ctx.fill();
@@ -409,36 +406,18 @@ export function getNightMountainSvgPaths(
   W: number,
   sceneHeight: number,
   skyBandHeight: number
-): { back: string; mid: string } {
+): { mid: string } {
   const { mountainY } = getGardenHorizonLayout(sceneHeight, skyBandHeight);
   const base = mountainY(MOUNTAIN_REF_MAX);
-  const back = [
-    `M 0 ${base}`,
-    `L 0 ${mountainY(0.41)}`,
-    `L ${W * 0.13} ${mountainY(0.25)}`,
-    `L ${W * 0.29} ${mountainY(0.37)}`,
-    `L ${W * 0.43} ${mountainY(0.27)}`,
-    `L ${W * 0.58} ${mountainY(0.195)}`,
-    `L ${W * 0.7} ${mountainY(0.32)}`,
-    `L ${W * 0.83} ${mountainY(0.37)}`,
-    `L ${W} ${mountainY(0.35)}`,
-    `L ${W} ${base}`,
-    'Z',
-  ].join(' ');
   const mid = [
     `M 0 ${base}`,
-    `L 0 ${mountainY(0.47)}`,
-    `L ${W * 0.09} ${mountainY(0.37)}`,
-    `L ${W * 0.23} ${mountainY(0.45)}`,
-    `L ${W * 0.37} ${mountainY(0.31)}`,
-    `L ${W * 0.51} ${mountainY(0.42)}`,
-    `L ${W * 0.65} ${mountainY(0.35)}`,
-    `L ${W * 0.79} ${mountainY(0.45)}`,
-    `L ${W} ${mountainY(0.43)}`,
+    ...NIGHT_MOUNTAIN_PEAKS.map(
+      ({ xFrac, refFrac }) => `L ${W * xFrac} ${mountainY(flattenMountainPeak(refFrac))}`
+    ),
     `L ${W} ${base}`,
     'Z',
   ].join(' ');
-  return { back, mid };
+  return { mid };
 }
 
 /**

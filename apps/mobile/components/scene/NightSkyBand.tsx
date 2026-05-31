@@ -57,7 +57,6 @@ export function NightMountainBand({ width, skyBandHeight, sceneHeight }: Mountai
       pointerEvents="none"
     >
       <Svg width={W} height={skyBandHeight} style={StyleSheet.absoluteFill}>
-        <Path d={paths.back} fill="#172535" />
         <Path d={paths.mid} fill="#1c2e42" />
       </Svg>
     </View>
