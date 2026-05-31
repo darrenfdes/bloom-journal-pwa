@@ -26,7 +26,9 @@ import { SwayingGrassLayer } from '@/components/garden/SwayingGrassLayer';
 import { NightHorizonBand } from '@/components/scene/NightHorizonBand';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
 import { TimelineScrubber } from '@/components/garden/TimelineScrubber';
+import { MemoryReplayCard } from '@/components/garden/MemoryReplayCard';
 import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
+import { FlowerClusterPicker } from '@/components/garden/FlowerClusterPicker';
 import { AmbientOverlay } from '@/components/scene/AmbientOverlay';
 import { JournalPanel } from '@/components/scene/JournalPanel';
 import { SceneLocatingLabel } from '@/components/scene/SceneLocatingLabel';
@@ -42,11 +44,30 @@ import {
   getMonthClusters,
   resolveClusterAtWorldX,
 } from '@/lib/garden/layout';
+import type { PlacedFlower } from '@/lib/garden/layout';
+import {
+  FLOWER_HIT_ELLIPSE_CY_RATIO,
+  FLOWER_HIT_ELLIPSE_RX_RATIO,
+  FLOWER_HIT_ELLIPSE_RY_RATIO,
+  findPlacedFlowersAtPoint,
+  flowerPlotSize,
+} from '@bloom/core/garden/hit-test';
 import { getSeason } from '@/lib/theme/seasons';
 import { useGardenRubberBandPan } from '@/lib/hooks/useGardenRubberBandPan';
 import { isXRangeVisible } from '@/lib/garden/visibility';
 import { daysSinceLastEntry, isGardenWilted } from '@/lib/garden/wilt';
 import { isAnniversaryBlossom } from '@/lib/garden/anniversary';
+import {
+  findMemoryReplay,
+  formatMemoryReplayDismissKey,
+  formatMemoryReplayLine,
+  isMemoryReplayDismissed,
+  type MemoryReplayDismiss,
+} from '@bloom/core/garden/memory-replay';
+import {
+  readMemoryReplayDismiss,
+  writeMemoryReplayDismiss,
+} from '@/lib/memory-replay/dismiss';
 import {
   getWindSwayDegrees,
   isNightPhase,
@@ -65,12 +86,6 @@ type Props = {
 
 const VIEWPORT_BUFFER = 320;
 
-function flowerSizeForEntry(entry: EntryRecord): number {
-  if (entry.isFavourited) return 156;
-  if (isAnniversaryBlossom(entry.createdAt)) return 148;
-  return 140;
-}
-
 export function GardenScene({ meta, entries }: Props) {
   const scene = useSceneContext();
   const sceneReady = scene.status === 'ready';
@@ -84,7 +99,10 @@ export function GardenScene({ meta, entries }: Props) {
     entry: EntryRecord;
     monthKey: string;
   } | null>(null);
+  const [clusterPickerState, setClusterPickerState] = useState<PlacedFlower[] | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [memoryDismiss, setMemoryDismiss] = useState<MemoryReplayDismiss | null>(null);
+  const [memoryDismissReady, setMemoryDismissReady] = useState(false);
   const panWrapRef = useRef<View>(null);
   const [panTopOffset, setPanTopOffset] = useState(0);
   const [panSceneHeight, setPanSceneHeight] = useState(0);
@@ -116,6 +134,48 @@ export function GardenScene({ meta, entries }: Props) {
 
   const daysSince = daysSinceLastEntry(meta.lastEntryAt);
   const wilted = isGardenWilted(meta.lastEntryAt);
+
+  const memoryMatch = useMemo(() => findMemoryReplay(entries), [entries]);
+  const memoryLine = useMemo(
+    () =>
+      memoryMatch
+        ? formatMemoryReplayLine(memoryMatch.entry, memoryMatch.yearsAgo)
+        : null,
+    [memoryMatch]
+  );
+  const showMemoryCard =
+    memoryDismissReady &&
+    memoryMatch != null &&
+    memoryLine != null &&
+    !isMemoryReplayDismissed(memoryDismiss, memoryMatch);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void readMemoryReplayDismiss().then((d) => {
+      if (!cancelled) {
+        setMemoryDismiss(d);
+        setMemoryDismissReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissMemoryCard = useCallback(() => {
+    if (!memoryMatch) return;
+    const dismiss: MemoryReplayDismiss = {
+      date: formatMemoryReplayDismissKey(new Date()),
+      entryId: memoryMatch.entry.id,
+    };
+    void writeMemoryReplayDismiss(dismiss);
+    setMemoryDismiss(dismiss);
+  }, [memoryMatch]);
+
+  const openMemoryEntry = useCallback(() => {
+    if (!memoryMatch) return;
+    router.push(`/entry/${memoryMatch.entry.id}`);
+  }, [memoryMatch, router]);
 
   const gardenMonth = meta.lastEntryAt
     ? new Date(meta.lastEntryAt).getMonth() + 1
@@ -166,10 +226,40 @@ export function GardenScene({ meta, entries }: Props) {
     scrollRef.current?.scrollTo({ x, animated: false });
   }, [clusters, contentWidth, width]);
 
-  const handleOpenActionDrawer = (entry: EntryRecord, monthKey: string) => {
+  const openActionDrawer = useCallback((entry: EntryRecord, monthKey: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActionDrawerState({ entry, monthKey });
-  };
+  }, []);
+
+  const handleGardenTap = useCallback(
+    (pageX: number, pageY: number) => {
+      const scrollEl = scrollRef.current;
+      if (!scrollEl) return;
+
+      scrollEl.measureInWindow((x, y) => {
+        const worldX = pageX - x + visualScrollLeft;
+        const worldY = pageY - y;
+        const hits = findPlacedFlowersAtPoint(worldX, worldY, sortedLayout);
+
+        if (hits.length === 0) return;
+        if (hits.length === 1) {
+          openActionDrawer(hits[0]!.entry, hits[0]!.monthKey);
+          return;
+        }
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setClusterPickerState(hits);
+      });
+    },
+    [visualScrollLeft, sortedLayout, openActionDrawer]
+  );
+
+  const handleClusterSelect = useCallback(
+    (entry: EntryRecord, monthKey: string) => {
+      setClusterPickerState(null);
+      openActionDrawer(entry, monthKey);
+    },
+    [openActionDrawer]
+  );
 
   const nightCanvasActive = sceneReady && isNightPhase(scene.timePhase);
   const nightShowMoon = shouldShowMoonDisc({
@@ -210,6 +300,14 @@ export function GardenScene({ meta, entries }: Props) {
 
       {wilted ? (
         <Text style={styles.wiltHint}>Your garden misses you — write to refresh it</Text>
+      ) : null}
+
+      {showMemoryCard && memoryLine ? (
+        <MemoryReplayCard
+          line={memoryLine}
+          onOpen={openMemoryEntry}
+          onDismiss={dismissMemoryCard}
+        />
       ) : null}
 
       <TimelineScrubber
@@ -309,10 +407,13 @@ export function GardenScene({ meta, entries }: Props) {
           })}
 
           {sortedLayout.map(({ entry, position }, index) => {
-            const flowerSize = flowerSizeForEntry(entry);
-            const favHalo = entry.isFavourited ? 14 : 0;
-            const plotWidth = flowerSize + favHalo * 2;
-            const plotHeight = flowerSize * 1.15 + favHalo;
+            const { flowerSize, width: plotWidth, height: plotHeight } = flowerPlotSize(entry);
+            const hitRx = plotWidth * FLOWER_HIT_ELLIPSE_RX_RATIO;
+            const hitRy = plotHeight * FLOWER_HIT_ELLIPSE_RY_RATIO;
+            const hitWidth = hitRx * 2;
+            const hitHeight = hitRy * 2;
+            const hitLeft = plotWidth / 2 - hitRx;
+            const hitTop = plotHeight * FLOWER_HIT_ELLIPSE_CY_RATIO - hitRy;
             const plotLeft = position.x - plotWidth / 2;
             const plotRight = position.x + plotWidth / 2;
 
@@ -323,10 +424,8 @@ export function GardenScene({ meta, entries }: Props) {
             }
 
             return (
-              <Pressable
+              <View
                 key={entry.id}
-                onPress={() => handleOpenActionDrawer(entry, formatMonth(entry.createdAt))}
-                onLongPress={() => handleOpenActionDrawer(entry, formatMonth(entry.createdAt))}
                 style={[
                   styles.flowerPlot,
                   {
@@ -343,6 +442,24 @@ export function GardenScene({ meta, entries }: Props) {
                   },
                 ]}
               >
+                <Pressable
+                  onPress={(e) =>
+                    handleGardenTap(e.nativeEvent.pageX, e.nativeEvent.pageY)
+                  }
+                  onLongPress={(e) =>
+                    handleGardenTap(e.nativeEvent.pageX, e.nativeEvent.pageY)
+                  }
+                  style={{
+                    position: 'absolute',
+                    left: hitLeft,
+                    top: hitTop,
+                    width: hitWidth,
+                    height: hitHeight,
+                    zIndex: 2,
+                  }}
+                  accessibilityLabel={entry.title ?? 'Memory'}
+                  accessibilityRole="button"
+                />
                 {entry.isFavourited ? (
                   <View
                     pointerEvents="none"
@@ -370,7 +487,7 @@ export function GardenScene({ meta, entries }: Props) {
                 {isAnniversaryBlossom(entry.createdAt) ? (
                   <Text style={styles.anniversary}>✦ anniversary</Text>
                 ) : null}
-              </Pressable>
+              </View>
             );
           })}
           </Animated.ScrollView>
@@ -392,6 +509,12 @@ export function GardenScene({ meta, entries }: Props) {
       <SceneLocatingLabel />
       <JournalPanel visible={journalOpen} onClose={() => setJournalOpen(false)} />
 
+      <FlowerClusterPicker
+        candidates={clusterPickerState ?? []}
+        onSelect={handleClusterSelect}
+        onClose={() => setClusterPickerState(null)}
+      />
+
       <FlowerActionDrawer
         entry={actionDrawerState?.entry ?? null}
         monthKey={actionDrawerState?.monthKey}
@@ -407,11 +530,6 @@ export function GardenScene({ meta, entries }: Props) {
       />
     </SeasonBackground>
   );
-}
-
-function formatMonth(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
