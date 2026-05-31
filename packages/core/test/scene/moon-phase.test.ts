@@ -5,7 +5,7 @@ import {
   getMoonPhaseMaskGeometry,
   shouldHideMoonForWeather,
   shouldShowMoonDisc,
-} from './moon-phase';
+} from '../../src/scene/moon-phase';
 
 describe('getMoonPhase', () => {
   it('returns new moon at the anchor instant', () => {

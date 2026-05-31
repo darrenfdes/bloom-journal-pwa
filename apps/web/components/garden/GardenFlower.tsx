@@ -4,6 +4,12 @@ import { motion } from 'framer-motion';
 import React, { memo } from 'react';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
+import {
+  FLOWER_HIT_ELLIPSE_CY_RATIO,
+  FLOWER_HIT_ELLIPSE_RX_RATIO,
+  FLOWER_HIT_ELLIPSE_RY_RATIO,
+  flowerPlotSize,
+} from '@bloom/core/garden/hit-test';
 import { isAnniversaryBlossom } from '@bloom/core/garden/anniversary';
 import { computePumpkinStage, resolvePumpkinTrigger } from '@bloom/core/flowers/genome';
 import {
@@ -36,15 +42,8 @@ type Props = {
   daysSince: number | null;
   isHighlighted: boolean;
   animateSway: boolean;
-  monthKey: string;
-  onOpenAction: (entry: EntryRecord, monthKey: string) => void;
+  onGardenTap: (clientX: number, clientY: number) => void;
 };
-
-function flowerSizeForEntry(entry: EntryRecord): number {
-  if (entry.isFavourited) return 156;
-  if (isAnniversaryBlossom(entry.createdAt)) return 148;
-  return 140;
-}
 
 function GardenFlowerInner({
   entry,
@@ -56,11 +55,10 @@ function GardenFlowerInner({
   daysSince,
   isHighlighted,
   animateSway,
-  monthKey,
-  onOpenAction,
+  onGardenTap,
 }: Props) {
   const scene = useSceneContextOptional();
-  const flowerSize = flowerSizeForEntry(entry);
+  const { flowerSize, width: visualWidth, height: visualHeight } = flowerPlotSize(entry);
   const windSpeed = scene?.weather?.windSpeed ?? 0;
   const swayAmplitude = getWindSwayDegrees(windSpeed);
   const season = scene?.season ?? 'spring';
@@ -74,8 +72,6 @@ function GardenFlowerInner({
     .filter(Boolean)
     .join(' ');
   const favHalo = entry.isFavourited ? 14 : 0;
-  const visualWidth = flowerSize + favHalo * 2;
-  const visualHeight = flowerSize * 1.15 + favHalo;
   const baseScale = position.scale;
   const baseRotate = position.rotation;
   const isRipePumpkin =
@@ -105,13 +101,12 @@ function GardenFlowerInner({
       <button
         type="button"
         data-garden-interactive
-        onClick={() => onOpenAction(entry, monthKey)}
+        onClick={(e) => onGardenTap(e.clientX, e.clientY)}
         title={entry.title ?? 'Memory'}
         aria-label={entry.title ?? 'Memory'}
         className="absolute inset-0 z-20 border-0 bg-transparent p-0"
         style={{
-          // Bloom-focused hit region: generous on petals, excludes most stem overlap.
-          clipPath: 'ellipse(40% 35% at 50% 34%)',
+          clipPath: `ellipse(${FLOWER_HIT_ELLIPSE_RX_RATIO * 100}% ${FLOWER_HIT_ELLIPSE_RY_RATIO * 100}% at 50% ${FLOWER_HIT_ELLIPSE_CY_RATIO * 100}%)`,
         }}
       />
       <motion.div

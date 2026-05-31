@@ -3,7 +3,7 @@ import {
   getGardenFlowerVerticalRange,
   getGardenGroundLineY,
 } from '../garden/scene-layout';
-import { scatterInCluster } from '../garden/scatter';
+import { scatterInCluster, type ScatterPoint } from '../garden/scatter';
 import type { EntryRecord, GardenPosition } from '../types';
 import { format, parseISO } from 'date-fns';
 
@@ -18,7 +18,7 @@ export const GARDEN_PADDING_RIGHT = 200;
 const GARDEN_STEM_EDGE_MARGIN = 48;
 const FLOW_CENTER_ANCHOR_FIRST = 0.5;
 const FLOW_CENTER_ANCHOR_NEXT = 0.55;
-const GARDEN_CLUSTER_MIN_DISTANCE = 96;
+const GARDEN_CLUSTER_MIN_DISTANCE = 128;
 
 export interface LayoutBounds {
   width: number;
@@ -93,11 +93,13 @@ function clusterCenterY(
 function getClusterScatterParams(
   bounds: LayoutBounds,
   monthIndex: number,
-  monthCount: number
+  monthCount: number,
+  entryCount = 1
 ): ClusterScatterParams {
   const { minY, maxY } = getGardenFlowerVerticalRange(bounds.height);
-  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.46, 148);
-  const radiusY = Math.max(44, (maxY - minY) * 0.46);
+  const densityBoost = 1 + Math.max(0, entryCount - 3) * 0.1;
+  const radiusX = Math.min(GARDEN_CLUSTER_BAND_WIDTH * 0.46, 148) * densityBoost;
+  const radiusY = Math.max(44, (maxY - minY) * 0.46) * densityBoost;
   return {
     radiusX,
     radiusY,
@@ -109,6 +111,33 @@ function getClusterScatterParams(
 function depthScale(z: number, maxZ: number): number {
   if (maxZ <= 0) return 1;
   return 0.72 + (z / maxZ) * 0.35;
+}
+
+function applyStemJitter(
+  pt: ScatterPoint,
+  rng: SeededRNG,
+  scatterParams: ClusterScatterParams,
+  existing: GardenPosition[]
+): { x: number; y: number } {
+  const jittered = {
+    x: pt.x + rng.range(-4, 4),
+    y: clamp(pt.y + rng.range(-6, 6), scatterParams.minY, scatterParams.maxY),
+  };
+
+  const tooClose = existing.some((p) => {
+    const dx = p.x - jittered.x;
+    const dy = p.y - jittered.y;
+    return Math.sqrt(dx * dx + dy * dy) < GARDEN_CLUSTER_MIN_DISTANCE;
+  });
+
+  if (tooClose) {
+    return {
+      x: pt.x,
+      y: clamp(pt.y, scatterParams.minY, scatterParams.maxY),
+    };
+  }
+
+  return jittered;
 }
 
 /** Shared stem-base Y for all flowers on the horizontal timeline. */
@@ -275,7 +304,12 @@ function computeMonthColumnPlans(
     const columnLeft = cursorX;
     const anchor = monthIndex > 0 ? FLOW_CENTER_ANCHOR_NEXT : FLOW_CENTER_ANCHOR_FIRST;
     const centerX = columnLeft + GARDEN_CLUSTER_BAND_WIDTH * anchor;
-    const scatterParams = getClusterScatterParams(bounds, monthIndex, monthCount);
+    const scatterParams = getClusterScatterParams(
+      bounds,
+      monthIndex,
+      monthCount,
+      clusterEntries.length
+    );
     const centerY = clusterCenterY(
       monthIndex,
       scatterParams.minY,
@@ -363,7 +397,12 @@ export function computeGardenLayout(
 
   for (const plan of plans) {
     const clusterEntries = byMonth.get(plan.monthKey) ?? [];
-    const scatterParams = getClusterScatterParams(bounds, plan.monthIndex, monthCount);
+    const scatterParams = getClusterScatterParams(
+      bounds,
+      plan.monthIndex,
+      monthCount,
+      clusterEntries.length
+    );
     const scatterSeed = hashString(plan.monthKey + String(clusterEntries.length));
     const points = scatterInCluster(
       clusterEntries.length,
@@ -381,10 +420,14 @@ export function computeGardenLayout(
       const z = plan.monthIndex * 100 + index;
       const maxZ = maxMonthIndex * 100 + clusterEntries.length;
       const scale = depthScale(z, maxZ);
+      const sameMonthPositions = placed
+        .filter((p) => p.monthKey === plan.monthKey)
+        .map((p) => p.position);
+      const stem = applyStemJitter(pt, rng, scatterParams, sameMonthPositions);
 
       const position: GardenPosition = {
-        x: pt.x + rng.range(-4, 4),
-        y: clamp(pt.y + rng.range(-6, 6), scatterParams.minY, scatterParams.maxY),
+        x: stem.x,
+        y: stem.y,
         z,
         rotation: rng.range(-22, 22),
         scale,
@@ -453,7 +496,8 @@ export function assignPositionForNewEntry(
   const scatterParams = getClusterScatterParams(
     bounds,
     monthIndex >= 0 ? monthIndex : monthKeys.length,
-    monthKeys.length
+    monthKeys.length,
+    sameMonth.length + 1
   );
   const plans = resolveColumnPlans(byMonth, monthKeys, bounds);
   const plan = plans.find((p) => p.monthKey === key);

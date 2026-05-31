@@ -12,7 +12,9 @@ import { SceneLocatingLabel } from '@/components/scene/SceneLocatingLabel';
 import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
 import { WeatherParticles } from '@/components/scene/WeatherParticles';
 import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
+import { FlowerClusterPicker } from '@/components/garden/FlowerClusterPicker';
 import { GardenFlower } from '@/components/garden/GardenFlower';
+import { MemoryReplayCard } from '@/components/garden/MemoryReplayCard';
 import { GardenPanIndicator } from '@/components/garden/GardenPanIndicator';
 import { PollenSparkles } from '@/components/garden/PollenSparkles';
 import {
@@ -41,12 +43,25 @@ import {
   getMonthClusters,
   resolveClusterAtWorldX,
 } from '@bloom/core/garden/layout';
+import type { PlacedFlower } from '@bloom/core/garden/layout';
+import { findPlacedFlowersAtPoint } from '@bloom/core/garden/hit-test';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import { getSeason } from '@bloom/core/theme/seasons';
 import { isNightPhase, shouldShowMoonDisc, type SceneState } from '@bloom/core/scene';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
+import {
+  findMemoryReplay,
+  formatMemoryReplayDismissKey,
+  formatMemoryReplayLine,
+  isMemoryReplayDismissed,
+  type MemoryReplayDismiss,
+} from '@bloom/core/garden/memory-replay';
 import type { EntryRecord, GardenMeta } from '@bloom/core';
+import {
+  readMemoryReplayDismiss,
+  writeMemoryReplayDismiss,
+} from '@/lib/memory-replay/dismiss';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 type Props = {
@@ -68,11 +83,6 @@ function clusterGroundFromKey(monthKey: string) {
   };
 }
 
-function formatMonth(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
 export function GardenScene({ meta, entries }: Props) {
   const scene = useSceneContext();
   const sceneReady = scene.status === 'ready';
@@ -88,7 +98,10 @@ export function GardenScene({ meta, entries }: Props) {
     entry: EntryRecord;
     monthKey: string;
   } | null>(null);
+  const [clusterPickerState, setClusterPickerState] = useState<PlacedFlower[] | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+  const [memoryDismiss, setMemoryDismiss] = useState<MemoryReplayDismiss | null>(null);
+  const [memoryDismissReady, setMemoryDismissReady] = useState(false);
   const journalOpen = useBloomStore((s) => s.quickWriteOpen);
   const setJournalOpen = useBloomStore((s) => s.setQuickWriteOpen);
 
@@ -147,6 +160,40 @@ export function GardenScene({ meta, entries }: Props) {
 
   const daysSince = daysSinceLastEntry(meta.lastEntryAt);
   const wilted = isGardenWilted(meta.lastEntryAt);
+
+  const memoryMatch = useMemo(() => findMemoryReplay(entries), [entries]);
+  const memoryLine = useMemo(
+    () =>
+      memoryMatch
+        ? formatMemoryReplayLine(memoryMatch.entry, memoryMatch.yearsAgo)
+        : null,
+    [memoryMatch]
+  );
+  const showMemoryCard =
+    memoryDismissReady &&
+    memoryMatch != null &&
+    memoryLine != null &&
+    !isMemoryReplayDismissed(memoryDismiss, memoryMatch);
+
+  React.useEffect(() => {
+    setMemoryDismiss(readMemoryReplayDismiss());
+    setMemoryDismissReady(true);
+  }, []);
+
+  const dismissMemoryCard = useCallback(() => {
+    if (!memoryMatch) return;
+    const dismiss: MemoryReplayDismiss = {
+      date: formatMemoryReplayDismissKey(new Date()),
+      entryId: memoryMatch.entry.id,
+    };
+    writeMemoryReplayDismiss(dismiss);
+    setMemoryDismiss(dismiss);
+  }, [memoryMatch]);
+
+  const openMemoryEntry = useCallback(() => {
+    if (!memoryMatch) return;
+    router.push(`/entry/${memoryMatch.entry.id}`);
+  }, [memoryMatch, router]);
 
   const gardenMonth = meta.lastEntryAt
     ? new Date(meta.lastEntryAt).getMonth() + 1
@@ -245,6 +292,34 @@ export function GardenScene({ meta, entries }: Props) {
     setActionDrawerState({ entry, monthKey });
   }, []);
 
+  const handleGardenTap = useCallback(
+    (clientX: number, clientY: number) => {
+      const el = scrollRef.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const worldX = clientX - rect.left + el.scrollLeft;
+      const worldY = clientY - rect.top;
+      const hits = findPlacedFlowersAtPoint(worldX, worldY, sortedLayout);
+
+      if (hits.length === 0) return;
+      if (hits.length === 1) {
+        openActionDrawer(hits[0]!.entry, hits[0]!.monthKey);
+        return;
+      }
+      setClusterPickerState(hits);
+    },
+    [sortedLayout, openActionDrawer]
+  );
+
+  const handleClusterSelect = useCallback(
+    (entry: EntryRecord, monthKey: string) => {
+      setClusterPickerState(null);
+      openActionDrawer(entry, monthKey);
+    },
+    [openActionDrawer]
+  );
+
   const jumpToMonth = useCallback((scrollX: number) => {
     scrollRef.current?.scrollTo({ left: scrollX, behavior: 'smooth' });
   }, []);
@@ -312,6 +387,15 @@ export function GardenScene({ meta, entries }: Props) {
           <p className="mt-1 shrink-0 text-center text-sm italic text-ink-muted">
             Your garden misses you — write to refresh it
           </p>
+        ) : null}
+
+        {showMemoryCard && memoryLine ? (
+          <MemoryReplayCard
+            className="mt-2 mb-1"
+            line={memoryLine}
+            onOpen={openMemoryEntry}
+            onDismiss={dismissMemoryCard}
+          />
         ) : null}
 
         <TimelineScrubber clusters={clusters} onJump={jumpToMonth} />
@@ -420,8 +504,7 @@ export function GardenScene({ meta, entries }: Props) {
                         daysSince={daysSince}
                         isHighlighted={isHighlighted}
                         animateSway={enableSway}
-                        monthKey={formatMonth(entry.createdAt)}
-                        onOpenAction={openActionDrawer}
+                        onGardenTap={handleGardenTap}
                       />
                     );
                   })}
@@ -440,8 +523,7 @@ export function GardenScene({ meta, entries }: Props) {
               daysSince={daysSince}
               isHighlighted
               animateSway={enableSway}
-              monthKey={formatMonth(highlightedPlot.entry.createdAt)}
-              onOpenAction={openActionDrawer}
+              onGardenTap={handleGardenTap}
             />
           ) : null}
           </div>
@@ -459,6 +541,12 @@ export function GardenScene({ meta, entries }: Props) {
       <AmbientOverlay scene={scene} />
       <SceneLocatingLabel scene={scene} />
       <JournalPanel scene={scene} open={journalOpen} onClose={() => setJournalOpen(false)} />
+
+      <FlowerClusterPicker
+        candidates={clusterPickerState ?? []}
+        onSelect={handleClusterSelect}
+        onClose={() => setClusterPickerState(null)}
+      />
 
       <FlowerActionDrawer
         entry={actionDrawerState?.entry ?? null}

@@ -39,6 +39,10 @@ flowchart LR
   open[Open app] --> first{First entry planted?}
   first -->|No| write[Write screen]
   first -->|Yes| garden[Garden]
+  garden --> memoryCard{This day memory?}
+  memoryCard -->|Yes| replay[Memory replay card]
+  memoryCard -->|No| pan[Garden meadow]
+  replay --> pan
   write --> plant[Plant confirm bloom preview]
   plant --> garden
   garden --> tap[Tap flower]
@@ -52,8 +56,8 @@ flowchart LR
 
 1. **First launch** — User lands on Write until they plant their first entry (`hasPlantedFirst` in garden meta).
 2. **Write** — Title (optional), content (required), mood (optional), tags, daily prompt; draft auto-saved.
-3. **Plant confirm** — Preview of generated bloom; confirm animation; entry persisted with scene snapshot.
-4. **Garden** — Horizontal meadow of flowers grouped by month; ambient sky/weather; interact via tap/long-press.
+3. **Plant confirm** — Preview of generated bloom; confirm animation; entry persisted (scene snapshot only when planted from garden quick-write; see §3.8).
+4. **Garden** — Optional “This day in your garden” memory card on open; horizontal meadow of flowers grouped by month; ambient sky/weather; interact via tap/long-press.
 5. **Return visits** — Read entry, favourite, filter garden, start a “revisit” thread linked to a parent memory.
 6. **Settings** — Search, JSON backup, optional sign-in and cloud sync.
 
@@ -145,6 +149,21 @@ When configured (`apps/web/docs/sync.md`):
 - **Never synced** — PIN hash, write drafts, biometric flags (client-only)
 
 **Not in v1:** Realtime sync, file attachments, Supabase Storage.
+
+### 3.8 Memory Replay (“This day in your garden”)
+
+Proactively surfaces a past memory when the user opens the garden — no AI, deterministic copy from data already on the entry.
+
+| Item | Detail |
+|------|--------|
+| Trigger | Garden screen after first entry planted (`hasPlantedFirst`) |
+| Match | Entries on today’s calendar month + day from a **prior year**; `isDeleted` excluded |
+| Selection | Among matches, prefer **smallest years ago** (e.g. one year ago over two on the same date) |
+| Narrative | `packages/core/src/garden/memory-replay.ts` — time phase, weather, place label, title/content excerpt |
+| Actions | Tap card → entry detail; dismiss → hidden for rest of local calendar day |
+| Dismiss storage | Client-only (`localStorage` web, SecureStore mobile); not synced |
+
+**Scene snapshot caveat:** Write → Plant confirm does not pass live scene into `plantEntry` today; only garden quick-write does. Entries without `weather` / `timePhase` still get a shorter line (e.g. “One year ago, you wrote about …”).
 
 ---
 
@@ -255,4 +274,16 @@ Not implemented in code — useful if extending this doc into a full PRD:
 
 ## 10. One-paragraph elevator pitch
 
-Bloom Journal is a private, mood-aware journal that grows a unique procedural flower for every entry you write. Your memories form a scrollable garden organised by month, set against a living sky that reflects your real weather, time of day, season, and moon phase. The app works fully offline on web and phone; you can optionally sign in to back up and sync across devices. Gentle mechanics — wilt when you have not written in a few days, anniversary highlights, revisit threads, and rare pumpkin blooms — reward consistency and emotional honesty without gamifying streaks.
+Bloom Journal is a private, mood-aware journal that grows a unique procedural flower for every entry you write. Your memories form a scrollable garden organised by month, set against a living sky that reflects your real weather, time of day, season, and moon phase. The app works fully offline on web and phone; you can optionally sign in to back up and sync across devices. Gentle mechanics — wilt when you have not written in a few days, anniversary highlights, a “this day in your garden” memory card, revisit threads, and rare pumpkin blooms — reward consistency and emotional honesty without gamifying streaks.
+
+---
+
+## 11. Planned features (not yet shipped)
+
+| Feature | Depends on | Notes |
+|---------|------------|-------|
+| **Memory letters** | JSON backup v1 (`apps/web/lib/export/backup.ts`), formatted export UI | Beautiful letter export from a past entry; share or save. Export/share first; Google Drive is not integrated today (optional later). |
+| **Sentiment timeline** | `mood`, `inferredSentiment` on every entry | Chart view across the garden — emotional trends week over week. |
+| **Auto-tagging** | On-device inference + accept/dismiss UI before plant | Suggest people, places, themes after entry creation; no external ML API in v1. |
+
+**Follow-up (Memory Replay quality):** Pass live scene snapshot into `plantEntry` on plant-confirm so more entries have rich replay copy.
