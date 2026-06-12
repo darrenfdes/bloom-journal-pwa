@@ -11,6 +11,8 @@ import { getMood } from '@/lib/constants/moods';
 import { plantEntry } from '@/lib/db/repositories/entries';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { clearWriteDraft } from '@/lib/db/repositories/settings';
+import { buildPlantSceneSnapshot } from '@/lib/scene/plantSnapshot';
+import { useSceneContext } from '@/lib/scene/SceneContext';
 import { resolveMood } from '@/lib/sentiment/infer';
 import { buildFlowerGenome } from '@bloom/core/flowers/genome';
 import type { EntryRecord } from '@bloom/core';
@@ -18,6 +20,7 @@ import { useBloomStore } from '@/stores/useBloomStore';
 
 export default function PlantConfirmPage() {
   const router = useRouter();
+  const scene = useSceneContext();
   const pending = useBloomStore((s) => s.pendingPlant);
   const setPendingPlant = useBloomStore((s) => s.setPendingPlant);
   const setGardenMeta = useBloomStore((s) => s.setGardenMeta);
@@ -52,12 +55,13 @@ export default function PlantConfirmPage() {
   }, [pending]);
 
   useEffect(() => {
+    if (celebrating) return;
     if (!pending || !previewEntry) {
       router.replace('/write');
     }
-  }, [pending, previewEntry, router]);
+  }, [pending, previewEntry, router, celebrating]);
 
-  if (!pending || !previewEntry) {
+  if ((!pending || !previewEntry) && !celebrating) {
     return null;
   }
 
@@ -72,7 +76,7 @@ export default function PlantConfirmPage() {
         width: typeof window !== 'undefined' ? window.innerWidth : 390,
         height: typeof window !== 'undefined' ? window.innerHeight : 800,
       };
-      const entry = await plantEntry(pending, bounds);
+      const entry = await plantEntry(pending, bounds, buildPlantSceneSnapshot(scene));
       await clearWriteDraft();
 
       const { listEntries } = await import('@/lib/db/repositories/entries');
@@ -81,19 +85,16 @@ export default function PlantConfirmPage() {
 
       setEntries(entries);
       setGardenMeta(gardenMeta);
-      setPendingPlant(null);
       resetDraft();
 
       toast.success('Planted in your garden');
       setHighlightEntryId(entry.id);
       setCelebrating(true);
 
+      const isFirstPlant = !meta?.hasPlantedFirst;
       setTimeout(() => {
-        if (!meta?.hasPlantedFirst) {
-          router.replace(`/garden?bloom=${entry.id}`);
-        } else {
-          router.replace('/garden');
-        }
+        setPendingPlant(null);
+        router.replace(isFirstPlant ? `/garden?bloom=${entry.id}` : '/garden');
       }, 1500);
     } catch {
       toast.error('Could not plant your entry');

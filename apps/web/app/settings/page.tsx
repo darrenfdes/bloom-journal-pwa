@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportBackup } from '@/lib/export/backup';
+import { usePwaStatus } from '@/lib/pwa/usePwaStatus';
 import { searchEntries } from '@/lib/db/repositories/entries';
 import { signOut } from '@/lib/auth/session';
 import { getSyncStatus, subscribeSyncStatus, type SyncStatus } from '@/lib/sync/status';
@@ -24,6 +25,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading, configured } = useAuth();
   const supabaseConfigured = isSupabaseConfigured();
+  const pwaStatus = usePwaStatus();
   const [query, setQuery] = useState('');
   const [exporting, setExporting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus);
@@ -55,6 +57,17 @@ export default function SettingsPage() {
     await signOut();
     toast.message('Signed out — your local garden is still here');
     router.refresh();
+  };
+
+  const handleInstall = async () => {
+    const outcome = await pwaStatus.promptInstall();
+    if (outcome === 'accepted') {
+      toast.success('Bloom Journal is installing');
+    } else if (outcome === 'dismissed') {
+      toast.message('Install dismissed');
+    } else {
+      toast.message('Install is not available in this browser yet');
+    }
   };
 
   const syncLabel = syncStatus.offline
@@ -110,6 +123,26 @@ export default function SettingsPage() {
       </section>
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">
+        <h2 className="font-display text-lg font-medium text-ink">App status</h2>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant={pwaStatus.online ? 'default' : 'secondary'}>
+            {pwaStatus.online ? 'Online' : 'Offline'}
+          </Badge>
+          <Badge variant={pwaStatus.installed ? 'default' : 'outline'}>
+            {pwaStatus.installed ? 'Installed' : 'Browser app'}
+          </Badge>
+        </div>
+        <p className="text-sm text-ink-soft">
+          Offline support is active after the app has loaded once in production.
+        </p>
+        {pwaStatus.installAvailable ? (
+          <Button variant="outline" onClick={() => void handleInstall()}>
+            Install app
+          </Button>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-parchment p-4">
         <h2 className="font-display text-lg font-medium text-ink">Search memories</h2>
         <div className="flex gap-2">
           <Input
@@ -132,12 +165,14 @@ export default function SettingsPage() {
         </Button>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Flower gallery</h2>
-        <Button variant="outline" asChild>
-          <Link href="/flowers">Preview mood blooms</Link>
-        </Button>
-      </section>
+      {process.env.NODE_ENV === 'development' ? (
+        <section className="space-y-4 rounded-xl border border-parchment p-4">
+          <h2 className="font-display text-lg font-medium text-ink">Flower gallery</h2>
+          <Button variant="outline" asChild>
+            <Link href="/flowers">Preview mood blooms</Link>
+          </Button>
+        </section>
+      ) : null}
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">
         <h2 className="font-display text-lg font-medium text-ink">Privacy lock</h2>

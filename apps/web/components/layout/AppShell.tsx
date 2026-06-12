@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { BloomProvider } from '@/components/BloomProvider';
 import { AppNav } from '@/components/nav/AppNav';
+import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       {!hideNav ? <AppNav /> : null}
+      <PwaLifecycle />
       <Toaster />
       </BloomProvider>
     </AuthProvider>
