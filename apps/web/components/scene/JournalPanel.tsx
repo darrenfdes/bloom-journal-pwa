@@ -9,13 +9,13 @@ import {
   getSeasonPlaceholder,
   isNightPhase,
   weatherCategoryLabel,
-  type EntryWeatherSnapshot,
   type SceneState,
 } from '@bloom/core/scene';
 import { Textarea } from '@/components/ui/textarea';
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
-import { plantEntry, type PlantSceneSnapshot } from '@/lib/db/repositories/entries';
+import { plantEntry } from '@/lib/db/repositories/entries';
 import { useWindowSize } from '@/lib/hooks/useWindowSize';
+import { buildPlantSceneSnapshot } from '@/lib/scene/plantSnapshot';
 import { cn } from '@/lib/utils';
 import type { EntryRecord } from '@bloom/core';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -27,33 +27,6 @@ type Props = {
   open: boolean;
   onClose: () => void;
 };
-
-function toWeatherSnapshot(
-  scene: SceneState,
-  locationName: string | null
-): EntryWeatherSnapshot | null {
-  if (!scene.weather) return null;
-  return {
-    category: scene.weather.category,
-    windSpeed: scene.weather.windSpeed,
-    cloudCover: scene.weather.cloudCover,
-    visibility: scene.weather.visibility,
-    precipitation: scene.weather.precipitation,
-    temperature: scene.weather.temperature,
-    coords: scene.weather.coords,
-    locationName,
-  };
-}
-
-function buildSceneSnapshot(scene: SceneState): PlantSceneSnapshot | undefined {
-  const weather = toWeatherSnapshot(scene, scene.locationName);
-  if (!weather) return undefined;
-  return {
-    weather,
-    timePhase: scene.timePhase,
-    sceneSeason: scene.season,
-  };
-}
 
 function formatEntryDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -113,7 +86,7 @@ export function JournalPanel({ scene, open, onClose }: Props) {
     const content = text.trim();
     if (!content || saving) return;
 
-    const snapshot = buildSceneSnapshot(scene);
+    const snapshot = buildPlantSceneSnapshot(scene);
     setSaving(true);
     try {
       await plantEntry(
