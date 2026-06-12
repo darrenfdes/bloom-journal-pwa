@@ -7,22 +7,41 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/components/auth/AuthProvider';
 import {
   isSupabaseConfigured,
+  resendSignupConfirmation,
   signInWithGoogle,
   signInWithPassword,
   signUpWithPassword,
 } from '@/lib/auth/session';
 import { pullForUser } from '@/lib/sync/engine';
 
+function authErrorMessage(error: { message: string; code?: string }): string {
+  switch (error.code) {
+    case 'email_not_confirmed':
+      return 'Confirm your email first — check your inbox (and spam) for the Supabase link.';
+    case 'invalid_credentials':
+      return 'Wrong email or password. Create an account first if you have not signed up yet.';
+    case 'over_email_send_rate_limit':
+      return 'Too many emails sent. Wait a few minutes, then try again.';
+    case 'user_already_registered':
+      return 'An account with this email already exists. Sign in instead.';
+    default:
+      return error.message;
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const searchParams = useSearchParams();
   const authError = searchParams.get('error');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [busy, setBusy] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   if (!isSupabaseConfigured()) {
     return (
@@ -39,23 +58,49 @@ function LoginForm() {
     );
   }
 
+  const handleResendConfirmation = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    try {
+      const { error } = await resendSignupConfirmation(trimmed);
+      if (error) {
+        toast.error(authErrorMessage(error));
+        return;
+      }
+      toast.message('Confirmation email sent — check your inbox and spam folder.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not resend confirmation email');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleEmailAuth = async () => {
     setBusy(true);
+    setNeedsConfirmation(false);
     try {
       const fn = mode === 'signin' ? signInWithPassword : signUpWithPassword;
       const { error, data } = await fn(email.trim(), password);
       if (error) {
-        toast.error(error.message);
+        if (error.code === 'email_not_confirmed') {
+          setNeedsConfirmation(true);
+        }
+        toast.error(authErrorMessage(error));
         return;
       }
       if (mode === 'signup' && !data.session) {
-        toast.message('Check your email to confirm your account');
+        setNeedsConfirmation(true);
+        toast.message('Check your email to confirm your account, then sign in.');
+        setMode('signin');
         return;
       }
       const uid = data.user?.id ?? data.session?.user.id;
       if (uid) await pullForUser(uid);
+      await refresh();
       toast.success(mode === 'signin' ? 'Signed in' : 'Account created');
       router.push('/settings');
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
@@ -110,6 +155,11 @@ function LoginForm() {
         <Button disabled={busy || !email || !password} onClick={() => void handleEmailAuth()}>
           {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
         </Button>
+        {needsConfirmation ? (
+          <Button variant="outline" disabled={busy || !email} onClick={() => void handleResendConfirmation()}>
+            Resend confirmation email
+          </Button>
+        ) : null}
         <Button variant="outline" disabled={busy} onClick={() => void handleGoogle()}>
           Continue with Google
         </Button>

@@ -33,7 +33,18 @@ export async function signInWithPassword(email: string, password: string) {
 export async function signUpWithPassword(email: string, password: string) {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) throw new Error('Supabase is not configured');
-  return supabase.auth.signUp({ email, password });
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: origin ? { emailRedirectTo: `${origin}/auth/callback` } : undefined,
+  });
+}
+
+export async function resendSignupConfirmation(email: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error('Supabase is not configured');
+  return supabase.auth.resend({ type: 'signup', email });
 }
 
 export async function signInWithGoogle() {
