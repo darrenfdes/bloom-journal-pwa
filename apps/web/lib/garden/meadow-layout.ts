@@ -11,13 +11,9 @@ import { format, parseISO } from 'date-fns';
 import type { EntryRecord } from '@bloom/core';
 import { createRng, hashString } from '@bloom/core';
 import { flowerPlotSize } from '@bloom/core/garden/hit-test';
+import { getGardenGroundLineY } from '@bloom/core/garden/scene-layout';
 
-import {
-  COLUMN_GAP,
-  COLUMN_WIDTH,
-  EDGE_PADDING,
-  getGroundY,
-} from '@/lib/scene/garden-proportions';
+import { COLUMN_GAP, COLUMN_WIDTH, EDGE_PADDING } from '@/lib/scene/garden-proportions';
 
 export interface PlacedMeadowFlower {
   entry: EntryRecord;
@@ -77,7 +73,7 @@ export function buildMeadowLayout(
   entries: EntryRecord[],
   viewportHeight: number
 ): MeadowLayout {
-  const groundY = getGroundY(viewportHeight);
+  const groundY = getGardenGroundLineY(viewportHeight);
 
   const byMonth = new Map<string, EntryRecord[]>();
   for (const entry of entries) {

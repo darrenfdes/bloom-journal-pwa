@@ -12,23 +12,25 @@ import React, {
 } from 'react';
 
 import { FlowerActionDrawer } from '@/components/garden/FlowerActionDrawer';
-import { MeadowCanvasFx } from '@/components/garden/MeadowCanvasFx';
 import { MeadowFlower } from '@/components/garden/MeadowFlower';
-import { MeadowHills } from '@/components/garden/MeadowHills';
-import { MeadowSky } from '@/components/garden/MeadowSky';
 import { MeadowTimeline } from '@/components/garden/MeadowTimeline';
 import { MemoryReplayCard } from '@/components/garden/MemoryReplayCard';
 import { PhaseWeatherToolbar } from '@/components/garden/PhaseWeatherToolbar';
+import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
+import { SeasonBackground } from '@/components/garden/SeasonBackground';
+import { SwayingGrassCanvas } from '@/components/garden/SwayingGrassCanvas';
+import { AmbientOverlay } from '@/components/scene/AmbientOverlay';
+import { CelestialLayer } from '@/components/scene/CelestialLayer';
 import { JournalPanel } from '@/components/scene/JournalPanel';
+import { NightSceneCanvas } from '@/components/scene/NightSceneCanvas';
+import { SkyTimePhaseLayer } from '@/components/scene/SkyTimePhaseLayer';
 import { WeatherParticles } from '@/components/scene/WeatherParticles';
 
 import { useElementSize } from '@/lib/hooks/useElementSize';
 import { useWindowSize } from '@/lib/hooks/useWindowSize';
 import { buildMeadowLayout } from '@/lib/garden/meadow-layout';
 import { useMeadowPan } from '@/lib/garden/useMeadowPan';
-import { GRAIN_DATA_URI } from '@/lib/scene/atmosphere';
-import { COLUMN_WIDTH, getGroundY } from '@/lib/scene/garden-proportions';
-import { getAmbientTint, getGroundColors } from '@/lib/scene/meadow-palette';
+import { COLUMN_WIDTH } from '@/lib/scene/garden-proportions';
 import {
   applySceneOverride,
   DEFAULT_OVERRIDE,
@@ -36,6 +38,9 @@ import {
 } from '@/lib/scene/scene-override';
 import { useSceneContext } from '@/lib/scene/SceneContext';
 import { applyGardenFilter } from '@bloom/core/garden/filters';
+import { computeGroundVariant } from '@bloom/core/garden/ground';
+import { getGardenGroundY } from '@bloom/core/garden/layout';
+import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
 import {
   findMemoryReplay,
   formatMemoryReplayDismissKey,
@@ -44,6 +49,8 @@ import {
   type MemoryReplayDismiss,
 } from '@bloom/core/garden/memory-replay';
 import { daysSinceLastEntry, isGardenWilted } from '@bloom/core/garden/wilt';
+import { getSeason } from '@bloom/core/theme/seasons';
+import { isNightPhase, shouldShowMoonDisc } from '@bloom/core/scene';
 import type { EntryRecord, GardenMeta, Mood } from '@bloom/core';
 import {
   readMemoryReplayDismiss,
@@ -57,6 +64,18 @@ type Props = {
 };
 
 const SWAY_ENTRY_LIMIT = 24;
+
+function monthGroundFromKey(monthKey: string) {
+  const month = new Date(`${monthKey}-01`).getMonth() + 1;
+  const groundSeed =
+    monthKey.charCodeAt(0) * 31 + monthKey.charCodeAt(monthKey.length - 1);
+  return {
+    month,
+    groundSeed,
+    groundVariant: computeGroundVariant(month, groundSeed),
+    season: getSeason(month),
+  };
+}
 
 export function GardenScene({ meta, entries }: Props) {
   const liveScene = useSceneContext();
@@ -76,8 +95,6 @@ export function GardenScene({ meta, entries }: Props) {
 
   const sceneRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
-  const farHillsRef = useRef<HTMLDivElement>(null);
-  const nearHillsRef = useRef<HTMLDivElement>(null);
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
   const { width: measuredWidth, height: measuredHeight } = useElementSize(sceneRef);
@@ -95,14 +112,40 @@ export function GardenScene({ meta, entries }: Props) {
     return map;
   }, [layout]);
 
-  const groundY = getGroundY(height);
-  const [groundLow, groundHigh] = getGroundColors(scene.season, scene.timePhase);
-  const ambientTint = getAmbientTint(scene.timePhase);
+  const bounds = useMemo(() => ({ width, height }), [width, height]);
+  const groundY = useMemo(() => getGardenGroundY(bounds), [bounds]);
+  const skyBandHeight = useMemo(() => getGardenSkyHeight(height), [height]);
+  const groundSeed = meta.id.charCodeAt(0) + meta.id.charCodeAt(meta.id.length - 1);
   const daysSince = daysSinceLastEntry(meta.lastEntryAt);
   const wilted = isGardenWilted(meta.lastEntryAt);
 
+  const [scrollLeft, setScrollLeft] = useState(0);
   const [hintGone, setHintGone] = useState(false);
   const [activeIndex, setActiveIndex] = useState(layout.months.length - 1);
+
+  const activeMonth = layout.months[activeIndex];
+  const activeSceneMonth = useMemo(() => {
+    if (!activeMonth) return new Date().getMonth() + 1;
+    return Number(activeMonth.key.split('-')[1]);
+  }, [activeMonth]);
+  const activeGroundVariant = useMemo(() => {
+    if (!activeMonth) {
+      return computeGroundVariant(new Date().getMonth() + 1, groundSeed);
+    }
+    const monthNum = Number(activeMonth.key.split('-')[1]);
+    const monthSeed =
+      activeMonth.key.charCodeAt(0) * 31 +
+      activeMonth.key.charCodeAt(activeMonth.key.length - 1);
+    return computeGroundVariant(monthNum, monthSeed);
+  }, [activeMonth, groundSeed]);
+
+  const nightCanvasActive = scene.status === 'ready' && isNightPhase(scene.timePhase);
+  const nightShowMoon = shouldShowMoonDisc({
+    timePhase: scene.timePhase,
+    weatherCategory: scene.weather?.category,
+    moon: scene.moon,
+  });
+  const moonLatitude = scene.weather?.coords.lat ?? 0;
 
   // ----- highlight (deep-link / store) -----
   const bloomParam = searchParams.get('bloom');
@@ -149,10 +192,23 @@ export function GardenScene({ meta, entries }: Props) {
     monthKey: string;
   } | null>(null);
 
+  const getTileGround = useCallback(
+    (tileIndex: number) => {
+      if (width <= 0 || layout.months.length === 0) return null;
+      const tileCenterX = tileIndex * width + width / 2;
+      const month =
+        layout.months.find((m) => tileCenterX >= m.x0 && tileCenterX < m.x0 + COLUMN_WIDTH) ??
+        layout.months[activeIndex];
+      if (!month) return null;
+      return monthGroundFromKey(month.key);
+    },
+    [layout.months, width, activeIndex]
+  );
+
   // ----- pan -----
   const onTap = useCallback(
-    (e: PointerEvent) => {
-      const target = e.target as Element | null;
+    (downTarget: EventTarget | null) => {
+      const target = downTarget as Element | null;
       const el = target?.closest?.('[data-flower-id]');
       const id = el?.getAttribute('data-flower-id');
       if (!id) {
@@ -172,8 +228,6 @@ export function GardenScene({ meta, entries }: Props) {
   const { scrollRef, jumpTo } = useMeadowPan({
     sceneRef,
     worldRef,
-    farHillsRef,
-    nearHillsRef,
     worldWidth: layout.worldWidth,
     viewportWidth: width,
     monthEdges,
@@ -181,6 +235,7 @@ export function GardenScene({ meta, entries }: Props) {
     onActiveIndexChange: setActiveIndex,
     onTap,
     onFirstMove,
+    onScrollChange: setScrollLeft,
   });
 
   const jumpToMonth = useCallback(
@@ -196,7 +251,9 @@ export function GardenScene({ meta, entries }: Props) {
   useLayoutEffect(() => {
     if (initialisedRef.current || width <= 0 || layout.worldWidth <= 0) return;
     initialisedRef.current = true;
-    scrollRef.current = Math.max(0, layout.worldWidth - width);
+    const initial = Math.max(0, layout.worldWidth - width);
+    scrollRef.current = initial;
+    setScrollLeft(initial);
   }, [width, layout.worldWidth, scrollRef]);
 
   // Deep-link / store highlight → center the bloom.
@@ -231,108 +288,114 @@ export function GardenScene({ meta, entries }: Props) {
   const animateSway = filtered.length <= SWAY_ENTRY_LIMIT && !reducedMotion;
 
   return (
-    <div
-      ref={sceneRef}
-      className="relative h-full w-full select-none overflow-hidden"
-      style={{ touchAction: 'none', cursor: 'grab', background: groundLow }}
+    <SeasonBackground
+      month={activeSceneMonth}
+      groundVariant={activeGroundVariant}
+      groundSeed={groundSeed}
+      width={width}
+      viewportHeight={height}
+      skyBandHeight={skyBandHeight}
+      scrollLeft={scrollLeft}
+      nightCanvasActive={nightCanvasActive}
+      nightShowMoon={nightShowMoon}
+      moonPhase={scene.moon}
+      moonLatitude={moonLatitude}
+      skyOverlays={
+        nightCanvasActive ? null : (
+          <>
+            <SkyTimePhaseLayer scene={scene} />
+            <CelestialLayer scene={scene} width={width} skyHeight={skyBandHeight} />
+          </>
+        )
+      }
     >
-      <MeadowSky scene={scene} />
-
-      <MeadowCanvasFx
-        scene={scene}
-        scrollRef={scrollRef}
-        groundY={groundY}
-        width={width}
-        height={height}
-        reducedMotion={reducedMotion}
-      />
-
-      <MeadowHills
-        scene={scene}
-        groundY={groundY}
-        farHillsRef={farHillsRef}
-        nearHillsRef={nearHillsRef}
-      />
-
-      {/* Ground band */}
       <div
-        className="pointer-events-none absolute left-0 right-0 z-[2]"
-        style={{
-          top: groundY,
-          bottom: 0,
-          background: `linear-gradient(${groundHigh} 0, ${groundHigh} 16%, ${groundLow})`,
-        }}
-        aria-hidden
-      />
+        ref={sceneRef}
+        className="relative min-h-0 flex-1 overflow-hidden"
+        style={{ touchAction: 'none', cursor: 'grab' }}
+      >
+        <RepeatingSeasonGround
+          scrollLeft={scrollLeft}
+          tileWidth={width}
+          viewportHeight={height}
+          groundY={groundY}
+          month={activeSceneMonth}
+          groundVariant={activeGroundVariant}
+          groundSeed={groundSeed}
+          sceneSeason={scene.season}
+          sceneReady={scene.status === 'ready'}
+          nightMode={nightCanvasActive}
+          getTileGround={getTileGround}
+        />
 
-      {/* World — translated as one transform by the pan tick */}
-      <div ref={worldRef} className="pointer-events-none absolute inset-0 z-[6] will-change-transform">
-        {layout.months.map((month) => (
-          <React.Fragment key={month.key}>
-            <div
-              className="pointer-events-none absolute -translate-x-1/2 text-center"
-              style={{ left: month.centerX, top: groundY + 84, width: COLUMN_WIDTH }}
-            >
-              <p
-                className="font-display text-base uppercase leading-tight"
-                style={{
-                  color: 'rgba(255,250,238,0.92)',
-                  letterSpacing: '0.32em',
-                  textShadow: '0 1px 10px rgba(16,28,18,0.55)',
-                }}
-              >
-                {month.labelMonth}
-              </p>
-              <p
-                className="font-display italic"
-                style={{
-                  fontSize: 11,
-                  color: 'rgba(255,250,238,0.6)',
-                  letterSpacing: '0.18em',
-                  textShadow: '0 1px 8px rgba(16,28,18,0.5)',
-                }}
-              >
-                {month.labelYear}
-              </p>
-            </div>
+        {nightCanvasActive ? (
+          <NightSceneCanvas
+            active
+            layer="fireflies"
+            showMoon={false}
+            sceneHeight={height}
+            className="pointer-events-none absolute inset-0 z-[2]"
+          />
+        ) : null}
 
-            {month.flowers.map((placed, index) => (
-              <MeadowFlower
-                key={placed.entry.id}
-                placed={placed}
-                scene={scene}
-                index={index}
-                totalEntries={filtered.length}
-                daysSince={daysSince}
-                animateSway={animateSway}
-                highlighted={activeHighlightId === placed.entry.id}
-              />
-            ))}
-          </React.Fragment>
-        ))}
+        <SwayingGrassCanvas
+          scrollLeft={scrollLeft}
+          tileWidth={width}
+          viewportHeight={height}
+          seed={groundSeed}
+          className="pointer-events-none absolute inset-0 z-[3]"
+        />
+
+        {/* World — translated as one transform by the pan tick */}
+        <div ref={worldRef} className="pointer-events-none absolute inset-0 z-[6] will-change-transform">
+          {layout.months.map((month) => (
+            <React.Fragment key={month.key}>
+              <div
+                className="pointer-events-none absolute -translate-x-1/2 text-center"
+                style={{ left: month.centerX, top: groundY + 84, width: COLUMN_WIDTH }}
+              >
+                <p
+                  className="font-display text-base uppercase leading-tight"
+                  style={{
+                    color: 'rgba(255,250,238,0.92)',
+                    letterSpacing: '0.32em',
+                    textShadow: '0 1px 10px rgba(16,28,18,0.55)',
+                  }}
+                >
+                  {month.labelMonth}
+                </p>
+                <p
+                  className="font-display italic"
+                  style={{
+                    fontSize: 11,
+                    color: 'rgba(255,250,238,0.6)',
+                    letterSpacing: '0.18em',
+                    textShadow: '0 1px 8px rgba(16,28,18,0.5)',
+                  }}
+                >
+                  {month.labelYear}
+                </p>
+              </div>
+
+              {month.flowers.map((placed, index) => (
+                <MeadowFlower
+                  key={placed.entry.id}
+                  placed={placed}
+                  scene={scene}
+                  index={index}
+                  totalEntries={filtered.length}
+                  daysSince={daysSince}
+                  animateSway={animateSway}
+                  highlighted={activeHighlightId === placed.entry.id}
+                />
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
-      {/* Weather precipitation + ambient grade + vignette + grain */}
       <WeatherParticles scene={scene} />
-      <div className="pointer-events-none absolute inset-0 z-[8]" style={{ background: ambientTint }} aria-hidden />
-      <div
-        className="pointer-events-none absolute inset-0 z-[8]"
-        style={{
-          background:
-            'radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 58%, rgba(18,22,40,0.17) 100%)',
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 z-[9]"
-        aria-hidden
-        style={{
-          backgroundImage: GRAIN_DATA_URI,
-          backgroundSize: '180px 180px',
-          mixBlendMode: 'soft-light',
-          opacity: 0.35,
-        }}
-      />
+      <AmbientOverlay scene={scene} />
 
       {/* Chrome */}
       <header
@@ -412,6 +475,6 @@ export function GardenScene({ meta, entries }: Props) {
           setActionDrawerState(null);
         }}
       />
-    </div>
+    </SeasonBackground>
   );
 }

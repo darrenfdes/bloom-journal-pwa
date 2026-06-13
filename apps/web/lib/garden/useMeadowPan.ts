@@ -2,11 +2,6 @@
 
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
-import {
-  FAR_HILL_PARALLAX,
-  NEAR_HILL_PARALLAX,
-} from '@/lib/scene/garden-proportions';
-
 const TAP_THRESHOLD_PX = 8;
 const HINT_DRAG_PX = 40;
 const MIN_MOMENTUM = 6;
@@ -32,9 +27,6 @@ interface Options {
   sceneRef: RefObject<HTMLElement | null>;
   /** The world layer translated by -scroll. */
   worldRef: RefObject<HTMLElement | null>;
-  /** Hill layers parallaxed via backgroundPositionX. */
-  farHillsRef: RefObject<HTMLElement | null>;
-  nearHillsRef: RefObject<HTMLElement | null>;
   worldWidth: number;
   viewportWidth: number;
   /** Column left-edges (world X) used to resolve the active month. */
@@ -49,6 +41,8 @@ interface Options {
   onTap?: (downTarget: EventTarget | null) => void;
   /** Fires once when the user first drags/wheels far enough to dismiss the hint. */
   onFirstMove?: () => void;
+  /** Called each rAF frame when scroll position changes (for scenery parallax). */
+  onScrollChange?: (scroll: number) => void;
 }
 
 export interface MeadowPan {
@@ -61,8 +55,6 @@ export interface MeadowPan {
 export function useMeadowPan({
   sceneRef,
   worldRef,
-  farHillsRef,
-  nearHillsRef,
   worldWidth,
   viewportWidth,
   monthEdges,
@@ -70,6 +62,7 @@ export function useMeadowPan({
   onActiveIndexChange,
   onTap,
   onFirstMove,
+  onScrollChange,
 }: Options): MeadowPan {
   const scrollRef = useRef(0);
   const velRef = useRef(0);
@@ -84,11 +77,14 @@ export function useMeadowPan({
   const onActiveIndexChangeRef = useRef(onActiveIndexChange);
   const onTapRef = useRef(onTap);
   const onFirstMoveRef = useRef(onFirstMove);
+  const onScrollChangeRef = useRef(onScrollChange);
   const reducedMotionRef = useRef(reducedMotion);
+  const lastReportedScrollRef = useRef(-1);
   monthEdgesRef.current = monthEdges;
   onActiveIndexChangeRef.current = onActiveIndexChange;
   onTapRef.current = onTap;
   onFirstMoveRef.current = onFirstMove;
+  onScrollChangeRef.current = onScrollChange;
   reducedMotionRef.current = reducedMotion;
 
   maxScrollRef.current = Math.max(0, worldWidth - viewportWidth);
@@ -240,13 +236,9 @@ export function useMeadowPan({
       if (world) {
         world.style.transform = `translate3d(${(-scroll).toFixed(2)}px,0,0)`;
       }
-      const far = farHillsRef.current;
-      if (far) {
-        far.style.backgroundPositionX = `${(-scroll * FAR_HILL_PARALLAX).toFixed(2)}px`;
-      }
-      const near = nearHillsRef.current;
-      if (near) {
-        near.style.backgroundPositionX = `${(-scroll * NEAR_HILL_PARALLAX).toFixed(2)}px`;
+      if (scroll !== lastReportedScrollRef.current) {
+        lastReportedScrollRef.current = scroll;
+        onScrollChangeRef.current?.(scroll);
       }
 
       const edges = monthEdgesRef.current;
@@ -267,7 +259,7 @@ export function useMeadowPan({
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [worldRef, farHillsRef, nearHillsRef, viewportWidth]);
+  }, [worldRef, viewportWidth]);
 
   return { scrollRef, jumpTo };
 }
