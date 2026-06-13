@@ -6,16 +6,21 @@ import { Sprout, Plus, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
+import { useBloomStore } from '@/stores/useBloomStore';
 
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const setQuickWriteOpen = useBloomStore((s) => s.setQuickWriteOpen);
 
   const isGarden = pathname === '/garden' || pathname.startsWith('/garden/');
   const isSettings = pathname === '/settings' || pathname.startsWith('/settings/');
 
+  // On the garden, capture a memory inline via the quick-add modal; elsewhere fall back to
+  // the full write page.
   const handleCenterAction = () => {
-    router.push('/write');
+    if (isGarden) setQuickWriteOpen(true);
+    else router.push('/write');
   };
 
   return (

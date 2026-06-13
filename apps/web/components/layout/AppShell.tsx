@@ -7,6 +7,7 @@ import { BloomProvider } from '@/components/BloomProvider';
 import { AppNav } from '@/components/nav/AppNav';
 import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
 import { Toaster } from '@/components/ui/sonner';
+import { QuickWrite } from '@/components/write/QuickWrite';
 import { cn } from '@/lib/utils';
 
 const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview'];
@@ -43,6 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       {!hideNav ? <AppNav /> : null}
+      {!hideNav ? <QuickWrite /> : null}
       <PwaLifecycle />
       <Toaster />
       </BloomProvider>

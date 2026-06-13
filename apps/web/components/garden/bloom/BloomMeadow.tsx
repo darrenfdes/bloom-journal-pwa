@@ -17,6 +17,15 @@ import type { EntryRecord } from '@bloom/core';
 
 import { FlowerArt } from '@/components/garden/bloom/species';
 import { GrassTuft, makeHill, RainIcon, SunIcon, Tree } from '@/components/garden/bloom/scenery';
+import {
+  Butterfly,
+  CREATURE_KEYFRAMES,
+  Fox,
+  WINGS,
+  type FlockState,
+  type FoxState,
+  type ShootState,
+} from '@/components/garden/bloom/creatures';
 import { buildMeadowLayout, type PlacedEntry } from '@/lib/garden/bloom/layout';
 import { MOODS } from '@/lib/garden/bloom/moods';
 import {
@@ -52,7 +61,16 @@ const G = 150; // ground strip height
 const snapshotLine = (timePhase: PhaseKey, weather: string, place: string | null) =>
   [PHASE_PRETTY[timePhase], weather, place].filter(Boolean).join(' · ');
 
-export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord[]; preview?: boolean }) {
+export function BloomMeadow({
+  entries,
+  preview = false,
+  creatures = false,
+}: {
+  entries: EntryRecord[];
+  preview?: boolean;
+  /** Enable the ambient creatures + "Scenes" control (preview playground only). */
+  creatures?: boolean;
+}) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
 
@@ -65,6 +83,12 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
   const [replay, setReplay] = useState<PlacedEntry | null>(null);
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
   const [grabbing, setGrabbing] = useState(false);
+
+  /* ambient creatures (preview playground only) */
+  const [bflies, setBflies] = useState<FlockState | null>(null);
+  const [fox, setFox] = useState<FoxState | null>(null);
+  const [cshadow, setCshadow] = useState<{ run: number } | null>(null);
+  const [shoot, setShoot] = useState<ShootState | null>(null);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const hillRefs = [useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null)];
@@ -126,7 +150,7 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
               return { id: i, x, y: built.yAt(x) + 4, sc: h.f > 0.4 ? 0.85 + tr() * 0.5 : 0.5 + tr() * 0.3 };
             })
           : [];
-      return { ...h, Wl, d: built.d, trees };
+      return { ...h, Wl, d: built.d, yAt: built.yAt, trees };
     });
   }, [layout.W, vw]);
 
@@ -220,6 +244,116 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
     e && e.revisitOf ? layout.entries.find((x) => x.id === e.revisitOf) ?? null : null;
   const childrenOf = (e: PlacedEntry | null) => (e ? layout.entries.filter((x) => x.revisitOf === e.id) : []);
 
+  /* ---------- live scenes (preview playground only) ---------- */
+  const spawnButterflies = () => {
+    const sx = scrollerRef.current?.scrollLeft || 0;
+    const within = layout.entries.filter((e) => e.x > sx + 90 && e.x < sx + vw - 90 && e.bloom !== 'pumpkin');
+    const pool = within.length ? within : layout.entries.slice(-6);
+    if (!pool.length) return;
+    const r = mulberry32(Date.now() % 1000000);
+    const picks: PlacedEntry[] = [];
+    const used = new Set<string>();
+    let guard = 0;
+    while (picks.length < Math.min(3, pool.length) && guard++ < 40) {
+      const e = pool[Math.floor(r() * pool.length)]!;
+      if (used.has(e.id)) continue;
+      used.add(e.id);
+      picks.push(e);
+    }
+    const flock = picks.map((e, i) => {
+      const sxp = (220 + r() * 420) * (r() < 0.5 ? 1 : -1);
+      const syp = -(200 + r() * 240);
+      const path = `M ${sxp.toFixed(0)} ${syp.toFixed(0)} C ${(sxp * 0.55 + (r() - 0.5) * 260).toFixed(0)} ${(syp * 0.4 - 70 - r() * 110).toFixed(0)}, ${((r() - 0.5) * 260 + 70).toFixed(0)} ${(-150 - r() * 110).toFixed(0)}, ${((r() - 0.5) * 200).toFixed(0)} ${(-110 - r() * 100).toFixed(0)} S ${((r() - 0.5) * 240).toFixed(0)} ${(-40 - r() * 130).toFixed(0)}, 0 0`;
+      return { id: i, x: e.x + (r() - 0.5) * 16, yB: e.yB + 118 * e.scale, path, dur: 7.5 + r() * 5, stay: 15 + r() * 13, delay: i * 1.7, wing: WINGS[Math.floor(r() * WINGS.length)]!, size: 0.78 + r() * 0.5 };
+    });
+    if (!flock.length) return;
+    const run = Date.now();
+    setBflies({ run, flock });
+    const total = Math.max(...flock.map((f) => f.delay + f.dur + f.stay)) + 1.5;
+    setTimeout(() => setBflies((b) => (b && Date.now() - b.run > total * 900 ? null : b)), total * 1000);
+  };
+
+  const spawnFox = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'dusk' && phaseKey !== 'night' && phaseKey !== 'golden';
+    if (shift) setPhaseKey('dusk');
+    const go = () => {
+      const h = hills[1];
+      if (!h || !h.yAt) return;
+      const sx = scrollerRef.current?.scrollLeft || 0;
+      const cx = sx * h.f + vw / 2;
+      const span = Math.min(vw * 0.8, 940);
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const sc = 0.86;
+      const xs = [0, 0.25, 0.5, 0.75, 1].map((t) => cx - (dir * span) / 2 + dir * span * t);
+      const vars: Record<string, string> = {};
+      xs.forEach((x, i) => {
+        const xc = Math.max(30, Math.min(h.Wl - 30, x));
+        vars[`--fx${i}`] = `${(xc - 48 * sc).toFixed(1)}px`;
+        vars[`--fy${i}`] = `${(h.yAt(xc) - 41.5 * sc + 3).toFixed(1)}px`;
+      });
+      setFox({ run: Date.now(), vars: vars as React.CSSProperties, dir, sc, dur: 13 });
+      setTimeout(() => setFox(null), 13600);
+    };
+    setTimeout(go, shift ? 1500 : 150);
+  };
+
+  const spawnShadow = () => {
+    setCshadow({ run: Date.now() });
+    setTimeout(() => setCshadow(null), 28500);
+  };
+
+  const spawnShoot = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'night' && phaseKey !== 'dusk';
+    if (shift) setPhaseKey('night');
+    const go = () => {
+      const r = mulberry32(Date.now() % 1000000);
+      const streaks = [0, 1].map((i) => ({
+        id: i,
+        x: 18 + r() * 58,
+        y: 5 + r() * 22,
+        ang: 152 + r() * 22,
+        len: 120 + r() * 70,
+        dur: 1.25 + r() * 0.5,
+        delay: i === 0 ? 0.1 : 2.4 + r() * 1.4,
+      }));
+      setShoot({ run: Date.now(), streaks });
+      setTimeout(() => setShoot(null), 6500);
+    };
+    setTimeout(go, shift ? 1500 : 100);
+  };
+
+  /* ambient: a creature wanders through on its own every minute or two */
+  const triggersRef = useRef({ spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey });
+  triggersRef.current = { spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey };
+  useEffect(() => {
+    if (!creatures) return;
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      t = setTimeout(() => {
+        if (!on) return;
+        const { phaseKey: pk, ...fn } = triggersRef.current;
+        const opts =
+          pk === 'night' ? ['shoot', 'shoot'] :
+          pk === 'dusk' ? ['fox', 'bflies', 'shoot'] :
+          pk === 'golden' ? ['fox', 'shadow', 'bflies'] :
+          pk === 'dawn' ? ['bflies', 'shadow'] :
+          ['bflies', 'shadow', 'bflies'];
+        const pick = opts[Math.floor(Math.random() * opts.length)];
+        if (pick === 'bflies') fn.spawnButterflies();
+        else if (pick === 'fox') fn.spawnFox(false);
+        else if (pick === 'shadow') fn.spawnShadow();
+        else fn.spawnShoot(false);
+        loop();
+      }, 42000 + Math.random() * 72000);
+    };
+    loop();
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [creatures]);
+
   /* ---------- card actions ---------- */
   const handleFavourite = async () => {
     if (!active) return;
@@ -266,6 +400,7 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
         @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+        ${creatures ? CREATURE_KEYFRAMES : ''}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important;animation-iteration-count:1 !important;transition-duration:.01s !important}}
       `}</style>
 
@@ -341,6 +476,17 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
+            {creatures && i === 1 && fox && (
+              <g key={fox.run} style={{ ...fox.vars, animation: `bj-fox ${fox.dur}s linear both` }}>
+                <g style={{ animation: `bj-foxlife ${fox.dur}s linear both` }}>
+                  <g style={{ animation: 'bj-trot .48s ease-in-out infinite alternate' }}>
+                    <g transform={`scale(${fox.sc})${fox.dir < 0 ? ' translate(96,0) scale(-1,1)' : ''}`}>
+                      <Fox fill={phase.tree} />
+                    </g>
+                  </g>
+                </g>
+              </g>
+            )}
           </svg>
         ))}
 
@@ -355,6 +501,18 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
             <div key={f.id} style={{ position: 'absolute', left: `${f.x}%`, top: `${f.y}%`, width: 4, height: 4, borderRadius: '50%', background: '#ffe98a', boxShadow: '0 0 10px 3px rgba(255,228,130,.65)', animation: `bj-fire ${f.d}s ${f.dl}s ease-in-out infinite` }} />
           ))}
         </div>
+
+        {/* shooting stars */}
+        {creatures &&
+          shoot &&
+          shoot.streaks.map((s) => (
+            <div key={`${shoot.run}-${s.id}`} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, transform: `rotate(${s.ang}deg)`, pointerEvents: 'none' }}>
+              <div style={{ position: 'relative', width: s.len, height: 2, animation: `bj-shoot ${s.dur}s ${s.delay}s cubic-bezier(.25,.55,.45,1) both` }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 2, background: 'linear-gradient(90deg, transparent, rgba(255,250,228,.95))' }} />
+                <div style={{ position: 'absolute', right: -2, top: -1.5, width: 5, height: 5, borderRadius: '50%', background: '#fffdf2', boxShadow: '0 0 9px 3px rgba(255,248,216,.85)' }} />
+              </div>
+            </div>
+          ))}
       </div>
 
       {/* ===== MEADOW (scrolls) ===== */}
@@ -452,8 +610,19 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
               </button>
             );
           })}
+
+          {/* butterflies (world-space, scroll with the meadow) */}
+          {creatures && bflies && bflies.flock.map((f) => <Butterfly key={`${bflies.run}-${f.id}`} f={f} />)}
         </div>
       </div>
+
+      {/* ===== CLOUD SHADOW SWEEP ===== */}
+      {creatures && cshadow && (
+        <div key={cshadow.run} style={{ position: 'absolute', left: 0, right: 0, top: '32%', bottom: 0, zIndex: 15, pointerEvents: 'none', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '60vw', mixBlendMode: 'multiply', background: 'radial-gradient(ellipse 52% 58% at 50% 46%, rgba(98,114,106,.95), rgba(150,160,152,.55) 56%, rgba(255,255,255,0) 78%)', filter: 'blur(26px)', animation: 'bj-cshadow 23s linear both' }} />
+          <div style={{ position: 'absolute', top: '8%', bottom: 0, left: 0, width: '32vw', mixBlendMode: 'multiply', background: 'radial-gradient(ellipse 50% 55% at 50% 50%, rgba(112,126,118,.85), rgba(255,255,255,0) 74%)', filter: 'blur(24px)', animation: 'bj-cshadow 19s 4.5s linear both' }} />
+        </div>
+      )}
 
       {/* ===== RAIN ===== */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none', opacity: weather === 'rain' ? 1 : 0, transition: 'opacity 1s ease' }}>
@@ -506,6 +675,38 @@ export function BloomMeadow({ entries, preview = false }: { entries: EntryRecord
             {weather === 'rain' ? <RainIcon /> : <SunIcon />}
             {weather === 'rain' ? 'Rain' : 'Clear'}
           </button>
+          {creatures && (
+            <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(247,241,227,.5)', padding: '0 6px 0 9px' }}>Scenes</span>
+              {([
+                ['Butterflies', () => spawnButterflies(), !!bflies],
+                ['Fox', () => spawnFox(true), !!fox],
+                ['Cloud shadow', () => spawnShadow(), !!cshadow],
+                ['Shooting star', () => spawnShoot(true), !!shoot],
+              ] as const).map(([label, fn, on]) => (
+                <button
+                  key={label}
+                  onClick={fn}
+                  style={{
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: 999,
+                    padding: '6px 11px',
+                    fontFamily: sans,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: 1.4,
+                    textTransform: 'uppercase',
+                    color: on ? '#2c3328' : 'rgba(247,241,227,.85)',
+                    background: on ? '#f3ecd9' : 'transparent',
+                    transition: 'all .3s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

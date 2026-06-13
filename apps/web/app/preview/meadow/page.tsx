@@ -24,5 +24,5 @@ const BloomMeadow = dynamic(
 
 export default function MeadowPreviewPage() {
   const entries = useMemo(() => buildSampleEntries(), []);
-  return <BloomMeadow entries={entries} preview />;
+  return <BloomMeadow entries={entries} preview creatures />;
 }
