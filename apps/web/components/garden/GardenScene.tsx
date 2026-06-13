@@ -17,10 +17,7 @@ import { GardenFlower } from '@/components/garden/GardenFlower';
 import { MemoryReplayCard } from '@/components/garden/MemoryReplayCard';
 import { GardenPanIndicator } from '@/components/garden/GardenPanIndicator';
 import { PollenSparkles } from '@/components/garden/PollenSparkles';
-import {
-  RepeatingSeasonGround,
-  gardenTileScrollOffset,
-} from '@/components/garden/RepeatingSeasonGround';
+import { RepeatingSeasonGround } from '@/components/garden/RepeatingSeasonGround';
 import { SwayingGrassCanvas } from '@/components/garden/SwayingGrassCanvas';
 import { NightSceneCanvas } from '@/components/scene/NightSceneCanvas';
 import { SeasonBackground } from '@/components/garden/SeasonBackground';
@@ -198,6 +195,12 @@ export function GardenScene({ meta, entries }: Props) {
   const gardenMonth = meta.lastEntryAt
     ? new Date(meta.lastEntryAt).getMonth() + 1
     : new Date().getMonth() + 1;
+  // Month under the viewport center — tints the distant ridges as you travel
+  const activeSceneMonth = useMemo(() => {
+    const cluster = resolveClusterAtWorldX(visualScrollLeft + width / 2, clusters);
+    if (!cluster) return gardenMonth;
+    return new Date(`${cluster.monthKey}-01`).getMonth() + 1;
+  }, [clusters, visualScrollLeft, width, gardenMonth]);
   const groundSeed = meta.id.charCodeAt(0) + meta.id.charCodeAt(meta.id.length - 1);
   const groundVariant = computeGroundVariant(gardenMonth, groundSeed);
 
@@ -222,14 +225,13 @@ export function GardenScene({ meta, entries }: Props) {
   const getTileGround = useCallback(
     (tileIndex: number) => {
       if (width <= 0 || clusters.length === 0) return null;
-      const offset = gardenTileScrollOffset(visualScrollLeft, width);
-      const tileCenterX = tileIndex * width - offset + visualScrollLeft + width / 2;
+      // Tile i covers world [i*w, (i+1)*w) — resolve the month at its center
+      const tileCenterX = tileIndex * width + width / 2;
       const cluster = resolveClusterAtWorldX(tileCenterX, clusters);
       if (!cluster) return null;
       return clusterGroundFromKey(cluster.monthKey);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clusters, visualScrollLeft, width]
+    [clusters, width]
   );
 
   useLayoutEffect(() => {
@@ -353,12 +355,13 @@ export function GardenScene({ meta, entries }: Props) {
 
   return (
     <SeasonBackground
-      month={gardenMonth}
+      month={activeSceneMonth}
       groundVariant={groundVariant}
       groundSeed={groundSeed}
       width={width}
       viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
       skyBandHeight={skyBandHeight}
+      scrollLeft={visualScrollLeft}
       nightCanvasActive={nightCanvasActive}
       nightShowMoon={nightShowMoon}
       moonPhase={scene.moon}
@@ -398,7 +401,12 @@ export function GardenScene({ meta, entries }: Props) {
           />
         ) : null}
 
-        <TimelineScrubber clusters={clusters} onJump={jumpToMonth} />
+        <TimelineScrubber
+          clusters={clusters}
+          onJump={jumpToMonth}
+          scrollLeft={visualScrollLeft}
+          viewportWidth={width}
+        />
       </div>
 
       <div ref={panRef} className="relative z-[7] mt-2 min-h-0 flex-1">
@@ -477,18 +485,40 @@ export function GardenScene({ meta, entries }: Props) {
                     transform: `translateX(${virtualColumn.start}px)`,
                   }}
                 >
-                  <motion.p
+                  <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.05 }}
-                    className="pointer-events-none absolute w-[140px] rounded-full bg-white/80 px-2.5 py-1 text-center text-xs font-semibold uppercase tracking-wider text-ink shadow-sm backdrop-blur-sm"
+                    className="pointer-events-none absolute w-[160px] text-center"
                     style={{
-                      left: cluster.centerX - virtualColumn.start - 70,
+                      left: cluster.centerX - virtualColumn.start - 80,
                       top: cluster.groundY,
                     }}
                   >
-                    {cluster.label}
-                  </motion.p>
+                    <p
+                      className="font-display text-base uppercase leading-tight"
+                      style={{
+                        color: 'rgba(255, 250, 238, 0.92)',
+                        letterSpacing: '0.32em',
+                        textShadow: '0 1px 10px rgba(16, 28, 18, 0.55)',
+                        marginRight: '-0.32em',
+                      }}
+                    >
+                      {cluster.label.split(' ')[0]}
+                    </p>
+                    <p
+                      className="font-display italic"
+                      style={{
+                        fontSize: 11,
+                        color: 'rgba(255, 250, 238, 0.6)',
+                        letterSpacing: '0.18em',
+                        textShadow: '0 1px 8px rgba(16, 28, 18, 0.5)',
+                        marginRight: '-0.18em',
+                      }}
+                    >
+                      {cluster.label.split(' ')[1]}
+                    </p>
+                  </motion.div>
 
                   {monthFlowers.map(({ entry, position }, index) => {
                     const isHighlighted = activeHighlightId === entry.id;
