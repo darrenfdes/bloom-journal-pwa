@@ -7,6 +7,7 @@ import { BLOOM_MOOD_LABEL, BLOOM_MOODS } from '@bloom/core/flowers/moodBloom';
 
 const BASE_SEED = 42420;
 
+/** @deprecated Old standalone flower gallery — no longer linked from `/preview`. */
 export default function FlowersPreviewPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-4xl flex-col gap-6 px-6 py-[calc(2rem+var(--safe-top))]">

@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 
+import { useGeolocation } from '@/lib/scene/useGeolocation';
+import { useWeather } from '@/lib/scene/useWeather';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 const BloomMeadow = dynamic(
@@ -24,6 +26,11 @@ function GardenContent() {
   const meta = useBloomStore((s) => s.gardenMeta);
   const entries = useBloomStore((s) => s.entries);
 
+  // Realtime weather for the live garden: resolve coords (geolocation → fallback) then poll
+  // Open-Meteo. The meadow maps the category to its sky/weather effects.
+  const geo = useGeolocation();
+  const weather = useWeather(geo.coords);
+
   useEffect(() => {
     if (!ready || !meta) return;
     if (!meta.hasPlantedFirst) {
@@ -43,7 +50,7 @@ function GardenContent() {
     return null;
   }
 
-  return <BloomMeadow entries={entries} />;
+  return <BloomMeadow entries={entries} live liveWeather={weather} />;
 }
 
 export default function GardenPage() {

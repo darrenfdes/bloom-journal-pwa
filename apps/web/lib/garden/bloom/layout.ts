@@ -2,7 +2,8 @@
  * World layout for the Bloom Meadow: months laid out left→right, one deterministic flower
  * per entry. Ported from the reference's `layout` memo (spec §9), fed by real entries.
  */
-import type { EntryRecord } from '@bloom/core';
+import type { EntryRecord, FlowerGenome } from '@bloom/core';
+import { buildFlowerGenome } from '@bloom/core/flowers/genome';
 
 import { toReferenceEntry, type ReferenceEntry } from './adapt';
 import { FALLBACK_BLOOM, MOODS, type BloomKind } from './moods';
@@ -12,14 +13,14 @@ const MW = 560; // month width
 const PL = 300; // left padding
 const PR = 380; // right padding
 
-const PUMPKIN_RE = /(!!!|ecstatic|over the moon|thrilled)/i;
-
 export interface PlacedEntry extends ReferenceEntry {
   seed: number;
   x: number;
   yB: number;
   scale: number;
   bloom: BloomKind;
+  /** Full procedural genome — the meadow renders the same `Flower` as the cards. */
+  genome: FlowerGenome;
   z: number;
   lean: number;
   sway: number;
@@ -76,14 +77,15 @@ export function buildMeadowLayout(records: EntryRecord[]): MeadowLayout {
       (0.9 + (Math.min(words, 60) / 60) * 0.22) *
       (ref.isFavourited ? 1.12 : 1);
 
-    const isPumpkin =
-      (ref.mood === 'joyful' || ref.mood === 'ecstatic') &&
-      PUMPKIN_RE.test(`${ref.title} ${ref.content}`);
-    const bloom: BloomKind = isPumpkin
-      ? 'pumpkin'
-      : ref.mood && MOODS[ref.mood]
-        ? MOODS[ref.mood].bloom
-        : FALLBACK_BLOOM;
+    // Render the meadow flower through the same genome pipeline the entry cards
+    // use, so a given entry's bloom is identical everywhere it appears.
+    const genome = buildFlowerGenome({ ...record, mood: record.mood ?? 'peaceful' });
+    const bloom: BloomKind =
+      genome.specialBloom === 'pumpkin'
+        ? 'pumpkin'
+        : ref.mood && MOODS[ref.mood]
+          ? MOODS[ref.mood].bloom
+          : FALLBACK_BLOOM;
 
     return {
       ...ref,
@@ -92,6 +94,7 @@ export function buildMeadowLayout(records: EntryRecord[]): MeadowLayout {
       yB,
       scale,
       bloom,
+      genome,
       z: 100 + Math.round((1 - depth) * 40),
       lean: (r() - 0.5) * 9,
       sway: 3.8 + r() * 3.2,

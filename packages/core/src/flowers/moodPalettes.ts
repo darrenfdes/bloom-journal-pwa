@@ -4,7 +4,17 @@
  * and leaf colors. The bloom renderers consume these directly via
  * multi-stop SVG gradients.
  */
-export type BloomMood = 'joy' | 'calm' | 'love' | 'wistful' | 'restless' | 'hopeful';
+export type BloomMood =
+  | 'joy'
+  | 'calm'
+  | 'love'
+  | 'wistful'
+  | 'restless'
+  | 'hopeful'
+  | 'dreamy'
+  | 'anxious'
+  | 'energized'
+  | 'ecstatic';
 
 export interface BloomPalette {
   petalHighlight: string;
@@ -117,5 +127,53 @@ export const BLOOM_PALETTES: Record<BloomMood, BloomPalette> = {
     pollen: '#F0F5DC',
     stem: '#5E7A48',
     leaf: '#8AA670',
+  },
+  // Dreamy — cosmos: airy blue-lilac petals around a small golden center.
+  dreamy: {
+    petalHighlight: '#EAF0FA',
+    petalMid: '#9DBBE0',
+    petalWash: '#C6D8F0',
+    petalDark: '#6E92C4',
+    petalDeepest: '#45638F',
+    center: '#E8C44A',
+    pollen: '#FFE89A',
+    stem: '#7A8A6B',
+    leaf: '#94A582',
+  },
+  // Anxious — aster: many fine muted-magenta petals around a yellow eye.
+  anxious: {
+    petalHighlight: '#F0DCEC',
+    petalMid: '#C98FC0',
+    petalWash: '#E0C0DC',
+    petalDark: '#9A5C90',
+    petalDeepest: '#6E3A66',
+    center: '#E0B23C',
+    pollen: '#FFD86B',
+    stem: '#74806E',
+    leaf: '#8E9A82',
+  },
+  // Energized — poppy: hot red-orange cupped petals around a dark core.
+  energized: {
+    petalHighlight: '#FFD0B0',
+    petalMid: '#F2683E',
+    petalWash: '#FFA070',
+    petalDark: '#C83A1E',
+    petalDeepest: '#8C1E0E',
+    center: '#3A1206',
+    pollen: '#2A0E04',
+    stem: '#6E7A48',
+    leaf: '#8AA060',
+  },
+  // Ecstatic — sunflower: radiant gold rays around a large dark seed disc.
+  ecstatic: {
+    petalHighlight: '#FFF0B0',
+    petalMid: '#FFD23B',
+    petalWash: '#FFE480',
+    petalDark: '#E89A1E',
+    petalDeepest: '#B5660C',
+    center: '#5A3A12',
+    pollen: '#FFD86B',
+    stem: '#6B8A4E',
+    leaf: '#8FB068',
   },
 };

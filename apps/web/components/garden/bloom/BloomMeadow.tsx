@@ -5,8 +5,9 @@
  * (`apps/web/reference/bloom-artifact-reference-app.jsx`, spec `bloom-meadow-spec.md`),
  * wired to the user's real journal entries. Differences from the reference, per product
  * decisions on branch feature/ui-2:
- *   · Sky phase defaults from the local clock with manual phase pills + rain toggle
- *     (no live geolocation/weather).
+ *   · `live` mode (the real /garden) drives the sky phase from the local clock and the
+ *     weather from the Open-Meteo API, with the manual controls hidden. Otherwise (the
+ *     /preview playground) manual phase pills + a weather selector are shown.
  *   · Ambient creatures (butterflies, fox, shooting stars, cloud shadow) are omitted.
  *   · The memory-card modal is extended with Open / Favourite / Revisit / Delete actions.
  */
@@ -14,9 +15,20 @@ import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EntryRecord } from '@bloom/core';
+import {
+  getLightningIntervalMs,
+  getRainDropDurationSec,
+  getRainLayerOpacity,
+  getRainWindSlantDeg,
+  isPrecipitatingCategory,
+  shouldShowLightning,
+  weatherCategoryLabel,
+  type WeatherCategory,
+  type WeatherState,
+} from '@bloom/core/scene';
 
-import { FlowerArt } from '@/components/garden/bloom/species';
-import { GrassTuft, makeHill, RainIcon, SunIcon, Tree } from '@/components/garden/bloom/scenery';
+import { Flower } from '@/components/flower/Flower';
+import { GrassTuft, makeHill, Tree } from '@/components/garden/bloom/scenery';
 import {
   Butterfly,
   CREATURE_KEYFRAMES,
@@ -56,6 +68,23 @@ const glass: React.CSSProperties = {
 };
 
 const G = 150; // ground strip height
+// Rendered size of each meadow bloom. The `Flower` SVG is square with the
+// plant bottom-aligned + horizontally centered, so centering it on the 120×170
+// flower button seats the stem at the button's bottom-center (60,170) — the
+// same point the sway wrapper rotates around. Tuned visually.
+const FLOWER_SIZE = 168;
+
+/** Weather states offered by the manual selector in the preview playground. */
+const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
+  'clear',
+  'partly_cloudy',
+  'overcast',
+  'fog',
+  'rain',
+  'heavy_rain',
+  'snow',
+  'thunderstorm',
+];
 
 /** Join time/weather/place into the reference's ` · `-separated snapshot line. */
 const snapshotLine = (timePhase: PhaseKey, weather: string, place: string | null) =>
@@ -65,17 +94,24 @@ export function BloomMeadow({
   entries,
   preview = false,
   creatures = false,
+  live = false,
+  liveWeather = null,
 }: {
   entries: EntryRecord[];
   preview?: boolean;
   /** Enable the ambient creatures + "Scenes" control (preview playground only). */
   creatures?: boolean;
+  /** Realtime mode (/garden): clock-driven phase + real weather, manual controls hidden. */
+  live?: boolean;
+  /** Live weather from `useWeather()`, used only when `live`. */
+  liveWeather?: WeatherState | null;
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
 
   const [phaseKey, setPhaseKey] = useState<PhaseKey>(() => phaseFromHour(new Date().getHours()));
-  const [weather, setWeather] = useState<'clear' | 'rain'>('clear');
+  const [weatherCat, setWeatherCat] = useState<WeatherCategory>('clear');
+  const [flash, setFlash] = useState(0); // lightning trigger (re-keys the flash overlay)
   const [active, setActive] = useState<PlacedEntry | null>(null);
   const [activeFav, setActiveFav] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -97,6 +133,20 @@ export function BloomMeadow({
 
   const phase = PHASES[phaseKey];
 
+  /* effective weather: live → real API category; otherwise the manual selection */
+  const cat: WeatherCategory = live ? liveWeather?.category ?? 'clear' : weatherCat;
+  const windSpeed = live ? liveWeather?.windSpeed ?? 0 : 0;
+  const precip = isPrecipitatingCategory(cat); // drizzle | rain | heavy_rain | thunderstorm
+  const isSnow = cat === 'snow';
+  const isStormy = shouldShowLightning(cat); // thunderstorm | heavy_rain
+  const rainFx = getRainLayerOpacity(cat); // { sheet, drop }
+  const rainDur = getRainDropDurationSec(cat, 'near'); // { min, max } seconds
+  const rainSlant = getRainWindSlantDeg(windSpeed); // degrees
+  // Cloud cover veil: fog reads as a pale haze, overcast/partly-cloudy as a grey wash.
+  const hazeOpacity = cat === 'fog' ? 0.5 : cat === 'overcast' ? 0.34 : cat === 'partly_cloudy' ? 0.16 : 0;
+  // Thicken the drifting clouds when it is cloudy or raining.
+  const cloudBoost = cat === 'overcast' || precip ? 1.45 : cat === 'partly_cloudy' || cat === 'fog' ? 1.2 : 1;
+
   const layout = useMemo(() => buildMeadowLayout(entries), [entries]);
   // The meadow world is at least as wide as the viewport so the ground/grass span
   // the full screen even when there are only a few months of entries.
@@ -117,7 +167,11 @@ export function BloomMeadow({
   }, []);
   const drops = useMemo(() => {
     const r = mulberry32(313);
-    return [...Array(70)].map((_, i) => ({ id: i, x: r() * 100, h: 22 + r() * 26, d: 0.85 + r() * 0.65, dl: -r() * 2 }));
+    return [...Array(70)].map((_, i) => ({ id: i, x: r() * 100, h: 22 + r() * 26, t: r(), dl: -r() * 2 }));
+  }, []);
+  const flakes = useMemo(() => {
+    const r = mulberry32(818);
+    return [...Array(60)].map((_, i) => ({ id: i, x: r() * 100, s: 3 + r() * 4, d: 6 + r() * 6, dl: -r() * 9 }));
   }, []);
   const clouds = useMemo(() => {
     const r = mulberry32(551);
@@ -354,6 +408,33 @@ export function BloomMeadow({
     };
   }, [creatures]);
 
+  /* live mode: the sky phase follows the local clock and drifts through the day */
+  useEffect(() => {
+    if (!live) return;
+    const id = setInterval(() => setPhaseKey(phaseFromHour(new Date().getHours())), 60_000);
+    return () => clearInterval(id);
+  }, [live]);
+
+  /* lightning: fire a flash at random intervals while the weather is stormy */
+  useEffect(() => {
+    if (!isStormy) return;
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const { min, max } = getLightningIntervalMs(cat);
+      t = setTimeout(() => {
+        if (!on) return;
+        setFlash((f) => f + 1);
+        loop();
+      }, min + Math.random() * (max - min));
+    };
+    loop();
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [isStormy, cat]);
+
   /* ---------- card actions ---------- */
   const handleFavourite = async () => {
     if (!active) return;
@@ -385,6 +466,20 @@ export function BloomMeadow({
     cursor: 'pointer',
   };
 
+  /* shared style for the phase + weather selector pills (preview controls) */
+  const tabBtn: React.CSSProperties = {
+    border: 'none',
+    cursor: 'pointer',
+    borderRadius: 999,
+    padding: '6px 11px',
+    fontFamily: sans,
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    transition: 'all .3s',
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: sans, background: '#0a0f2a', userSelect: grabbing ? 'none' : 'auto' }}>
       <style>{`
@@ -397,6 +492,8 @@ export function BloomMeadow({
         @keyframes bj-pollen{0%{transform:translate(0,0);opacity:0}12%{opacity:.7}85%{opacity:.45}100%{transform:translate(80px,-140px);opacity:0}}
         @keyframes bj-fire{0%,100%{transform:translate(0,0);opacity:.1}28%{opacity:.95}52%{transform:translate(26px,-22px);opacity:.55}76%{opacity:.9}}
         @keyframes bj-rain{from{transform:translateY(-14vh)}to{transform:translateY(112vh)}}
+        @keyframes bj-snow{0%{transform:translate(0,-6vh);opacity:0}10%{opacity:.95}90%{opacity:.9}100%{transform:translate(26px,108vh);opacity:0}}
+        @keyframes bj-flash{0%{opacity:0}4%{opacity:.85}10%{opacity:.12}15%{opacity:.7}32%{opacity:0}100%{opacity:0}}
         @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -447,7 +544,7 @@ export function BloomMeadow({
 
         {/* clouds */}
         {clouds.map((c) => (
-          <div key={c.id} style={{ position: 'absolute', top: `${c.top}%`, left: 0, opacity: c.o, animation: `bj-drift ${c.d}s linear infinite`, animationDelay: `${c.dl}s`, pointerEvents: 'none' }}>
+          <div key={c.id} style={{ position: 'absolute', top: `${c.top}%`, left: 0, opacity: Math.min(1, c.o * cloudBoost), animation: `bj-drift ${c.d}s linear infinite`, animationDelay: `${c.dl}s`, pointerEvents: 'none', transition: 'opacity 1.2s ease' }}>
             <div style={{ position: 'relative', width: c.w, height: 54 }}>
               {[0, 1, 2, 3].map((i) => (
                 <div
@@ -513,6 +610,19 @@ export function BloomMeadow({
               </div>
             </div>
           ))}
+
+        {/* cloud-cover veil (overcast / fog desaturation) */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: cat === 'fog' ? '#dde2e7' : '#9aa3ad',
+            mixBlendMode: cat === 'fog' ? 'normal' : 'multiply',
+            opacity: hazeOpacity,
+            transition: 'opacity 1.4s ease',
+            pointerEvents: 'none',
+          }}
+        />
       </div>
 
       {/* ===== MEADOW (scrolls) ===== */}
@@ -590,7 +700,17 @@ export function BloomMeadow({
                 <div style={{ animation: `bj-bloom .9s cubic-bezier(.18,.9,.32,1.2) both`, animationDelay: `${0.15 + i * 0.04}s`, transformOrigin: 'bottom center' }}>
                   <div style={{ transition: 'transform .35s ease', transform: hovered === e.id ? 'scale(1.07)' : 'scale(1)', transformOrigin: 'bottom center' }}>
                     <div style={{ animation: `bj-sway ${e.sway}s ease-in-out infinite alternate`, animationDelay: `${e.delay}s`, transformOrigin: '60px 170px' }}>
-                      <FlowerArt entry={e} />
+                      <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: FLOWER_SIZE, height: FLOWER_SIZE, pointerEvents: 'none' }}>
+                        <Flower
+                          mood={e.genome.bloomMood}
+                          seed={e.genome.seed}
+                          size={FLOWER_SIZE}
+                          sway={e.lean}
+                          wordCount={e.genome.wordCount}
+                          wiltDroop={e.genome.wiltFactor * 8}
+                          pumpkinStage={e.genome.specialBloom === 'pumpkin' ? e.genome.pumpkinStage : undefined}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -625,56 +745,90 @@ export function BloomMeadow({
       )}
 
       {/* ===== RAIN ===== */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none', opacity: weather === 'rain' ? 1 : 0, transition: 'opacity 1s ease' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(70,92,122,.16)' }} />
-        <div style={{ position: 'absolute', inset: '-10% 0', transform: 'rotate(7deg)' }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none', opacity: precip ? 1 : 0, transition: 'opacity 1s ease' }}>
+        <div style={{ position: 'absolute', inset: 0, background: `rgba(70,92,122,${rainFx.sheet})`, transition: 'background 1s ease' }} />
+        <div style={{ position: 'absolute', inset: '-10% 0', transform: `rotate(${(rainSlant - 5).toFixed(1)}deg)` }}>
           {drops.map((d) => (
-            <div key={d.id} style={{ position: 'absolute', left: `${d.x}%`, top: 0, width: 1.5, height: d.h, background: 'linear-gradient(to bottom, transparent, rgba(205,220,240,.55))', animation: weather === 'rain' ? `bj-rain ${d.d}s ${d.dl}s linear infinite` : 'none' }} />
+            <div
+              key={d.id}
+              style={{
+                position: 'absolute',
+                left: `${d.x}%`,
+                top: 0,
+                width: 1.5,
+                height: d.h,
+                opacity: rainFx.drop,
+                background: 'linear-gradient(to bottom, transparent, rgba(205,220,240,.6))',
+                animation: precip
+                  ? `bj-rain ${(rainDur.min + d.t * (rainDur.max - rainDur.min)).toFixed(2)}s ${d.dl}s linear infinite`
+                  : 'none',
+              }}
+            />
           ))}
         </div>
       </div>
+
+      {/* ===== SNOW ===== */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none', opacity: isSnow ? 1 : 0, transition: 'opacity 1s ease' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(226,232,242,.14)' }} />
+        {flakes.map((f) => (
+          <div
+            key={f.id}
+            style={{
+              position: 'absolute',
+              left: `${f.x}%`,
+              top: 0,
+              width: f.s,
+              height: f.s,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,.92)',
+              filter: 'blur(.4px)',
+              boxShadow: '0 0 4px rgba(255,255,255,.6)',
+              animation: isSnow ? `bj-snow ${f.d}s ${f.dl}s linear infinite` : 'none',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ===== LIGHTNING ===== */}
+      {isStormy && flash > 0 && (
+        <div
+          key={flash}
+          style={{ position: 'absolute', inset: 0, zIndex: 22, pointerEvents: 'none', background: 'rgba(244,248,255,.9)', animation: 'bj-flash 1.2s ease-out both' }}
+        />
+      )}
 
       {/* ===== HEADER ===== */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '18px 22px', pointerEvents: 'none' }}>
         <div style={{ pointerEvents: 'auto' }}>
           <div style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 500, fontSize: 30, color: '#faf6e9', textShadow: '0 2px 16px rgba(15,25,35,.45)', lineHeight: 1 }}>Bloom</div>
           <div style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.78)', textShadow: '0 1px 10px rgba(15,25,35,.5)', marginTop: 6 }}>
-            a living journal · {layout.entries.length} memories
+            {layout.entries.length === 0
+              ? 'sky & weather preview'
+              : `a living journal · ${layout.entries.length} memories`}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2 }}>
-            {PHASE_ORDER.map((k) => (
-              <button
-                key={k}
-                onClick={() => setPhaseKey(k)}
-                style={{
-                  border: 'none',
-                  cursor: 'pointer',
-                  borderRadius: 999,
-                  padding: '6px 11px',
-                  fontFamily: sans,
-                  fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: 1.4,
-                  textTransform: 'uppercase',
-                  color: phaseKey === k ? '#2c3328' : 'rgba(247,241,227,.85)',
-                  background: phaseKey === k ? '#f3ecd9' : 'transparent',
-                  transition: 'all .3s',
-                }}
-              >
-                {PHASES[k].label}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setWeather((w) => (w === 'rain' ? 'clear' : 'rain'))}
-            aria-label="Toggle rain"
-            style={{ ...glass, borderRadius: 999, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontFamily: sans, fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', background: weather === 'rain' ? '#f3ecd9' : glass.background, color: weather === 'rain' ? '#2c3328' : '#f7f1e3' }}
-          >
-            {weather === 'rain' ? <RainIcon /> : <SunIcon />}
-            {weather === 'rain' ? 'Rain' : 'Clear'}
-          </button>
+          {/* Manual sky + weather controls (preview playground only; the live garden is
+              driven by the clock and the real weather). */}
+          {!live && (
+            <>
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {PHASE_ORDER.map((k) => (
+                  <button key={k} onClick={() => setPhaseKey(k)} style={{ ...tabBtn, color: phaseKey === k ? '#2c3328' : 'rgba(247,241,227,.85)', background: phaseKey === k ? '#f3ecd9' : 'transparent' }}>
+                    {PHASES[k].label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {PREVIEW_WEATHER_CATS.map((c) => (
+                  <button key={c} onClick={() => setWeatherCat(c)} aria-pressed={weatherCat === c} style={{ ...tabBtn, color: weatherCat === c ? '#2c3328' : 'rgba(247,241,227,.85)', background: weatherCat === c ? '#f3ecd9' : 'transparent' }}>
+                    {weatherCategoryLabel(c)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {creatures && (
             <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
               <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(247,241,227,.5)', padding: '0 6px 0 9px' }}>Scenes</span>
@@ -762,9 +916,11 @@ export function BloomMeadow({
       </div>
 
       {/* hint */}
-      <div style={{ position: 'absolute', bottom: 76, left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
-        drag to wander · tap a bloom to remember
-      </div>
+      {layout.entries.length > 0 && (
+        <div style={{ position: 'absolute', bottom: 76, left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
+          drag to wander · tap a bloom to remember
+        </div>
+      )}
 
       {/* ===== MEMORY CARD ===== */}
       {active && (

@@ -1,38 +1,28 @@
 'use client';
 
-import Link from 'next/link';
+/**
+ * Preview playground — the live `BloomMeadow` rendered with no flowers, exposing the manual
+ * dawn/day/golden/dusk/night switcher + weather selector so the sky and weather effects can be
+ * exercised without IndexedDB/auth or live geolocation. The real `/garden` runs the same meadow
+ * in `live` mode (clock-driven phase + real weather, controls hidden).
+ *
+ * The old fixed "scenery" scenes (dawn/day/golden-hour/heavy-rain/…) are deprecated; their routes
+ * still exist under `/preview/<name>` but are no longer linked here.
+ */
+import dynamic from 'next/dynamic';
 
-import { PREVIEW_ROUTES } from '@/lib/scene/preview-scenes';
-
-export default function PreviewIndexPage() {
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-[calc(2rem+var(--safe-top))]">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Scene previews</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Fixed scenes for testing sky, weather, and panning.
-        </p>
+const BloomMeadow = dynamic(
+  () => import('@/components/garden/bloom/BloomMeadow').then((m) => m.BloomMeadow),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-dvh flex-1 items-center justify-center">
+        <p className="text-ink-muted">Loading preview…</p>
       </div>
-      <ul className="flex flex-col gap-2">
-        {PREVIEW_ROUTES.map(({ href, label }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className="block rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-            >
-              {label}
-            </Link>
-          </li>
-        ))}
-        <li>
-          <Link
-            href="/preview/meadow"
-            className="block rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Bloom Meadow — interactive (phase + rain toggles, sample garden)
-          </Link>
-        </li>
-      </ul>
-    </div>
-  );
+    ),
+  }
+);
+
+export default function PreviewPage() {
+  return <BloomMeadow entries={[]} preview />;
 }
