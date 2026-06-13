@@ -38,17 +38,16 @@ function matchesEcstaticContent(content: string): boolean {
 }
 
 /**
- * Decide whether an entry should render as the pumpkin easter egg.
- * Returns true if any rule matches:
- *   1. `mood === 'ecstatic'` (legacy entries only)
- *   2. `mood === 'joyful'` AND content contains an ecstatic keyword / `!!!`
- *   3. `mood === 'joyful'` AND `seed % 10 === 0` (rare random surprise)
+ * Decide whether an entry should render as the pumpkin easter egg. The
+ * pumpkin is a rare surprise on the two happiest moods (joyful + ecstatic);
+ * ecstatic otherwise shows the sunflower. Returns true if any rule matches:
+ *   1. mood is `joyful`/`ecstatic` AND content contains an ecstatic keyword / `!!!`
+ *   2. mood is `joyful`/`ecstatic` AND `seed % 10 === 0` (rare random surprise)
  */
 export function resolvePumpkinTrigger(
   entry: { mood: Mood; content: string; flowerSeed: number; id: string }
 ): boolean {
-  if (entry.mood === 'ecstatic') return true;
-  if (entry.mood !== 'joyful') return false;
+  if (entry.mood !== 'joyful' && entry.mood !== 'ecstatic') return false;
   if (matchesEcstaticContent(entry.content)) return true;
   const seed = entry.flowerSeed || hashString(entry.id);
   return seed % 10 === 0;

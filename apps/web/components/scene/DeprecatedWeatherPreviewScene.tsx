@@ -42,7 +42,12 @@ type Props = {
   demoLightning?: boolean;
 };
 
-export function WeatherPreviewScene({ scene, label, demoLightning = true }: Props) {
+/**
+ * @deprecated Superseded by the live `BloomMeadow` (see `/preview` and `/garden`). The fixed
+ * "scenery" weather scenes are kept for reference only and are no longer linked from the app.
+ * Do not build new features on this renderer.
+ */
+export function DeprecatedWeatherPreviewScene({ scene, label, demoLightning = true }: Props) {
   const panRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialFocusRef = useRef(false);

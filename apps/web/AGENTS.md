@@ -14,22 +14,15 @@ npm run dev:web
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Scene preview routes (dev)
+## Preview route (dev)
 
-Fixed-scene pages under `/preview` for testing sky, weather, and garden panning without live location/weather APIs. Start at [http://localhost:3000/preview](http://localhost:3000/preview).
+[`/preview`](http://localhost:3000/preview) mounts the live `BloomMeadow` with **no flowers** and the
+manual controls visible: dawn/day/golden/dusk/night phase pills + a weather selector (clear, partly
+cloudy, overcast, fog, rain, heavy rain, snow, thunderstorm). It exercises the same sky/weather
+engine the real `/garden` runs in `live` mode (clock-driven phase + Open-Meteo weather, controls
+hidden). `/preview/meadow` is the same meadow with the reference sample garden + ambient creatures.
 
-| Route | Scene |
-|-------|--------|
-| `/preview` | Index of all preview scenes |
-| `/preview/dawn` | Dawn, partly cloudy |
-| `/preview/day` | Midday, clear |
-| `/preview/golden-hour` | Golden hour, light clouds |
-| `/preview/heavy-rain` | Heavy rain (demo lightning enabled) |
+- Live meadow: `apps/web/components/garden/bloom/BloomMeadow.tsx` (`preview`, `live`, `liveWeather` props)
+- Weather effects are driven from `WeatherCategory` via `@bloom/core/scene` helpers (`getRainLayerOpacity`, `getRainDropDurationSec`, `shouldShowLightning`, …).
 
-**Implementation:**
-
-- Scene presets: `apps/web/lib/scene/preview-scenes.ts` (`PREVIEW_ROUTES` + `*_PREVIEW_SCENE` exports)
-- Shared renderer: `apps/web/components/scene/WeatherPreviewScene.tsx` (uses `ScenePreviewProvider`, horizontal pan, repeating ground)
-- Route pages: `apps/web/app/preview/<name>/page.tsx`
-
-**Adding a preview:** define a `SceneState` in `preview-scenes.ts`, append to `PREVIEW_ROUTES`, add `app/preview/<slug>/page.tsx` rendering `WeatherPreviewScene`. Use `demoLightning` only for storm previews.
+**Deprecated:** the old fixed-scenery pages (`/preview/{dawn,day,golden-hour,heavy-rain,night-storm,full-moon,flowers}`) still load but are no longer linked. Their renderer is `apps/web/components/scene/DeprecatedWeatherPreviewScene.tsx` with presets in `apps/web/lib/scene/preview-scenes.deprecated.ts` — both marked `@deprecated`. Don't build new previews on them.
