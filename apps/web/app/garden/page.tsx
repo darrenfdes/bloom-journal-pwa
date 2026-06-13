@@ -4,12 +4,12 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 
-import { SceneProvider } from '@/lib/scene/SceneContext';
 import { useBloomStore } from '@/stores/useBloomStore';
 
-const GardenScene = dynamic(
-  () => import('@/components/garden/GardenScene').then((m) => m.GardenScene),
+const BloomMeadow = dynamic(
+  () => import('@/components/garden/bloom/BloomMeadow').then((m) => m.BloomMeadow),
   {
+    ssr: false,
     loading: () => (
       <div className="flex min-h-dvh flex-1 items-center justify-center">
         <p className="text-ink-muted">Loading garden…</p>
@@ -43,11 +43,7 @@ function GardenContent() {
     return null;
   }
 
-  return (
-    <SceneProvider>
-      <GardenScene meta={meta} entries={entries} />
-    </SceneProvider>
-  );
+  return <BloomMeadow entries={entries} />;
 }
 
 export default function GardenPage() {
