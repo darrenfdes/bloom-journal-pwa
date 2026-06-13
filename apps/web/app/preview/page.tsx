@@ -24,6 +24,14 @@ export default function PreviewIndexPage() {
             </Link>
           </li>
         ))}
+        <li>
+          <Link
+            href="/preview/meadow"
+            className="block rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Bloom Meadow — interactive (phase + rain toggles, sample garden)
+          </Link>
+        </li>
       </ul>
     </div>
   );

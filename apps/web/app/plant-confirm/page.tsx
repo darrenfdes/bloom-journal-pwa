@@ -65,11 +65,13 @@ export default function PlantConfirmPage() {
     return null;
   }
 
-  const moodLabel = getMood(previewEntry.mood)?.label ?? previewEntry.mood;
-  const genome = buildFlowerGenome({ ...previewEntry, mood: previewEntry.mood! });
+  // `previewEntry` is null once `pending` is cleared during the celebration phase (just
+  // before navigation unmounts this page); guard so we render the overlay alone.
+  const moodLabel = previewEntry ? getMood(previewEntry.mood)?.label ?? previewEntry.mood : null;
+  const genome = previewEntry ? buildFlowerGenome({ ...previewEntry, mood: previewEntry.mood! }) : null;
 
   const confirmPlant = async () => {
-    if (planting) return;
+    if (planting || !pending) return;
     setPlanting(true);
     try {
       const bounds = {
@@ -133,11 +135,12 @@ export default function PlantConfirmPage() {
         )}
       </AnimatePresence>
 
+      {previewEntry && (
       <div className="flex w-full max-w-sm flex-col items-center gap-6 px-7 text-center">
         <h1 className="font-display text-3xl font-semibold text-ink">Ready to plant this?</h1>
 
       <div className="flex items-center justify-center py-4">
-        <FlowerSvg entry={previewEntry} size={220} animateBloom genomeOverride={genome} />
+        <FlowerSvg entry={previewEntry} size={220} animateBloom genomeOverride={genome ?? undefined} />
       </div>
 
       <p className="text-sm text-ink-soft">
@@ -162,6 +165,7 @@ export default function PlantConfirmPage() {
         </Button>
       </div>
     </div>
+      )}
     </>
   );
 }
