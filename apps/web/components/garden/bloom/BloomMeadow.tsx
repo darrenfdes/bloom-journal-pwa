@@ -42,7 +42,7 @@ import {
   type FoxState,
   type ShootState,
 } from '@/components/garden/bloom/creatures';
-import { ShootingStar, SHOOTING_STAR_KEYFRAMES, SHOOTING_STAR_ANGLE } from '@/components/garden/bloom/shooting-star-visual';
+import { ShootingStar, CometVisual, SHOOTING_STAR_KEYFRAMES, COMET_KEYFRAMES, SHOOTING_STAR_ANGLE, COMET_ANGLE, cometSpawnGeom } from '@/components/garden/bloom/shooting-star-visual';
 import { buildMeadowLayout, type PlacedEntry } from '@/lib/garden/bloom/layout';
 import { MOODS } from '@/lib/garden/bloom/moods';
 import {
@@ -76,7 +76,7 @@ import {
 } from '@/lib/garden/bloom/event-catalog';
 import { EventEffectsLayer } from '@/components/garden/bloom/EventEffectsLayer';
 import { EventStepper } from '@/components/garden/bloom/EventStepper';
-import type { Rarity } from '@bloom/core/events';
+import type { Rarity, SceneEffect } from '@bloom/core/events';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
 
@@ -165,6 +165,7 @@ export function BloomMeadow({
   liveWeather = null,
   latitude = 0,
   specialStar = false,
+  liveSceneEffects = [],
 }: {
   entries: EntryRecord[];
   preview?: boolean;
@@ -178,11 +179,17 @@ export function BloomMeadow({
   latitude?: number;
   /** Today is a special day: send a shooting star ~30s after open + occasional repeats (live only). */
   specialStar?: boolean;
+  /** Scene effects for today's world events (live /garden only). */
+  liveSceneEffects?: SceneEffect[];
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
 
-  const [phaseKey, setPhaseKey] = useState<PhaseKey>(() => phaseFromHour(new Date().getHours()));
+  const [phaseKey, setPhaseKey] = useState<PhaseKey>(() =>
+    live && liveSceneEffects.includes('cometArc')
+      ? 'night'
+      : phaseFromHour(new Date().getHours()),
+  );
   const [liveNow, setLiveNow] = useState(() => new Date());
   const [moonPreset, setMoonPreset] = useState('live'); // fixed moon-phase override (preview only)
   const [weatherCat, setWeatherCat] = useState<WeatherCategory>('clear');
@@ -193,6 +200,7 @@ export function BloomMeadow({
   const [activeMonth, setActiveMonth] = useState(0);
   const [replay, setReplay] = useState<PlacedEntry | null>(null);
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
+  const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
   const [grabbing, setGrabbing] = useState(false);
 
   /* ambient creatures (preview playground only) */
@@ -206,6 +214,7 @@ export function BloomMeadow({
   const [evGroup, setEvGroup] = useState<EventGroup | null>(null);
   const [evRarity, setEvRarity] = useState<Rarity | null>(null);
   const [evIndex, setEvIndex] = useState(0);
+  const [cometLaunch, setCometLaunch] = useState(0);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const hillRefs = [useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null)];
@@ -263,6 +272,27 @@ export function BloomMeadow({
     () => (eventMode && selectedEvent ? effectsForEvent(selectedEvent) : []),
     [eventMode, selectedEvent],
   );
+  const showComet =
+    (eventsBrowser && eventMode && eventEffects.includes('cometArc')) ||
+    (live && liveSceneEffects.includes('cometArc'));
+  const cometSessionKey =
+    eventsBrowser && eventMode && eventEffects.includes('cometArc') && selectedEvent
+      ? selectedEvent.id
+      : live && liveSceneEffects.includes('cometArc')
+        ? todayIso
+        : null;
+  const cometGeom = useMemo(() => {
+    const spawn = cometSpawnGeom(vw, vh);
+    return {
+      x: spawn.x,
+      y: spawn.y,
+      ang: COMET_ANGLE,
+      len: 920,
+      dist: spawn.dist,
+      dur: 900,
+      delay: 0,
+    };
+  }, [vw, vh]);
   /* per-event sun/moon detail — only in the preview events browser; neutral everywhere else */
   const evActive = eventsBrowser && eventMode && selectedEvent ? selectedEvent : null;
   const evMoonScale = evActive ? moonScaleForEvent(evActive) : 1;
@@ -282,7 +312,17 @@ export function BloomMeadow({
   };
   const toggleEvents = () => {
     setEventMode((on) => {
-      if (!on) setEvIndex(nearestEventIndex(filteredEvents, todayIso));
+      if (!on) {
+        const idx = nearestEventIndex(filteredEvents, todayIso);
+        setEvIndex(idx);
+        const ev = filteredEvents[idx] ?? null;
+        if (ev) {
+          setPhaseKey(phaseForEvent(ev));
+          const mp = moonPresetForEvent(ev);
+          if (mp) setMoonPreset(mp);
+          if (effectsForEvent(ev).includes('cometArc')) setCometLaunch((n) => n + 1);
+        }
+      }
       return !on;
     });
   };
@@ -382,7 +422,10 @@ export function BloomMeadow({
       el.scrollLeft = el.scrollWidth;
       syncScroll();
     }
-    const onR = () => setVw(window.innerWidth);
+    const onR = () => {
+      setVw(window.innerWidth);
+      setVh(window.innerHeight);
+    };
     window.addEventListener('resize', onR);
     return () => window.removeEventListener('resize', onR);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -550,13 +593,18 @@ export function BloomMeadow({
   /* live mode: the sky phase follows the local clock and the bodies drift through the day */
   useEffect(() => {
     if (!live) return;
+    if (liveSceneEffects.includes('cometArc')) {
+      setPhaseKey('night');
+      const id = setInterval(() => setLiveNow(new Date()), 60_000);
+      return () => clearInterval(id);
+    }
     const id = setInterval(() => {
       const n = new Date();
       setPhaseKey(phaseFromHour(n.getHours()));
       setLiveNow(n);
     }, 60_000);
     return () => clearInterval(id);
-  }, [live]);
+  }, [live, liveSceneEffects]);
 
   /* special days: a shooting star ~30s after open (90%) + occasional repeats at night (live only) */
   useEffect(() => {
@@ -680,6 +728,7 @@ export function BloomMeadow({
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
         ${creatures || live ? CREATURE_KEYFRAMES : ''}
         ${SHOOTING_STAR_KEYFRAMES}
+        ${COMET_KEYFRAMES}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important;animation-iteration-count:1 !important;transition-duration:.01s !important}}
       `}</style>
 
@@ -777,6 +826,15 @@ export function BloomMeadow({
             </div>
           </div>
         ))}
+
+        {/* comet (behind hills — shallow arc to hill crest) */}
+        {showComet && (
+          <CometVisual
+            key={cometSessionKey ? `${cometSessionKey}-${cometLaunch}` : 'comet'}
+            geom={cometGeom}
+            loop
+          />
+        )}
 
         {/* parallax hills */}
         {hills.map((h, i) => (

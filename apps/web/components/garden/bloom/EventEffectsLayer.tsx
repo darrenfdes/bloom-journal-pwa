@@ -101,23 +101,6 @@ export function EventEffectsLayer({
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  const cometBits = useMemo(() => {
-    const r = mulberry32(7321);
-    // Embers along the streak (local frame: head at x≈0, tail trailing toward −x). Kept to the
-    // near-head half, where the tail is present early in the draw-out, and wider near the head.
-    return Array.from({ length: 10 }, (_, i) => {
-      const f = r(); // 0 = head … 1 = toward the tail end
-      return {
-        id: i,
-        x: -8 - f * 165,
-        y: (r() * 2 - 1) * (3 + (1 - f) * 9),
-        s: 1.6 + r() * 2.4,
-        d: 1.4 + r() * 1.8,
-        dl: r() * 2,
-      };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
 
   return (
     <div style={fill} aria-hidden>
@@ -125,9 +108,6 @@ export function EventEffectsLayer({
         @keyframes ev-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.92;transform:scale(1.06)}}
         @keyframes ev-twinkle{0%,100%{opacity:.15}50%{opacity:1}}
         ${SHOOTING_STAR_KEYFRAMES}
-        @keyframes ev-comet{0%{transform:translate(8vw,-8vh);opacity:0}12%{opacity:1}80%{opacity:1}100%{transform:translate(74vw,46vh);opacity:0}}
-        @keyframes ev-ctail{0%{transform:scaleX(0)}70%{transform:scaleX(1)}100%{transform:scaleX(1)}}
-        @keyframes ev-coma{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.18);opacity:1}}
         @keyframes ev-leaf{0%{transform:translate(0,-8vh) rotate(0);opacity:0}12%{opacity:.9}88%{opacity:.8}100%{transform:translate(46px,96vh) rotate(240deg);opacity:0}}
         @keyframes ev-spark{0%,100%{transform:translateY(0) scale(.82);opacity:.35}50%{transform:translateY(-8px) scale(1.12);opacity:1}}
         @keyframes ev-pulse{0%,100%{opacity:.3}50%{opacity:.62}}
@@ -218,57 +198,6 @@ export function EventEffectsLayer({
             }}
           />
         </>
-      )}
-
-      {/* ---- comet (a streak of light whose tail draws out & keeps growing as it flies) ---- */}
-      {has('cometArc') && (
-        <div style={{ position: 'absolute', left: 0, top: 0, animation: 'ev-comet 9s linear infinite', pointerEvents: 'none', willChange: 'transform' }}>
-          {/* fixed orientation: head at local origin (right end), tail trails up-left along the path */}
-          <div style={{ position: 'relative', transform: 'rotate(28deg)', transformOrigin: '0 0' }}>
-            {/* soft glow halo — broad, blurred; grows with the tail */}
-            <div
-              style={{
-                position: 'absolute', right: 0, top: -18, width: 340, height: 36, transformOrigin: '100% 50%',
-                background:
-                  'linear-gradient(90deg, rgba(150,195,255,0) 0%, rgba(168,205,255,.32) 55%, rgba(206,232,255,.6) 100%)',
-                clipPath: 'polygon(0 50%, 100% 0, 100% 100%)', borderRadius: 999, filter: 'blur(10px)',
-                animation: 'ev-ctail 9s linear infinite',
-              }}
-            />
-            {/* main tail streak — tapered, bright blue-white at the head, fading to a point */}
-            <div
-              style={{
-                position: 'absolute', right: 0, top: -7, width: 320, height: 14, transformOrigin: '100% 50%',
-                background:
-                  'linear-gradient(90deg, rgba(190,222,255,0) 0%, rgba(206,232,255,.55) 50%, rgba(240,250,255,.98) 100%)',
-                clipPath: 'polygon(0 50%, 100% 0, 100% 100%)',
-                filter: 'drop-shadow(0 0 6px rgba(150,200,255,.7))',
-                animation: 'ev-ctail 9s linear infinite',
-              }}
-            />
-            {/* embers along the tail */}
-            {cometBits.map((b) => (
-              <div
-                key={b.id}
-                style={{
-                  position: 'absolute', left: b.x, top: b.y, width: b.s, height: b.s,
-                  marginLeft: -b.s / 2, marginTop: -b.s / 2, borderRadius: '50%',
-                  background: 'rgba(255,255,255,.95)', boxShadow: '0 0 5px 1px rgba(210,240,255,.8)',
-                  animation: `ev-twinkle ${b.d}s ${b.dl}s ease-in-out infinite`,
-                }}
-              />
-            ))}
-            {/* head: rounded glowing coma */}
-            <div
-              style={{
-                position: 'absolute', right: -9, top: -9, width: 18, height: 18, borderRadius: '50%',
-                background: 'radial-gradient(circle, #ffffff 0%, #d8f0ff 45%, rgba(150,200,255,0) 75%)',
-                boxShadow: '0 0 16px 7px rgba(200,235,255,.92), 0 0 40px 15px rgba(150,200,255,.5)',
-                animation: 'ev-coma 3.4s ease-in-out infinite',
-              }}
-            />
-          </div>
-        </div>
       )}
 
       {/* ---- season shift (warm wash + drifting leaves) ---- */}
