@@ -2,7 +2,10 @@
 
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+
+import { sceneEffectsForDay, useDayEvents } from '@bloom/core/events';
+import type { EventsUserContext } from '@bloom/core/events';
 
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
@@ -35,6 +38,7 @@ export function GardenContent() {
 
   // Whether today is a "special" day that should send a shooting star across the garden.
   const [specialStar, setSpecialStar] = useState(false);
+  const [birthday, setBirthday] = useState('0001-01-01');
   useEffect(() => {
     let cancelled = false;
     void getOrCreateSettings()
@@ -46,6 +50,7 @@ export function GardenContent() {
             useBirthday: s.useBirthdayForStars,
           })
         );
+        if (s.birthday) setBirthday(s.birthday);
       })
       .catch(() => {
         /* settings unavailable → treat today as an ordinary day */
@@ -54,6 +59,24 @@ export function GardenContent() {
       cancelled = true;
     };
   }, []);
+
+  const eventsUser = useMemo(
+    (): EventsUserContext => ({
+      birthday,
+      appInstallDate: meta?.createdAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    }),
+    [birthday, meta?.createdAt],
+  );
+
+  const dayEvents = useDayEvents(new Date(), eventsUser, {
+    coords: { latitude: geo.coords.lat, longitude: geo.coords.lon },
+    timeZoneOffsetMinutes: -new Date().getTimezoneOffset(),
+  });
+
+  const liveSceneEffects = useMemo(
+    () => sceneEffectsForDay(dayEvents).map((r) => r.effect),
+    [dayEvents],
+  );
 
   useEffect(() => {
     if (!ready || !meta) return;
@@ -81,6 +104,7 @@ export function GardenContent() {
       liveWeather={weather}
       latitude={geo.coords.lat}
       specialStar={specialStar}
+      liveSceneEffects={liveSceneEffects}
     />
   );
 }
