@@ -73,6 +73,11 @@ const G = 150; // ground strip height
 // flower button seats the stem at the button's bottom-center (60,170) — the
 // same point the sway wrapper rotates around. Tuned visually.
 const FLOWER_SIZE = 168;
+// Bloom-head center (from the flower button's top) + the diameter of the round
+// click target placed over it. Only this circle is interactive, so dense flowers
+// no longer overlap via big empty rectangles — you click the bloom, not the stem.
+const HEAD_Y = 60;
+const HIT = 92;
 
 /** Weather states offered by the manual selector in the preview playground. */
 const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
@@ -89,6 +94,12 @@ const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
 /** Join time/weather/place into the reference's ` · `-separated snapshot line. */
 const snapshotLine = (timePhase: PhaseKey, weather: string, place: string | null) =>
   [PHASE_PRETTY[timePhase], weather, place].filter(Boolean).join(' · ');
+
+/** Collapse whitespace + truncate, for compact labels when an entry has no title. */
+const snippet = (s: string, n = 60) => {
+  const t = (s ?? '').trim().replace(/\s+/g, ' ');
+  return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t;
+};
 
 export function BloomMeadow({
   entries,
@@ -663,32 +674,25 @@ export function BloomMeadow({
           {/* flowers */}
           {layout.entries.map((e, i) => {
             const anniv = isAnniv(e.createdAt);
+            const isHover = hovered === e.id;
+            const label = e.title || snippet(e.content, 50);
             return (
-              <button
+              <div
                 key={e.id}
-                onClick={() => {
-                  if (drag.current.moved > 6) return;
-                  setActive(e);
-                }}
-                onMouseEnter={() => setHovered(e.id)}
-                onMouseLeave={() => setHovered((h) => (h === e.id ? null : h))}
-                aria-label={`${e.title}, ${fmtFull(e.createdAt)}`}
                 style={{
                   position: 'absolute',
                   left: e.x,
                   bottom: e.yB,
-                  zIndex: hovered === e.id ? 200 : e.z,
+                  zIndex: isHover ? 200 : e.z,
                   width: 120,
                   height: 170,
                   marginLeft: -60,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
                   transform: `scale(${e.scale})`,
                   transformOrigin: 'bottom center',
                   opacity: e.fade,
-                  WebkitTapHighlightColor: 'transparent',
+                  // Only the bloom-head hit target below is interactive; the empty
+                  // space + stem no longer swallow clicks meant for nearby flowers.
+                  pointerEvents: 'none',
                 }}
               >
                 {/* ground shadow */}
@@ -697,9 +701,9 @@ export function BloomMeadow({
                 {e.isFavourited && (
                   <div style={{ position: 'absolute', left: '50%', top: 22, width: 110, height: 110, transform: 'translateX(-50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,219,140,.4), transparent 68%)', pointerEvents: 'none' }} />
                 )}
-                <div style={{ animation: `bj-bloom .9s cubic-bezier(.18,.9,.32,1.2) both`, animationDelay: `${0.15 + i * 0.04}s`, transformOrigin: 'bottom center' }}>
-                  <div style={{ transition: 'transform .35s ease', transform: hovered === e.id ? 'scale(1.07)' : 'scale(1)', transformOrigin: 'bottom center' }}>
-                    <div style={{ animation: `bj-sway ${e.sway}s ease-in-out infinite alternate`, animationDelay: `${e.delay}s`, transformOrigin: '60px 170px' }}>
+                <div style={{ position: 'absolute', inset: 0, animation: `bj-bloom .9s cubic-bezier(.18,.9,.32,1.2) both`, animationDelay: `${0.15 + i * 0.04}s`, transformOrigin: 'bottom center', pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', inset: 0, transition: 'transform .3s ease', transform: isHover ? 'translateY(-2px) scale(1.035)' : 'none', transformOrigin: 'bottom center' }}>
+                    <div style={{ position: 'absolute', inset: 0, animation: `bj-sway ${e.sway}s ease-in-out infinite alternate`, animationDelay: `${e.delay}s`, transformOrigin: '60px 170px' }}>
                       <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: FLOWER_SIZE, height: FLOWER_SIZE, pointerEvents: 'none' }}>
                         <Flower
                           mood={e.genome.bloomMood}
@@ -720,14 +724,39 @@ export function BloomMeadow({
                     <div style={{ position: 'absolute', right: 18, top: 50, color: '#ffe9b0', fontSize: 9, textShadow: '0 0 6px rgba(255,220,140,.8)', animation: 'bj-spark 2.6s 1.1s ease-in-out infinite', pointerEvents: 'none' }}>✦</div>
                   </>
                 )}
+                {/* hit target — a circle over the bloom head, so you pick the flower (not the stem) */}
+                <button
+                  onClick={() => {
+                    if (drag.current.moved > 6) return;
+                    setActive(e);
+                  }}
+                  onMouseEnter={() => setHovered(e.id)}
+                  onMouseLeave={() => setHovered((h) => (h === e.id ? null : h))}
+                  aria-label={`${label}, ${fmtFull(e.createdAt)}`}
+                  style={{
+                    position: 'absolute',
+                    left: 60,
+                    top: HEAD_Y,
+                    width: HIT,
+                    height: HIT,
+                    transform: 'translate(-50%,-50%)',
+                    borderRadius: '50%',
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                />
                 {/* hover tooltip */}
-                {hovered === e.id && (
-                  <div style={{ position: 'absolute', left: '50%', top: -6, transform: 'translate(-50%,-100%)', whiteSpace: 'nowrap', background: 'rgba(251,246,236,.96)', border: '1px solid #e3d6bd', borderRadius: 999, padding: '5px 14px', boxShadow: '0 6px 18px rgba(25,35,30,.22)', pointerEvents: 'none' }}>
-                    <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: '#3d4438' }}>{e.title}</span>
-                    <span style={{ fontFamily: sans, fontSize: 10.5, color: '#8a8270', marginLeft: 8, fontWeight: 700 }}>{fmtShort(e.createdAt)}</span>
+                {isHover && (
+                  <div style={{ position: 'absolute', left: '50%', top: -6, transform: 'translate(-50%,-100%)', maxWidth: 244, background: 'rgba(251,246,236,.96)', border: '1px solid #e3d6bd', borderRadius: 999, padding: '5px 14px', boxShadow: '0 6px 18px rgba(25,35,30,.22)', pointerEvents: 'none', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: '#3d4438', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+                    <span style={{ fontFamily: sans, fontSize: 10.5, color: '#8a8270', fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtShort(e.createdAt)}</span>
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
 
@@ -872,7 +901,7 @@ export function BloomMeadow({
               <div style={{ fontFamily: sans, fontSize: 10, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: '#a98c4a' }}>✦ This day in your garden</div>
               <button onClick={() => setReplay(null)} aria-label="Dismiss" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 15, lineHeight: 1, padding: 4 }}>✕</button>
             </div>
-            <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 19, color: '#3a4136', margin: '6px 0 3px' }}>“{replay.title}”</div>
+            <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 19, color: '#3a4136', margin: '6px 0 3px' }}>“{replay.title || snippet(replay.content, 64)}”</div>
             <div style={{ fontFamily: sans, fontSize: 11.5, color: '#8b8370' }}>
               {snapshotLine(replay.timePhase, replay.weather.toLowerCase(), replay.place)} · {agoLabel(replay.createdAt)}
             </div>
@@ -936,8 +965,10 @@ export function BloomMeadow({
               <button onClick={() => setActive(null)} aria-label="Close" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
             </div>
 
-            <div style={{ fontFamily: serif, fontWeight: 500, fontSize: 26, lineHeight: 1.15, color: '#33392f', margin: '10px 0 4px' }}>{active.title}</div>
-            <div style={{ fontFamily: sans, fontSize: 11.5, color: '#8b8370', marginBottom: 12 }}>
+            {active.title && (
+              <div style={{ fontFamily: serif, fontWeight: 500, fontSize: 26, lineHeight: 1.15, color: '#33392f', margin: '10px 0 4px' }}>{active.title}</div>
+            )}
+            <div style={{ fontFamily: sans, fontSize: 11.5, color: '#8b8370', marginBottom: 12, marginTop: active.title ? 0 : 10 }}>
               {fmtFull(active.createdAt)} · {agoLabel(active.createdAt)}{isAnniv(active.createdAt) ? ' ✦' : ''}
             </div>
 
@@ -959,12 +990,12 @@ export function BloomMeadow({
 
             {parentOf(active) && (
               <button onClick={() => setActive(parentOf(active))} style={{ marginTop: 12, display: 'block', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontFamily: sans, fontSize: 12, fontWeight: 700, color: '#8a6f3c', textAlign: 'left' }}>
-                ↩ revisits “{parentOf(active)!.title}”
+                ↩ revisits “{parentOf(active)!.title || snippet(parentOf(active)!.content, 40)}”
               </button>
             )}
             {childrenOf(active).map((c) => (
               <button key={c.id} onClick={() => setActive(c)} style={{ marginTop: 8, display: 'block', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontFamily: sans, fontSize: 12, fontWeight: 700, color: '#8a6f3c', textAlign: 'left' }}>
-                ↪ revisited on {fmtShort(c.createdAt)} — “{c.title}”
+                ↪ revisited on {fmtShort(c.createdAt)} — “{c.title || snippet(c.content, 40)}”
               </button>
             ))}
 

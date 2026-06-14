@@ -48,7 +48,7 @@ const PHASE_MAP: Record<TimePhase, PhaseKey> = {
 export function toReferenceEntry(e: EntryRecord): ReferenceEntry {
   return {
     id: e.id,
-    title: e.title ?? 'Untitled',
+    title: e.title?.trim() ? e.title : '',
     content: e.content,
     mood: e.mood,
     tags: e.tags,
