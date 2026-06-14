@@ -42,6 +42,7 @@ import {
   type FoxState,
   type ShootState,
 } from '@/components/garden/bloom/creatures';
+import { ShootingStar, SHOOTING_STAR_KEYFRAMES, SHOOTING_STAR_ANGLE } from '@/components/garden/bloom/shooting-star-visual';
 import { buildMeadowLayout, type PlacedEntry } from '@/lib/garden/bloom/layout';
 import { MOODS } from '@/lib/garden/bloom/moods';
 import {
@@ -493,13 +494,16 @@ export function BloomMeadow({
     if (shift) setPhaseKey('night');
     const go = () => {
       const r = mulberry32(Date.now() % 1000000);
+      // Same fixed direction for both streaks, starting above/left of the viewport so they
+      // streak in from off-screen rather than appearing mid-sky.
       const streaks = [0, 1].map((i) => ({
         id: i,
-        x: 18 + r() * 58,
-        y: 5 + r() * 22,
-        ang: 152 + r() * 22,
-        len: 120 + r() * 70,
-        dur: 1.25 + r() * 0.5,
+        x: -14 + r() * 44,
+        y: -26 + r() * 14,
+        ang: SHOOTING_STAR_ANGLE,
+        len: 160 + r() * 80,
+        dist: 820 + r() * 220,
+        dur: 1.8 + r() * 0.6,
         delay: i === 0 ? 0.1 : 2.4 + r() * 1.4,
       }));
       setShoot({ run: Date.now(), streaks });
@@ -672,6 +676,7 @@ export function BloomMeadow({
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
         ${creatures || live ? CREATURE_KEYFRAMES : ''}
+        ${SHOOTING_STAR_KEYFRAMES}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important;animation-iteration-count:1 !important;transition-duration:.01s !important}}
       `}</style>
 
@@ -806,14 +811,7 @@ export function BloomMeadow({
         {/* shooting stars */}
         {(creatures || live) &&
           shoot &&
-          shoot.streaks.map((s) => (
-            <div key={`${shoot.run}-${s.id}`} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, transform: `rotate(${s.ang}deg)`, pointerEvents: 'none' }}>
-              <div style={{ position: 'relative', width: s.len, height: 2, animation: `bj-shoot ${s.dur}s ${s.delay}s cubic-bezier(.25,.55,.45,1) both` }}>
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 2, background: 'linear-gradient(90deg, transparent, rgba(255,250,228,.95))' }} />
-                <div style={{ position: 'absolute', right: -2, top: -1.5, width: 5, height: 5, borderRadius: '50%', background: '#fffdf2', boxShadow: '0 0 9px 3px rgba(255,248,216,.85)' }} />
-              </div>
-            </div>
-          ))}
+          shoot.streaks.map((s) => <ShootingStar key={`${shoot.run}-${s.id}`} geom={s} loop={false} />)}
 
         {/* world-event visuals (preview events browser) */}
         {eventsBrowser && eventMode && eventEffects.length > 0 && (

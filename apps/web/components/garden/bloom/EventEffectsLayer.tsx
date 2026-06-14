@@ -14,6 +14,7 @@ import type { SceneEffect } from '@bloom/core/events';
 
 import type { MoonTint, Planet } from '@/lib/garden/bloom/event-catalog';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { ShootingStar, SHOOTING_STAR_KEYFRAMES, SHOOTING_STAR_ANGLE } from '@/components/garden/bloom/shooting-star-visual';
 
 type Pos = { x: number; y: number };
 type SunPos = Pos & { size: number };
@@ -70,17 +71,16 @@ export function EventEffectsLayer({
   }, [key]);
   const meteors = useMemo(() => {
     const r = mulberry32(4477);
-    // Spawn above the top edge, stratified across the width so they don't clump,
-    // and fall steeply (down-right) so each crosses most of the screen before fading.
-    return Array.from({ length: 8 }, (_, i) => ({
+    // All share one direction (SHOOTING_STAR_ANGLE) and start well above/left of the viewport
+    // so they fade in off-screen and streak in — never popping into view mid-sky.
+    return Array.from({ length: 9 }, (_, i) => ({
       id: i,
-      x: -6 + (i + r() * 0.85) * (88 / 8),
-      y: -12 + r() * 10,
-      ang: 48 + r() * 20,
-      len: 90 + r() * 80,
-      dist: 540 + r() * 380,
-      dur: 1.5 + r() * 1.9,
-      dl: r() * 7,
+      x: -18 + (i + r() * 0.6) * (104 / 9),
+      y: -30 + r() * 16,
+      len: 140 + r() * 80,
+      dist: 820 + r() * 320,
+      dur: 2.4 + r() * 1.6,
+      dl: r() * 8,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
@@ -101,14 +101,33 @@ export function EventEffectsLayer({
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+  const cometBits = useMemo(() => {
+    const r = mulberry32(7321);
+    // Embers along the streak (local frame: head at x≈0, tail trailing toward −x). Kept to the
+    // near-head half, where the tail is present early in the draw-out, and wider near the head.
+    return Array.from({ length: 10 }, (_, i) => {
+      const f = r(); // 0 = head … 1 = toward the tail end
+      return {
+        id: i,
+        x: -8 - f * 165,
+        y: (r() * 2 - 1) * (3 + (1 - f) * 9),
+        s: 1.6 + r() * 2.4,
+        d: 1.4 + r() * 1.8,
+        dl: r() * 2,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return (
     <div style={fill} aria-hidden>
       <style>{`
         @keyframes ev-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.92;transform:scale(1.06)}}
         @keyframes ev-twinkle{0%,100%{opacity:.15}50%{opacity:1}}
-        @keyframes ev-shoot{0%{transform:translateX(0);opacity:0}8%{opacity:1}82%{opacity:1}100%{transform:translateX(var(--d,600px));opacity:0}}
-        @keyframes ev-comet{0%{transform:translate(-8vw,4vh) rotate(18deg);opacity:0}10%{opacity:1}52%{transform:translate(46vw,12vh) rotate(30deg);opacity:1}90%{opacity:1}100%{transform:translate(98vw,50vh) rotate(42deg);opacity:0}}
+        ${SHOOTING_STAR_KEYFRAMES}
+        @keyframes ev-comet{0%{transform:translate(8vw,-8vh);opacity:0}12%{opacity:1}80%{opacity:1}100%{transform:translate(74vw,46vh);opacity:0}}
+        @keyframes ev-ctail{0%{transform:scaleX(0)}70%{transform:scaleX(1)}100%{transform:scaleX(1)}}
+        @keyframes ev-coma{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.18);opacity:1}}
         @keyframes ev-leaf{0%{transform:translate(0,-8vh) rotate(0);opacity:0}12%{opacity:.9}88%{opacity:.8}100%{transform:translate(46px,96vh) rotate(240deg);opacity:0}}
         @keyframes ev-spark{0%,100%{transform:translateY(0) scale(.82);opacity:.35}50%{transform:translateY(-8px) scale(1.12);opacity:1}}
         @keyframes ev-pulse{0%,100%{opacity:.3}50%{opacity:.62}}
@@ -153,20 +172,11 @@ export function EventEffectsLayer({
       {/* ---- meteor shower ---- */}
       {has('shootingStars') &&
         meteors.map((m) => (
-          <div key={m.id} style={{ position: 'absolute', left: `${m.x}%`, top: `${m.y}%`, transform: `rotate(${m.ang}deg)`, pointerEvents: 'none' }}>
-            <div
-              style={
-                {
-                  position: 'relative', width: m.len, height: 2,
-                  animation: `ev-shoot ${m.dur}s ${m.dl}s linear infinite`,
-                  '--d': `${m.dist}px`,
-                } as React.CSSProperties
-              }
-            >
-              <div style={{ position: 'absolute', inset: 0, borderRadius: 2, background: 'linear-gradient(90deg, transparent, rgba(255,250,228,.95))' }} />
-              <div style={{ position: 'absolute', right: -2, top: -1.5, width: 5, height: 5, borderRadius: '50%', background: '#fffdf2', boxShadow: '0 0 9px 3px rgba(255,248,216,.85)' }} />
-            </div>
-          </div>
+          <ShootingStar
+            key={m.id}
+            geom={{ x: m.x, y: m.y, ang: SHOOTING_STAR_ANGLE, len: m.len, dur: m.dur, delay: m.dl, dist: m.dist }}
+            loop
+          />
         ))}
 
       {/* ---- solar eclipse (dim daylight + bite + corona) ---- */}
@@ -210,27 +220,51 @@ export function EventEffectsLayer({
         </>
       )}
 
-      {/* ---- comet (arcs across the sky with a long glowing tail) ---- */}
+      {/* ---- comet (a streak of light whose tail draws out & keeps growing as it flies) ---- */}
       {has('cometArc') && (
-        <div style={{ position: 'absolute', left: 0, top: 0, animation: 'ev-comet 12s linear infinite', pointerEvents: 'none', willChange: 'transform' }}>
-          {/* drawn so the coma leads at local origin (0,0) and the tail trails left */}
-          <div style={{ position: 'relative' }}>
-            {/* tail: bright & wide at the coma (right), tapering to a soft point behind */}
+        <div style={{ position: 'absolute', left: 0, top: 0, animation: 'ev-comet 9s linear infinite', pointerEvents: 'none', willChange: 'transform' }}>
+          {/* fixed orientation: head at local origin (right end), tail trails up-left along the path */}
+          <div style={{ position: 'relative', transform: 'rotate(28deg)', transformOrigin: '0 0' }}>
+            {/* soft glow halo — broad, blurred; grows with the tail */}
             <div
               style={{
-                position: 'absolute', right: 0, top: -13, width: 210, height: 26,
+                position: 'absolute', right: 0, top: -18, width: 340, height: 36, transformOrigin: '100% 50%',
                 background:
-                  'linear-gradient(90deg, rgba(170,200,255,0) 0%, rgba(190,214,255,.42) 62%, rgba(236,244,255,.92) 100%)',
-                clipPath: 'polygon(0 50%, 100% 0, 100% 100%)',
-                filter: 'blur(3px)',
+                  'linear-gradient(90deg, rgba(150,195,255,0) 0%, rgba(168,205,255,.32) 55%, rgba(206,232,255,.6) 100%)',
+                clipPath: 'polygon(0 50%, 100% 0, 100% 100%)', borderRadius: 999, filter: 'blur(10px)',
+                animation: 'ev-ctail 9s linear infinite',
               }}
             />
-            {/* coma: glowing head at the leading end */}
+            {/* main tail streak — tapered, bright blue-white at the head, fading to a point */}
             <div
               style={{
-                position: 'absolute', right: -5, top: -6, width: 12, height: 12, borderRadius: '50%',
-                background: '#fffdf2',
-                boxShadow: '0 0 16px 6px rgba(224,238,255,.92), 0 0 40px 16px rgba(150,190,255,.5)',
+                position: 'absolute', right: 0, top: -7, width: 320, height: 14, transformOrigin: '100% 50%',
+                background:
+                  'linear-gradient(90deg, rgba(190,222,255,0) 0%, rgba(206,232,255,.55) 50%, rgba(240,250,255,.98) 100%)',
+                clipPath: 'polygon(0 50%, 100% 0, 100% 100%)',
+                filter: 'drop-shadow(0 0 6px rgba(150,200,255,.7))',
+                animation: 'ev-ctail 9s linear infinite',
+              }}
+            />
+            {/* embers along the tail */}
+            {cometBits.map((b) => (
+              <div
+                key={b.id}
+                style={{
+                  position: 'absolute', left: b.x, top: b.y, width: b.s, height: b.s,
+                  marginLeft: -b.s / 2, marginTop: -b.s / 2, borderRadius: '50%',
+                  background: 'rgba(255,255,255,.95)', boxShadow: '0 0 5px 1px rgba(210,240,255,.8)',
+                  animation: `ev-twinkle ${b.d}s ${b.dl}s ease-in-out infinite`,
+                }}
+              />
+            ))}
+            {/* head: rounded glowing coma */}
+            <div
+              style={{
+                position: 'absolute', right: -9, top: -9, width: 18, height: 18, borderRadius: '50%',
+                background: 'radial-gradient(circle, #ffffff 0%, #d8f0ff 45%, rgba(150,200,255,0) 75%)',
+                boxShadow: '0 0 16px 7px rgba(200,235,255,.92), 0 0 40px 15px rgba(150,200,255,.5)',
+                animation: 'ev-coma 3.4s ease-in-out infinite',
               }}
             />
           </div>
