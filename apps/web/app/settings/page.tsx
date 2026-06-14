@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportBackup } from '@/lib/export/backup';
 import { usePwaStatus } from '@/lib/pwa/usePwaStatus';
+import { getOrCreateSettings, updateSettings } from '@/lib/db/repositories/settings';
 import { searchEntries } from '@/lib/db/repositories/entries';
 import { signOut } from '@/lib/auth/session';
 import { getSyncStatus, subscribeSyncStatus, type SyncStatus } from '@/lib/sync/status';
@@ -29,8 +30,27 @@ export default function SettingsPage() {
   const [query, setQuery] = useState('');
   const [exporting, setExporting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus);
+  const [birthday, setBirthday] = useState('');
+  const [useBirthdayForStars, setUseBirthdayForStars] = useState(false);
 
   useEffect(() => subscribeSyncStatus(() => setSyncStatus(getSyncStatus())), []);
+
+  useEffect(() => {
+    void getOrCreateSettings().then((s) => {
+      setBirthday(s.birthday ?? '');
+      setUseBirthdayForStars(s.useBirthdayForStars ?? false);
+    });
+  }, []);
+
+  const handleBirthdayChange = (value: string) => {
+    setBirthday(value);
+    void updateSettings({ birthday: value || null });
+  };
+
+  const handleUseBirthdayChange = (value: boolean) => {
+    setUseBirthdayForStars(value);
+    void updateSettings({ useBirthdayForStars: value });
+  };
 
   const handleSearch = async () => {
     const results = await searchEntries(query);
@@ -178,6 +198,31 @@ export default function SettingsPage() {
         <h2 className="font-display text-lg font-medium text-ink">Privacy lock</h2>
         <p className="text-sm text-ink-soft">PIN lock via Web Crypto is planned for a follow-up.</p>
         <Badge variant="outline">Coming soon</Badge>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-parchment p-4">
+        <h2 className="font-display text-lg font-medium text-ink">Special sky days</h2>
+        <p className="text-sm text-ink-soft">
+          On special days a shooting star streaks across your garden shortly after you open the app.
+          Set your birthday to make it your own day instead of the default (Dec 1).
+        </p>
+        <label className="flex flex-col gap-1 text-sm text-ink">
+          <span className="text-ink-soft">Birthday</span>
+          <Input
+            type="date"
+            value={birthday}
+            onChange={(e) => handleBirthdayChange(e.target.value)}
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={useBirthdayForStars}
+            onChange={(e) => handleUseBirthdayChange(e.target.checked)}
+            disabled={!birthday}
+          />
+          <span>Use my birthday for the yearly shooting-star day (replaces Dec 1)</span>
+        </label>
       </section>
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">

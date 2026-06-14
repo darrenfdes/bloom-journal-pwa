@@ -16,13 +16,17 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { EntryRecord } from '@bloom/core';
 import {
+  bucketPhaseName,
   getLightningIntervalMs,
+  getMoonPhase,
+  getMoonPhaseShadowSvgPath,
   getRainDropDurationSec,
   getRainLayerOpacity,
   getRainWindSlantDeg,
   isPrecipitatingCategory,
   shouldShowLightning,
   weatherCategoryLabel,
+  type MoonPhaseState,
   type WeatherCategory,
   type WeatherState,
 } from '@bloom/core/scene';
@@ -47,6 +51,7 @@ import {
   isAnniv,
   MONTH_ABBR,
   MONTH_NAMES,
+  celestialAt,
   PHASE_ORDER,
   PHASE_PRETTY,
   PHASES,
@@ -54,6 +59,7 @@ import {
   type PhaseKey,
 } from '@/lib/garden/bloom/phases';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
 
@@ -91,6 +97,27 @@ const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
   'thunderstorm',
 ];
 
+/**
+ * Fixed moon-phase presets for the preview controls. `phase: null` follows the real current moon;
+ * the others pin a synodic fraction (0 = new, 0.5 = full) so each lit shape can be inspected.
+ */
+const MOON_PRESETS: { key: string; label: string; phase: number | null }[] = [
+  { key: 'live', label: 'Live moon', phase: null },
+  { key: 'new', label: 'New', phase: 0 },
+  { key: 'crescent', label: 'Crescent', phase: 0.12 },
+  { key: 'quarter', label: 'Quarter', phase: 0.25 },
+  { key: 'gibbous', label: 'Gibbous', phase: 0.4 },
+  { key: 'full', label: 'Full', phase: 0.5 },
+];
+
+/** Build a `MoonPhaseState` from a synodic fraction, mirroring `getMoonPhase`'s derivation. */
+const moonStateFromPhase = (phase: number): MoonPhaseState => ({
+  phase,
+  illumination: 0.5 * (1 - Math.cos(2 * Math.PI * phase)),
+  name: bucketPhaseName(phase),
+  waxing: phase < 0.5,
+});
+
 /** Join time/weather/place into the reference's ` · `-separated snapshot line. */
 const snapshotLine = (timePhase: PhaseKey, weather: string, place: string | null) =>
   [PHASE_PRETTY[timePhase], weather, place].filter(Boolean).join(' · ');
@@ -107,6 +134,8 @@ export function BloomMeadow({
   creatures = false,
   live = false,
   liveWeather = null,
+  latitude = 0,
+  specialStar = false,
 }: {
   entries: EntryRecord[];
   preview?: boolean;
@@ -116,11 +145,17 @@ export function BloomMeadow({
   live?: boolean;
   /** Live weather from `useWeather()`, used only when `live`. */
   liveWeather?: WeatherState | null;
+  /** Viewer latitude — orients the moon-phase shadow (S. hemisphere flips it). */
+  latitude?: number;
+  /** Today is a special day: send a shooting star ~30s after open + occasional repeats (live only). */
+  specialStar?: boolean;
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
 
   const [phaseKey, setPhaseKey] = useState<PhaseKey>(() => phaseFromHour(new Date().getHours()));
+  const [liveNow, setLiveNow] = useState(() => new Date());
+  const [moonPreset, setMoonPreset] = useState('live'); // fixed moon-phase override (preview only)
   const [weatherCat, setWeatherCat] = useState<WeatherCategory>('clear');
   const [flash, setFlash] = useState(0); // lightning trigger (re-keys the flash overlay)
   const [active, setActive] = useState<PlacedEntry | null>(null);
@@ -143,6 +178,18 @@ export function BloomMeadow({
   const ticking = useRef(false);
 
   const phase = PHASES[phaseKey];
+
+  /* live mode: sun/moon positions drift continuously with the clock; preview snaps to keyframes */
+  const cel = live ? celestialAt(liveNow) : null;
+  const sunPos = cel?.sun ?? phase.sun;
+  const moonPos = cel?.moon ?? phase.moon;
+  /* lunar phase shadow: a fixed preview override, else the real current phase (nudged each minute) */
+  const moonState = useMemo(() => {
+    const preset = MOON_PRESETS.find((p) => p.key === moonPreset);
+    if (preset && preset.phase !== null) return moonStateFromPhase(preset.phase);
+    return getMoonPhase(live ? liveNow : new Date());
+  }, [moonPreset, live, liveNow]);
+  const moonShadow = getMoonPhaseShadowSvgPath(48, moonState, latitude);
 
   /* effective weather: live → real API category; otherwise the manual selection */
   const cat: WeatherCategory = live ? liveWeather?.category ?? 'clear' : weatherCat;
@@ -419,12 +466,45 @@ export function BloomMeadow({
     };
   }, [creatures]);
 
-  /* live mode: the sky phase follows the local clock and drifts through the day */
+  /* live mode: the sky phase follows the local clock and the bodies drift through the day */
   useEffect(() => {
     if (!live) return;
-    const id = setInterval(() => setPhaseKey(phaseFromHour(new Date().getHours())), 60_000);
+    const id = setInterval(() => {
+      const n = new Date();
+      setPhaseKey(phaseFromHour(n.getHours()));
+      setLiveNow(n);
+    }, 60_000);
     return () => clearInterval(id);
   }, [live]);
+
+  /* special days: a shooting star ~30s after open (90%) + occasional repeats at night (live only) */
+  useEffect(() => {
+    if (!live || !specialStar) return;
+    let on = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => {
+        if (on && Math.random() < SPECIAL_STAR.initialChance) triggersRef.current.spawnShoot(false);
+      }, SPECIAL_STAR.initialDelayMs)
+    );
+    const loop = () => {
+      const [lo, hi] = SPECIAL_STAR.repeatEveryMs;
+      timers.push(
+        setTimeout(() => {
+          if (!on) return;
+          const pk = triggersRef.current.phaseKey;
+          if ((pk === 'night' || pk === 'dusk') && Math.random() < SPECIAL_STAR.repeatChance)
+            triggersRef.current.spawnShoot(false);
+          loop();
+        }, lo + Math.random() * (hi - lo))
+      );
+    };
+    loop();
+    return () => {
+      on = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [live, specialStar]);
 
   /* lightning: fire a flash at random intervals while the weather is stormy */
   useEffect(() => {
@@ -508,7 +588,7 @@ export function BloomMeadow({
         @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
-        ${creatures ? CREATURE_KEYFRAMES : ''}
+        ${creatures || live ? CREATURE_KEYFRAMES : ''}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important;animation-iteration-count:1 !important;transition-duration:.01s !important}}
       `}</style>
 
@@ -529,12 +609,12 @@ export function BloomMeadow({
         <div
           style={{
             position: 'absolute',
-            left: `${phase.sun.x}%`,
-            top: `${phase.sun.y}%`,
-            width: phase.sun.size,
-            height: phase.sun.size,
-            marginLeft: -phase.sun.size / 2,
-            marginTop: -phase.sun.size / 2,
+            left: `${sunPos.x}%`,
+            top: `${sunPos.y}%`,
+            width: sunPos.size,
+            height: sunPos.size,
+            marginLeft: -sunPos.size / 2,
+            marginTop: -sunPos.size / 2,
             borderRadius: '50%',
             background: phase.sun.core,
             boxShadow: `0 0 60px 30px ${phase.sun.glow}, 0 0 140px 80px ${phase.sun.glow}`,
@@ -543,13 +623,19 @@ export function BloomMeadow({
           }}
         />
 
-        {/* moon */}
-        <div style={{ position: 'absolute', left: `${phase.moon.x}%`, top: `${phase.moon.y}%`, opacity: phase.moon.o, transition: 'all 1.8s ease', filter: 'drop-shadow(0 0 26px rgba(240,238,210,.45))' }}>
-          <svg width="72" height="72" viewBox="0 0 72 72">
-            <circle cx="36" cy="36" r="24" fill="#f2eed6" />
-            <circle cx="28" cy="32" r="3.4" fill="rgba(180,176,150,.5)" />
-            <circle cx="40" cy="44" r="2.4" fill="rgba(180,176,150,.45)" />
-            <circle cx="42" cy="28" r="1.8" fill="rgba(180,176,150,.4)" />
+        {/* moon — doubled disc with the real current lunar-phase shadow */}
+        <div style={{ position: 'absolute', left: `${moonPos.x}%`, top: `${moonPos.y}%`, marginLeft: -48, marginTop: -48, opacity: phase.moon.o, transition: 'all 1.8s ease', filter: 'drop-shadow(0 0 44px rgba(240,238,210,.4))' }}>
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <defs>
+              <clipPath id="bj-moon-clip">
+                <circle cx="48" cy="48" r="48" />
+              </clipPath>
+            </defs>
+            <circle cx="48" cy="48" r="48" fill="#f2eed6" />
+            <circle cx="32" cy="40" r="6.8" fill="rgba(180,176,150,.5)" />
+            <circle cx="56" cy="64" r="4.8" fill="rgba(180,176,150,.45)" />
+            <circle cx="60" cy="32" r="3.6" fill="rgba(180,176,150,.4)" />
+            {moonShadow && <path d={moonShadow} fill="#0a0f2a" clipPath="url(#bj-moon-clip)" />}
           </svg>
         </div>
 
@@ -611,7 +697,7 @@ export function BloomMeadow({
         </div>
 
         {/* shooting stars */}
-        {creatures &&
+        {(creatures || live) &&
           shoot &&
           shoot.streaks.map((s) => (
             <div key={`${shoot.run}-${s.id}`} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, transform: `rotate(${s.ang}deg)`, pointerEvents: 'none' }}>
@@ -853,6 +939,22 @@ export function BloomMeadow({
                 {PREVIEW_WEATHER_CATS.map((c) => (
                   <button key={c} onClick={() => setWeatherCat(c)} aria-pressed={weatherCat === c} style={{ ...tabBtn, color: weatherCat === c ? '#2c3328' : 'rgba(247,241,227,.85)', background: weatherCat === c ? '#f3ecd9' : 'transparent' }}>
                     {weatherCategoryLabel(c)}
+                  </button>
+                ))}
+              </div>
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {MOON_PRESETS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => {
+                      setMoonPreset(p.key);
+                      // jump to night so the chosen moon is actually visible
+                      if (p.phase !== null && phaseKey !== 'night' && phaseKey !== 'dusk') setPhaseKey('night');
+                    }}
+                    aria-pressed={moonPreset === p.key}
+                    style={{ ...tabBtn, color: moonPreset === p.key ? '#2c3328' : 'rgba(247,241,227,.85)', background: moonPreset === p.key ? '#f3ecd9' : 'transparent' }}
+                  >
+                    {p.label}
                   </button>
                 ))}
               </div>
