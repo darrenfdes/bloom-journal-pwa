@@ -1,5 +1,7 @@
 # Bloom Meadow — Implementation Spec v1.0
 
+> **Mobile development paused (June 2026).** This spec is for the web artifact only. Do not port to `apps/mobile` unless explicitly requested.
+
 A precise, self-contained specification for recreating the **Bloom Meadow** React artifact: a horizontally scrollable living meadow where each journal entry grows a deterministic procedural SVG flower under a time-of-day sky. Follow this document literally. Where exact values are given, use them exactly. Where ranges are given, the value must come from the seeded PRNG described in §4 — never from `Math.random()`.
 
 ---

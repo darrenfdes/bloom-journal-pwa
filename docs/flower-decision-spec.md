@@ -1,5 +1,7 @@
 # Flower Decision Spec Sheet
 
+> **Mobile development paused (June 2026).** This spec covers web UI rendering. Do not extend to `apps/mobile` unless explicitly requested.
+
 This document describes how a journal `EntryRecord` becomes a rendered flower in web UI.
 
 Source of truth:

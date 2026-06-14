@@ -1,0 +1,3 @@
+# Mobile app development is paused — exclude from default agent index/search.
+# Agents may still open specific files here when the user explicitly requests mobile work.
+apps/mobile/

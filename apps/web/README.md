@@ -1,5 +1,7 @@
 # Bloom Journal — Web
 
+> **Active development target (June 2026).** Mobile development in `apps/mobile/` is paused. Do not read or explore that folder unless explicitly requested; work here and in `packages/core/`.
+
 Next.js 15 app with local-first IndexedDB storage (Dexie), Bloom theme (Tailwind v4 + shadcn/ui), and Supabase stubs for future sync.
 
 ## Develop

@@ -1,5 +1,7 @@
 # PRD — Garden Scene UI Redesign (Web)
 
+> **Mobile development paused (June 2026).** This PRD is web-only; do not port changes to `apps/mobile` unless explicitly requested.
+
 **Scope:** `apps/web` only. **Status:** Implemented on `feature/ui-2`.
 
 ## Problem
@@ -84,7 +86,7 @@ UI rather than a living illustration:
   memoized SVGs (no path recompute), matching the cost of the existing tiled
   hills.
 - **Web and mobile scenes now diverge visually.** Accepted: web is the
-  showcase; mobile parity can port `atmosphere.ts` later.
+  showcase; mobile parity is not planned while mobile development is paused (June 2026).
 - **No WebGL/canvas rewrite of the day scene.** SVG + CSS keeps the PWA light
   and the preview routes/debug surface unchanged; it comfortably hits the
   painterly target without a new rendering stack.

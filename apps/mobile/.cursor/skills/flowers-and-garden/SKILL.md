@@ -1,7 +1,9 @@
 ---
 name: flowers-and-garden
-description: Procedural flower SVGs and organic garden layout for Bloom Journal. Use when changing Flower, FlowerSvg, blooms/, foliage/, petalPathHelpers, genome, garden placement, SeasonBackground, AmbientSky, grass, or bloom animations.
+description: Procedural flower SVGs and organic garden layout for Bloom Journal mobile app. MOBILE PAUSED — do not invoke unless the user explicitly requests mobile work.
 ---
+
+> **Development halted (June 2026).** Mobile work is paused. Do not use this skill for new mobile features unless explicitly requested. Active development is on `apps/web`.
 
 # Flowers & Garden
 
