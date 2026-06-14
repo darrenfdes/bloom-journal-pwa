@@ -1,8 +1,16 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 
 import { CloudCluster } from '@/components/garden/CloudCluster';
+import {
+  buildFarRidge,
+  buildMidRidge,
+  buildTreeline,
+  getHorizonHaze,
+  getRidgeColors,
+  mixHex,
+} from '@/lib/scene/atmosphere';
 import { useSceneContextOptional } from '@/lib/scene/SceneContext';
 import {
   getWeatherClouds,
@@ -90,26 +98,104 @@ function clusterVariantFor(
   return thunder ? 'thunder' : 'storm';
 }
 
+/** Parallax factors per silhouette layer — fraction of meadow scroll speed. */
+const FAR_RIDGE_PARALLAX = 0.05;
+const MID_RIDGE_PARALLAX = 0.1;
+const TREELINE_PARALLAX = 0.18;
+
+function parallaxOffset(scrollLeft: number, factor: number, period: number): number {
+  if (period <= 0) return 0;
+  const raw = (scrollLeft * factor) % period;
+  return raw < 0 ? raw + period : raw;
+}
+
+/**
+ * One horizon silhouette band: a periodic 2×-width SVG translated by a
+ * fraction of the meadow scroll for depth parallax.
+ */
+function SilhouetteBand({
+  width,
+  height,
+  fillPath,
+  crestPath,
+  fillTop,
+  fillBottom,
+  crestColor,
+  opacity,
+  offset,
+  gradId,
+}: {
+  width: number;
+  height: number;
+  fillPath: string;
+  crestPath: string;
+  fillTop: string;
+  fillBottom: string;
+  crestColor: string;
+  opacity: number;
+  offset: number;
+  gradId: string;
+}) {
+  return (
+    <div
+      className="absolute bottom-0 left-0"
+      style={{
+        width: width * 2,
+        height,
+        transform: `translate3d(${-offset}px, 0, 0)`,
+        opacity,
+      }}
+    >
+      <svg
+        width={width * 2}
+        height={height}
+        viewBox={`0 0 ${width * 2} ${height}`}
+        preserveAspectRatio="none"
+        className="absolute inset-0"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={fillTop} />
+            <stop offset="100%" stopColor={fillBottom} />
+          </linearGradient>
+        </defs>
+        {[0, width].map((dx) => (
+          <g key={dx} transform={dx === 0 ? undefined : `translate(${dx} 0)`}>
+            <path d={fillPath} fill={`url(#${gradId})`} />
+            <path
+              d={crestPath}
+              fill="none"
+              stroke={crestColor}
+              strokeWidth={1.1}
+              strokeOpacity={0.5}
+            />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 export function AmbientSky({
   month = new Date().getMonth() + 1,
   width,
   skyHeight = 260,
+  scrollLeft = 0,
 }: {
   month?: number;
   width: number;
   skyHeight?: number;
+  scrollLeft?: number;
 }) {
   const scene = useSceneContextOptional();
-  const season = getSeason(month);
-  const sunY = 60;
-  const sunX = width * 0.78;
-  const sunR = 36;
-  const isWarm = season === 'summer' || season === 'spring';
+  const uid = useId().replace(/:/g, '');
 
   const cloudCover = scene?.weather?.cloudCover ?? 35;
   const category = scene?.weather?.category;
   const timePhase = scene?.timePhase ?? 'day';
   const sceneReady = scene?.status === 'ready';
+  const season = (sceneReady ? scene?.season : null) ?? getSeason(month);
   const stormy = isStormyCategory(category);
   const precipitating = category != null && isPrecipitatingCategory(category);
   const thunder = category === 'thunderstorm' || category === 'heavy_rain';
@@ -122,11 +208,26 @@ export function AmbientSky({
     [cloudCover, width, sceneReady, timePhase, category]
   );
 
-  const mountainH = Math.min(140, Math.round(skyHeight * 0.45));
+  const farH = Math.round(skyHeight * 0.46);
+  const midH = Math.round(skyHeight * 0.34);
+  const treeH = Math.round(skyHeight * 0.2);
+
+  const farRidge = useMemo(() => (width > 0 ? buildFarRidge(width, farH) : null), [width, farH]);
+  const midRidge = useMemo(() => (width > 0 ? buildMidRidge(width, midH) : null), [width, midH]);
+  const treeline = useMemo(() => (width > 0 ? buildTreeline(width, treeH) : null), [width, treeH]);
+
+  const ridgeColors = getRidgeColors(timePhase, season, category);
+  const haze = getHorizonHaze(timePhase, cloudCover, category);
+
   const showSun =
     sceneReady && isSunPhase(timePhase) && timePhase !== 'dawn' && !stormy;
-  const showStormHaze =
-    sceneReady && precipitating && category !== 'drizzle';
+  const showStormHaze = sceneReady && precipitating && category !== 'drizzle';
+
+  const goldenSun = timePhase === 'golden_hour';
+  const sunX = width * 0.78;
+  const sunY = goldenSun ? skyHeight * 0.52 : skyHeight * 0.24;
+  const sunCore = goldenSun ? '#FFE9A8' : '#FFF8DC';
+  const sunGlow = goldenSun ? 'rgba(255, 196, 110, 0.55)' : 'rgba(255, 244, 200, 0.42)';
 
   return (
     <div
@@ -138,26 +239,86 @@ export function AmbientSky({
       {showSun ? (
         <div
           className="ambient-sun absolute z-[2]"
-          style={{ left: sunX - sunR, top: sunY - sunR }}
+          style={{ left: sunX - 70, top: sunY - 70, width: 140, height: 140 }}
           aria-hidden
         >
-          <svg width={sunR * 2} height={sunR * 2}>
-            <defs>
-              <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor={isWarm ? '#FFF6CE' : '#F3EBD8'} stopOpacity="1" />
-                <stop offset="55%" stopColor={isWarm ? '#FFE5A0' : '#E2DAC6'} stopOpacity="0.95" />
-                <stop offset="100%" stopColor={isWarm ? '#FFCC78' : '#C7BFAA'} stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <circle cx={sunR} cy={sunR} r={sunR * 0.9} fill="url(#sunGrad)" />
-            <circle
-              cx={sunR}
-              cy={sunR}
-              r={sunR * 0.45}
-              fill={isWarm ? '#FFEFB8' : '#EFE6CE'}
-              fillOpacity={0.8}
-            />
-          </svg>
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${sunGlow} 0%, transparent 65%)`,
+            }}
+          />
+          <div
+            className="absolute rounded-full"
+            style={{
+              left: 70 - 22,
+              top: 70 - 22,
+              width: 44,
+              height: 44,
+              background: `radial-gradient(circle at 42% 36%, #FFFDF2 0%, ${sunCore} 55%, rgba(255, 224, 150, 0.0) 100%)`,
+              boxShadow: `0 0 34px 14px ${sunGlow}`,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {/* Distant mountain range — slowest parallax, hazed into the sky */}
+      {farRidge ? (
+        <div className="absolute inset-x-0 bottom-0 z-[2]" style={{ height: farH }}>
+          <SilhouetteBand
+            width={width}
+            height={farH}
+            fillPath={farRidge.fill}
+            crestPath={farRidge.crest}
+            fillTop={mixHex(ridgeColors.far, '#ffffff', 0.22)}
+            fillBottom={ridgeColors.far}
+            crestColor={mixHex(ridgeColors.far, '#ffffff', 0.55)}
+            opacity={0.9}
+            offset={parallaxOffset(scrollLeft, FAR_RIDGE_PARALLAX, width)}
+            gradId={`ridge-far-${uid}`}
+          />
+          {/* Atmospheric haze pushes the far range back */}
+          <div
+            className="absolute inset-x-0 bottom-0"
+            style={{
+              height: farH * 0.7,
+              background: `linear-gradient(180deg, transparent 0%, ${haze}66 70%, ${haze}AA 100%)`,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {midRidge ? (
+        <div className="absolute inset-x-0 bottom-0 z-[2]" style={{ height: midH }}>
+          <SilhouetteBand
+            width={width}
+            height={midH}
+            fillPath={midRidge.fill}
+            crestPath={midRidge.crest}
+            fillTop={mixHex(ridgeColors.mid, '#ffffff', 0.14)}
+            fillBottom={mixHex(ridgeColors.mid, '#1c2430', 0.12)}
+            crestColor={mixHex(ridgeColors.mid, '#ffffff', 0.4)}
+            opacity={0.94}
+            offset={parallaxOffset(scrollLeft, MID_RIDGE_PARALLAX, width)}
+            gradId={`ridge-mid-${uid}`}
+          />
+        </div>
+      ) : null}
+
+      {treeline ? (
+        <div className="absolute inset-x-0 bottom-0 z-[2]" style={{ height: treeH }}>
+          <SilhouetteBand
+            width={width}
+            height={treeH}
+            fillPath={treeline.fill}
+            crestPath={treeline.crest}
+            fillTop={mixHex(ridgeColors.treeline, '#ffffff', 0.08)}
+            fillBottom={mixHex(ridgeColors.treeline, '#141d18', 0.22)}
+            crestColor={mixHex(ridgeColors.treeline, '#ffffff', 0.25)}
+            opacity={0.96}
+            offset={parallaxOffset(scrollLeft, TREELINE_PARALLAX, width)}
+            gradId={`treeline-${uid}`}
+          />
         </div>
       ) : null}
 
@@ -168,24 +329,6 @@ export function AmbientSky({
           clusterVariant={clusterVariantFor(category, cloud.variant, thunder)}
         />
       ))}
-
-      <svg
-        className="absolute bottom-0 left-0 right-0 z-[2] opacity-95"
-        width={width}
-        height={mountainH}
-        viewBox={`0 0 ${width} ${mountainH}`}
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <path
-          d={`M 0 ${mountainH * 0.75} L ${width * 0.18} ${mountainH * 0.42} L ${width * 0.3} ${mountainH * 0.65} L ${width * 0.42} ${mountainH * 0.32} L ${width * 0.55} ${mountainH * 0.58} L ${width * 0.68} ${mountainH * 0.35} L ${width * 0.82} ${mountainH * 0.63} L ${width} ${mountainH * 0.47} L ${width} ${mountainH} L 0 ${mountainH} Z`}
-          fill={stormy ? 'rgba(90, 105, 115, 0.42)' : 'rgba(140, 160, 170, 0.38)'}
-        />
-        <path
-          d={`M 0 ${mountainH * 0.92} L ${width * 0.22} ${mountainH * 0.65} L ${width * 0.4} ${mountainH * 0.83} L ${width * 0.58} ${mountainH * 0.6} L ${width * 0.75} ${mountainH * 0.8} L ${width} ${mountainH * 0.67} L ${width} ${mountainH} L 0 ${mountainH} Z`}
-          fill={stormy ? 'rgba(70, 88, 95, 0.5)' : 'rgba(120, 145, 145, 0.45)'}
-        />
-      </svg>
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { gardenTileScrollOffset } from '@/components/garden/RepeatingSeasonGround';
 import {
   createSwayingGrassState,
   renderSwayingGrass,
@@ -80,12 +79,12 @@ export function SwayingGrassCanvas({
       if (W <= 0 || H <= 0) return;
 
       ctx.clearRect(0, 0, W, H);
-      const offset = gardenTileScrollOffset(scrollLeft, tileWidth);
       const startIndex = Math.floor(scrollLeft / tileWidth) - 1;
       const endIndex = Math.ceil((scrollLeft + W) / tileWidth) + 1;
 
       for (let tileIndex = startIndex; tileIndex <= endIndex; tileIndex += 1) {
-        const tileLeft = tileIndex * tileWidth - offset + wrapperOffset;
+        // Tile i covers world [i*w, (i+1)*w); screen x = world − scroll
+        const tileLeft = tileIndex * tileWidth - scrollLeft + wrapperOffset;
         if (tileLeft + tileWidth < 0 || tileLeft > W) continue;
 
         ctx.save();

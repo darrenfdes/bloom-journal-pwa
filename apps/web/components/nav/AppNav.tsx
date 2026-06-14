@@ -16,13 +16,11 @@ export function AppNav() {
   const isGarden = pathname === '/garden' || pathname.startsWith('/garden/');
   const isSettings = pathname === '/settings' || pathname.startsWith('/settings/');
 
-  const handleCenterAction = (e: React.MouseEvent) => {
-    if (pathname === '/garden') {
-      e.preventDefault();
-      setQuickWriteOpen(true);
-    } else {
-      router.push('/write');
-    }
+  // On the garden, capture a memory inline via the quick-add modal; elsewhere fall back to
+  // the full write page.
+  const handleCenterAction = () => {
+    if (isGarden) setQuickWriteOpen(true);
+    else router.push('/write');
   };
 
   return (

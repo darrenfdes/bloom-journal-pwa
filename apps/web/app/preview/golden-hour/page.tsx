@@ -1,11 +1,12 @@
 'use client';
 
-import { WeatherPreviewScene } from '@/components/scene/WeatherPreviewScene';
-import { GOLDEN_HOUR_PREVIEW_SCENE } from '@/lib/scene/preview-scenes';
+import { DeprecatedWeatherPreviewScene } from '@/components/scene/DeprecatedWeatherPreviewScene';
+import { GOLDEN_HOUR_PREVIEW_SCENE } from '@/lib/scene/preview-scenes.deprecated';
 
+/** @deprecated Old fixed-scenery preview — superseded by the live `/preview` meadow. */
 export default function GoldenHourPreviewPage() {
   return (
-    <WeatherPreviewScene
+    <DeprecatedWeatherPreviewScene
       scene={GOLDEN_HOUR_PREVIEW_SCENE}
       label="Golden hour preview"
       demoLightning={false}

@@ -1,3 +1,8 @@
+/**
+ * @deprecated Fixed `SceneState` presets for the old `DeprecatedWeatherPreviewScene` pages.
+ * Superseded by the live `BloomMeadow` preview (`/preview`) and garden (`/garden`). Kept for
+ * reference; not linked from the app.
+ */
 import { getMoonPhase, type MoonPhaseState } from '@bloom/core/scene';
 import type { SceneState, TimePhase, WeatherState } from '@bloom/core/scene';
 

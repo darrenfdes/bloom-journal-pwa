@@ -42,7 +42,12 @@ type Props = {
   demoLightning?: boolean;
 };
 
-export function WeatherPreviewScene({ scene, label, demoLightning = true }: Props) {
+/**
+ * @deprecated Superseded by the live `BloomMeadow` (see `/preview` and `/garden`). The fixed
+ * "scenery" weather scenes are kept for reference only and are no longer linked from the app.
+ * Do not build new features on this renderer.
+ */
+export function DeprecatedWeatherPreviewScene({ scene, label, demoLightning = true }: Props) {
   const panRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialFocusRef = useRef(false);
@@ -102,7 +107,6 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
       : PREVIEW_TIMELINE_TILES - 1;
   const activeTile = previewMonths[activeTileIndex] ?? previewMonths[PREVIEW_TIMELINE_TILES - 1]!;
 
-  const tileOffset = width > 0 ? scrollLeft % width : 0;
   const tileStart = width > 0 ? Math.floor(scrollLeft / width) - 1 : 0;
   const tileEnd =
     width > 0 ? Math.ceil((scrollLeft + width) / width) + 1 : tileStart + 3;
@@ -142,6 +146,7 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
         width={width}
         viewportHeight={sceneHeight > 0 ? sceneHeight : windowHeight}
         skyBandHeight={skyBandHeight}
+        scrollLeft={scrollLeft}
         nightCanvasActive={nightCanvasActive}
         nightShowMoon={nightShowMoon}
         moonPhase={scene.moon}
@@ -201,7 +206,8 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
               const tile = previewMonths[tileIndex];
               if (!tile) return null;
 
-              const x = tileIndex * width - tileOffset;
+              // Tile i covers world [i*w, (i+1)*w); screen x = world − scroll
+              const x = tileIndex * width - scrollLeft;
               return (
                 <div
                   key={tileIndex}
@@ -224,12 +230,34 @@ export function WeatherPreviewScene({ scene, label, demoLightning = true }: Prop
                     density={24}
                     groundVariant={tile.groundVariant}
                   />
-                  <p
-                    className="pointer-events-none absolute left-1/2 w-[140px] -translate-x-1/2 rounded-full bg-white/80 px-2.5 py-1 text-center text-xs font-semibold uppercase tracking-wider text-ink shadow-sm backdrop-blur-sm"
+                  <div
+                    className="pointer-events-none absolute left-1/2 w-[160px] -translate-x-1/2 text-center"
                     style={{ top: groundY + 4 }}
                   >
-                    {tile.label}
-                  </p>
+                    <p
+                      className="font-display text-base uppercase leading-tight"
+                      style={{
+                        color: 'rgba(255, 250, 238, 0.92)',
+                        letterSpacing: '0.32em',
+                        textShadow: '0 1px 10px rgba(16, 28, 18, 0.55)',
+                        marginRight: '-0.32em',
+                      }}
+                    >
+                      {tile.label.split(' ')[0]}
+                    </p>
+                    <p
+                      className="font-display italic"
+                      style={{
+                        fontSize: 11,
+                        color: 'rgba(255, 250, 238, 0.6)',
+                        letterSpacing: '0.18em',
+                        textShadow: '0 1px 8px rgba(16, 28, 18, 0.5)',
+                        marginRight: '-0.18em',
+                      }}
+                    >
+                      {tile.label.split(' ')[1]}
+                    </p>
+                  </div>
                 </div>
               );
             })}

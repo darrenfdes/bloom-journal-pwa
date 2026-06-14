@@ -1,0 +1,1132 @@
+'use client';
+
+/**
+ * Bloom Meadow — a faithful port of the reference artifact
+ * (`apps/web/reference/bloom-artifact-reference-app.jsx`, spec `bloom-meadow-spec.md`),
+ * wired to the user's real journal entries. Differences from the reference, per product
+ * decisions on branch feature/ui-2:
+ *   · `live` mode (the real /garden) drives the sky phase from the local clock and the
+ *     weather from the Open-Meteo API, with the manual controls hidden. Otherwise (the
+ *     /preview playground) manual phase pills + a weather selector are shown.
+ *   · Ambient creatures (butterflies, fox, shooting stars, cloud shadow) are omitted.
+ *   · The memory-card modal is extended with Open / Favourite / Revisit / Delete actions.
+ */
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import type { EntryRecord } from '@bloom/core';
+import {
+  bucketPhaseName,
+  getLightningIntervalMs,
+  getMoonPhase,
+  getMoonPhaseShadowSvgPath,
+  getRainDropDurationSec,
+  getRainLayerOpacity,
+  getRainWindSlantDeg,
+  isPrecipitatingCategory,
+  shouldShowLightning,
+  weatherCategoryLabel,
+  type MoonPhaseState,
+  type WeatherCategory,
+  type WeatherState,
+} from '@bloom/core/scene';
+
+import { Flower } from '@/components/flower/Flower';
+import { GrassTuft, makeHill, Tree } from '@/components/garden/bloom/scenery';
+import {
+  Butterfly,
+  CREATURE_KEYFRAMES,
+  Fox,
+  WINGS,
+  type FlockState,
+  type FoxState,
+  type ShootState,
+} from '@/components/garden/bloom/creatures';
+import { buildMeadowLayout, type PlacedEntry } from '@/lib/garden/bloom/layout';
+import { MOODS } from '@/lib/garden/bloom/moods';
+import {
+  agoLabel,
+  fmtFull,
+  fmtShort,
+  isAnniv,
+  MONTH_ABBR,
+  MONTH_NAMES,
+  celestialAt,
+  PHASE_ORDER,
+  PHASE_PRETTY,
+  PHASES,
+  phaseFromHour,
+  type PhaseKey,
+} from '@/lib/garden/bloom/phases';
+import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
+import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
+import { useBloomStore } from '@/stores/useBloomStore';
+
+const serif = "var(--font-display), Georgia, 'Times New Roman', serif";
+const sans = "var(--font-body), 'Segoe UI', sans-serif";
+const glass: React.CSSProperties = {
+  background: 'rgba(22,27,36,.38)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  border: '1px solid rgba(247,241,227,.16)',
+  color: '#f7f1e3',
+};
+
+const G = 150; // ground strip height
+// Rendered size of each meadow bloom. The `Flower` SVG is square with the
+// plant bottom-aligned + horizontally centered, so centering it on the 120×170
+// flower button seats the stem at the button's bottom-center (60,170) — the
+// same point the sway wrapper rotates around. Tuned visually.
+const FLOWER_SIZE = 168;
+// Bloom-head center (from the flower button's top) + the diameter of the round
+// click target placed over it. Only this circle is interactive, so dense flowers
+// no longer overlap via big empty rectangles — you click the bloom, not the stem.
+const HEAD_Y = 60;
+const HIT = 92;
+
+/** Weather states offered by the manual selector in the preview playground. */
+const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
+  'clear',
+  'partly_cloudy',
+  'overcast',
+  'fog',
+  'rain',
+  'heavy_rain',
+  'snow',
+  'thunderstorm',
+];
+
+/**
+ * Fixed moon-phase presets for the preview controls. `phase: null` follows the real current moon;
+ * the others pin a synodic fraction (0 = new, 0.5 = full) so each lit shape can be inspected.
+ */
+const MOON_PRESETS: { key: string; label: string; phase: number | null }[] = [
+  { key: 'live', label: 'Live moon', phase: null },
+  { key: 'new', label: 'New', phase: 0 },
+  { key: 'crescent', label: 'Crescent', phase: 0.12 },
+  { key: 'quarter', label: 'Quarter', phase: 0.25 },
+  { key: 'gibbous', label: 'Gibbous', phase: 0.4 },
+  { key: 'full', label: 'Full', phase: 0.5 },
+];
+
+/** Build a `MoonPhaseState` from a synodic fraction, mirroring `getMoonPhase`'s derivation. */
+const moonStateFromPhase = (phase: number): MoonPhaseState => ({
+  phase,
+  illumination: 0.5 * (1 - Math.cos(2 * Math.PI * phase)),
+  name: bucketPhaseName(phase),
+  waxing: phase < 0.5,
+});
+
+/** Join time/weather/place into the reference's ` · `-separated snapshot line. */
+const snapshotLine = (timePhase: PhaseKey, weather: string, place: string | null) =>
+  [PHASE_PRETTY[timePhase], weather, place].filter(Boolean).join(' · ');
+
+/** Collapse whitespace + truncate, for compact labels when an entry has no title. */
+const snippet = (s: string, n = 60) => {
+  const t = (s ?? '').trim().replace(/\s+/g, ' ');
+  return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t;
+};
+
+export function BloomMeadow({
+  entries,
+  preview = false,
+  creatures = false,
+  live = false,
+  liveWeather = null,
+  latitude = 0,
+  specialStar = false,
+}: {
+  entries: EntryRecord[];
+  preview?: boolean;
+  /** Enable the ambient creatures + "Scenes" control (preview playground only). */
+  creatures?: boolean;
+  /** Realtime mode (/garden): clock-driven phase + real weather, manual controls hidden. */
+  live?: boolean;
+  /** Live weather from `useWeather()`, used only when `live`. */
+  liveWeather?: WeatherState | null;
+  /** Viewer latitude — orients the moon-phase shadow (S. hemisphere flips it). */
+  latitude?: number;
+  /** Today is a special day: send a shooting star ~30s after open + occasional repeats (live only). */
+  specialStar?: boolean;
+}) {
+  const router = useRouter();
+  const refreshEntries = useBloomStore((s) => s.refreshEntries);
+
+  const [phaseKey, setPhaseKey] = useState<PhaseKey>(() => phaseFromHour(new Date().getHours()));
+  const [liveNow, setLiveNow] = useState(() => new Date());
+  const [moonPreset, setMoonPreset] = useState('live'); // fixed moon-phase override (preview only)
+  const [weatherCat, setWeatherCat] = useState<WeatherCategory>('clear');
+  const [flash, setFlash] = useState(0); // lightning trigger (re-keys the flash overlay)
+  const [active, setActive] = useState<PlacedEntry | null>(null);
+  const [activeFav, setActiveFav] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [activeMonth, setActiveMonth] = useState(0);
+  const [replay, setReplay] = useState<PlacedEntry | null>(null);
+  const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
+  const [grabbing, setGrabbing] = useState(false);
+
+  /* ambient creatures (preview playground only) */
+  const [bflies, setBflies] = useState<FlockState | null>(null);
+  const [fox, setFox] = useState<FoxState | null>(null);
+  const [cshadow, setCshadow] = useState<{ run: number } | null>(null);
+  const [shoot, setShoot] = useState<ShootState | null>(null);
+
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const hillRefs = [useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null)];
+  const drag = useRef({ down: false, x: 0, sl: 0, moved: 0 });
+  const ticking = useRef(false);
+
+  const phase = PHASES[phaseKey];
+
+  /* live mode: sun/moon positions drift continuously with the clock; preview snaps to keyframes */
+  const cel = live ? celestialAt(liveNow) : null;
+  const sunPos = cel?.sun ?? phase.sun;
+  const moonPos = cel?.moon ?? phase.moon;
+  /* lunar phase shadow: a fixed preview override, else the real current phase (nudged each minute) */
+  const moonState = useMemo(() => {
+    const preset = MOON_PRESETS.find((p) => p.key === moonPreset);
+    if (preset && preset.phase !== null) return moonStateFromPhase(preset.phase);
+    return getMoonPhase(live ? liveNow : new Date());
+  }, [moonPreset, live, liveNow]);
+  const moonShadow = getMoonPhaseShadowSvgPath(48, moonState, latitude);
+
+  /* effective weather: live → real API category; otherwise the manual selection */
+  const cat: WeatherCategory = live ? liveWeather?.category ?? 'clear' : weatherCat;
+  const windSpeed = live ? liveWeather?.windSpeed ?? 0 : 0;
+  const precip = isPrecipitatingCategory(cat); // drizzle | rain | heavy_rain | thunderstorm
+  const isSnow = cat === 'snow';
+  const isStormy = shouldShowLightning(cat); // thunderstorm | heavy_rain
+  const rainFx = getRainLayerOpacity(cat); // { sheet, drop }
+  const rainDur = getRainDropDurationSec(cat, 'near'); // { min, max } seconds
+  const rainSlant = getRainWindSlantDeg(windSpeed); // degrees
+  // Cloud cover veil: fog reads as a pale haze, overcast/partly-cloudy as a grey wash.
+  const hazeOpacity = cat === 'fog' ? 0.5 : cat === 'overcast' ? 0.34 : cat === 'partly_cloudy' ? 0.16 : 0;
+  // Thicken the drifting clouds when it is cloudy or raining.
+  const cloudBoost = cat === 'overcast' || precip ? 1.45 : cat === 'partly_cloudy' || cat === 'fog' ? 1.2 : 1;
+
+  const layout = useMemo(() => buildMeadowLayout(entries), [entries]);
+  // The meadow world is at least as wide as the viewport so the ground/grass span
+  // the full screen even when there are only a few months of entries.
+  const worldW = Math.max(layout.W, vw);
+
+  /* ambient particle fields (deterministic) */
+  const stars = useMemo(() => {
+    const r = mulberry32(777);
+    return [...Array(90)].map((_, i) => ({ id: i, x: r() * 100, y: r() * 62, s: 1 + r() * 1.6, d: 2.2 + r() * 3.4, dl: -r() * 5 }));
+  }, []);
+  const fireflies = useMemo(() => {
+    const r = mulberry32(424);
+    return [...Array(12)].map((_, i) => ({ id: i, x: 6 + r() * 88, y: 48 + r() * 38, d: 5 + r() * 6, dl: -r() * 8 }));
+  }, []);
+  const pollen = useMemo(() => {
+    const r = mulberry32(909);
+    return [...Array(14)].map((_, i) => ({ id: i, x: r() * 100, y: 35 + r() * 50, s: 2.4 + r() * 2.6, d: 9 + r() * 8, dl: -r() * 12 }));
+  }, []);
+  const drops = useMemo(() => {
+    const r = mulberry32(313);
+    return [...Array(70)].map((_, i) => ({ id: i, x: r() * 100, h: 22 + r() * 26, t: r(), dl: -r() * 2 }));
+  }, []);
+  const flakes = useMemo(() => {
+    const r = mulberry32(818);
+    return [...Array(60)].map((_, i) => ({ id: i, x: r() * 100, s: 3 + r() * 4, d: 6 + r() * 6, dl: -r() * 9 }));
+  }, []);
+  const clouds = useMemo(() => {
+    const r = mulberry32(551);
+    return [...Array(5)].map((_, i) => ({ id: i, top: 4 + r() * 26, w: 180 + r() * 150, d: 90 + r() * 80, dl: -r() * 120, o: 0.55 + r() * 0.3 }));
+  }, []);
+  const tufts = useMemo(() => {
+    const r = mulberry32(212);
+    const n = Math.floor(worldW / 46);
+    return [...Array(n)].map((_, i) => {
+      const bottom = r() * 26;
+      return { id: i, left: i * 46 + r() * 30, bottom, sc: 0.7 + r() * 0.75, dur: 2.6 + r() * 2.4, dl: -r() * 4, z: 100 + Math.round((26 - bottom) * 1.8) };
+    });
+  }, [worldW]);
+
+  /* hills (sized to viewport + parallax factor) */
+  const hills = useMemo(() => {
+    const defs = [
+      { f: 0.16, base: 168, amp: 50, seed: 11 },
+      { f: 0.32, base: 116, amp: 64, seed: 23 },
+      { f: 0.55, base: 64, amp: 72, seed: 37 },
+    ];
+    return defs.map((h) => {
+      const Wl = layout.W * h.f + vw + 500;
+      const built = makeHill(h.seed, Wl, 340, h.base, h.amp);
+      const tr = mulberry32(h.seed * 7);
+      const trees =
+        h.f > 0.2
+          ? [...Array(h.f > 0.4 ? 6 : 4)].map((_, i) => {
+              const x = 140 + tr() * (Wl - 280);
+              return { id: i, x, y: built.yAt(x) + 4, sc: h.f > 0.4 ? 0.85 + tr() * 0.5 : 0.5 + tr() * 0.3 };
+            })
+          : [];
+      return { ...h, Wl, d: built.d, yAt: built.yAt, trees };
+    });
+  }, [layout.W, vw]);
+
+  const syncScroll = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const sx = el.scrollLeft;
+    hills.forEach((h, i) => {
+      const node = hillRefs[i]?.current;
+      if (node) node.style.transform = `translateX(${-sx * h.f}px)`;
+    });
+    const mi = Math.round((sx + window.innerWidth / 2 - layout.PL - layout.MW / 2) / layout.MW);
+    const clamped = Math.max(0, Math.min(layout.months.length - 1, mi));
+    setActiveMonth((p) => (p === clamped ? p : clamped));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hills, layout]);
+
+  /* memory replay: same day, prior year */
+  useEffect(() => {
+    const now = new Date();
+    const cands = layout.entries.filter(
+      (e) => e.createdAt.getDate() === now.getDate() && e.createdAt.getMonth() === now.getMonth() && e.createdAt.getFullYear() < now.getFullYear()
+    );
+    if (cands.length) {
+      cands.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const top = cands[0]!;
+      const t = setTimeout(() => setReplay(top), 1100);
+      return () => clearTimeout(t);
+    }
+    setReplay(null);
+  }, [layout]);
+
+  /* start at the most recent month + track viewport width */
+  const initialised = useRef(false);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (el && !initialised.current) {
+      initialised.current = true;
+      el.scrollLeft = el.scrollWidth;
+      syncScroll();
+    }
+    const onR = () => setVw(window.innerWidth);
+    window.addEventListener('resize', onR);
+    return () => window.removeEventListener('resize', onR);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (active) setActiveFav(active.isFavourited);
+  }, [active]);
+
+  const onScroll = () => {
+    if (ticking.current) return;
+    ticking.current = true;
+    requestAnimationFrame(() => {
+      syncScroll();
+      ticking.current = false;
+    });
+  };
+
+  const onWheel = (e: React.WheelEvent) => {
+    const el = scrollerRef.current;
+    if (el && Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY;
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || !scrollerRef.current) return;
+    drag.current = { down: true, x: e.clientX, sl: scrollerRef.current.scrollLeft, moved: 0 };
+    setGrabbing(true);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.current.down || e.pointerType !== 'mouse' || !scrollerRef.current) return;
+    const dx = e.clientX - drag.current.x;
+    drag.current.moved = Math.max(drag.current.moved, Math.abs(dx));
+    scrollerRef.current.scrollLeft = drag.current.sl - dx;
+  };
+  const endDrag = () => {
+    drag.current.down = false;
+    setGrabbing(false);
+  };
+
+  const scrollToX = (x: number) => {
+    scrollerRef.current?.scrollTo({ left: Math.max(0, x - window.innerWidth / 2), behavior: 'smooth' });
+  };
+  const visitEntry = (e: PlacedEntry) => {
+    scrollToX(e.x);
+    setTimeout(() => setActive(e), 650);
+  };
+
+  const parentOf = (e: PlacedEntry | null) =>
+    e && e.revisitOf ? layout.entries.find((x) => x.id === e.revisitOf) ?? null : null;
+  const childrenOf = (e: PlacedEntry | null) => (e ? layout.entries.filter((x) => x.revisitOf === e.id) : []);
+
+  /* ---------- live scenes (preview playground only) ---------- */
+  const spawnButterflies = () => {
+    const sx = scrollerRef.current?.scrollLeft || 0;
+    const within = layout.entries.filter((e) => e.x > sx + 90 && e.x < sx + vw - 90 && e.bloom !== 'pumpkin');
+    const pool = within.length ? within : layout.entries.slice(-6);
+    if (!pool.length) return;
+    const r = mulberry32(Date.now() % 1000000);
+    const picks: PlacedEntry[] = [];
+    const used = new Set<string>();
+    let guard = 0;
+    while (picks.length < Math.min(3, pool.length) && guard++ < 40) {
+      const e = pool[Math.floor(r() * pool.length)]!;
+      if (used.has(e.id)) continue;
+      used.add(e.id);
+      picks.push(e);
+    }
+    const flock = picks.map((e, i) => {
+      const sxp = (220 + r() * 420) * (r() < 0.5 ? 1 : -1);
+      const syp = -(200 + r() * 240);
+      const path = `M ${sxp.toFixed(0)} ${syp.toFixed(0)} C ${(sxp * 0.55 + (r() - 0.5) * 260).toFixed(0)} ${(syp * 0.4 - 70 - r() * 110).toFixed(0)}, ${((r() - 0.5) * 260 + 70).toFixed(0)} ${(-150 - r() * 110).toFixed(0)}, ${((r() - 0.5) * 200).toFixed(0)} ${(-110 - r() * 100).toFixed(0)} S ${((r() - 0.5) * 240).toFixed(0)} ${(-40 - r() * 130).toFixed(0)}, 0 0`;
+      return { id: i, x: e.x + (r() - 0.5) * 16, yB: e.yB + 118 * e.scale, path, dur: 7.5 + r() * 5, stay: 15 + r() * 13, delay: i * 1.7, wing: WINGS[Math.floor(r() * WINGS.length)]!, size: 0.78 + r() * 0.5 };
+    });
+    if (!flock.length) return;
+    const run = Date.now();
+    setBflies({ run, flock });
+    const total = Math.max(...flock.map((f) => f.delay + f.dur + f.stay)) + 1.5;
+    setTimeout(() => setBflies((b) => (b && Date.now() - b.run > total * 900 ? null : b)), total * 1000);
+  };
+
+  const spawnFox = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'dusk' && phaseKey !== 'night' && phaseKey !== 'golden';
+    if (shift) setPhaseKey('dusk');
+    const go = () => {
+      const h = hills[1];
+      if (!h || !h.yAt) return;
+      const sx = scrollerRef.current?.scrollLeft || 0;
+      const cx = sx * h.f + vw / 2;
+      const span = Math.min(vw * 0.8, 940);
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const sc = 0.86;
+      const xs = [0, 0.25, 0.5, 0.75, 1].map((t) => cx - (dir * span) / 2 + dir * span * t);
+      const vars: Record<string, string> = {};
+      xs.forEach((x, i) => {
+        const xc = Math.max(30, Math.min(h.Wl - 30, x));
+        vars[`--fx${i}`] = `${(xc - 48 * sc).toFixed(1)}px`;
+        vars[`--fy${i}`] = `${(h.yAt(xc) - 41.5 * sc + 3).toFixed(1)}px`;
+      });
+      setFox({ run: Date.now(), vars: vars as React.CSSProperties, dir, sc, dur: 13 });
+      setTimeout(() => setFox(null), 13600);
+    };
+    setTimeout(go, shift ? 1500 : 150);
+  };
+
+  const spawnShadow = () => {
+    setCshadow({ run: Date.now() });
+    setTimeout(() => setCshadow(null), 28500);
+  };
+
+  const spawnShoot = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'night' && phaseKey !== 'dusk';
+    if (shift) setPhaseKey('night');
+    const go = () => {
+      const r = mulberry32(Date.now() % 1000000);
+      const streaks = [0, 1].map((i) => ({
+        id: i,
+        x: 18 + r() * 58,
+        y: 5 + r() * 22,
+        ang: 152 + r() * 22,
+        len: 120 + r() * 70,
+        dur: 1.25 + r() * 0.5,
+        delay: i === 0 ? 0.1 : 2.4 + r() * 1.4,
+      }));
+      setShoot({ run: Date.now(), streaks });
+      setTimeout(() => setShoot(null), 6500);
+    };
+    setTimeout(go, shift ? 1500 : 100);
+  };
+
+  /* ambient: a creature wanders through on its own every minute or two */
+  const triggersRef = useRef({ spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey });
+  triggersRef.current = { spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey };
+  useEffect(() => {
+    if (!creatures) return;
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      t = setTimeout(() => {
+        if (!on) return;
+        const { phaseKey: pk, ...fn } = triggersRef.current;
+        const opts =
+          pk === 'night' ? ['shoot', 'shoot'] :
+          pk === 'dusk' ? ['fox', 'bflies', 'shoot'] :
+          pk === 'golden' ? ['fox', 'shadow', 'bflies'] :
+          pk === 'dawn' ? ['bflies', 'shadow'] :
+          ['bflies', 'shadow', 'bflies'];
+        const pick = opts[Math.floor(Math.random() * opts.length)];
+        if (pick === 'bflies') fn.spawnButterflies();
+        else if (pick === 'fox') fn.spawnFox(false);
+        else if (pick === 'shadow') fn.spawnShadow();
+        else fn.spawnShoot(false);
+        loop();
+      }, 42000 + Math.random() * 72000);
+    };
+    loop();
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [creatures]);
+
+  /* live mode: the sky phase follows the local clock and the bodies drift through the day */
+  useEffect(() => {
+    if (!live) return;
+    const id = setInterval(() => {
+      const n = new Date();
+      setPhaseKey(phaseFromHour(n.getHours()));
+      setLiveNow(n);
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [live]);
+
+  /* special days: a shooting star ~30s after open (90%) + occasional repeats at night (live only) */
+  useEffect(() => {
+    if (!live || !specialStar) return;
+    let on = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => {
+        if (on && Math.random() < SPECIAL_STAR.initialChance) triggersRef.current.spawnShoot(false);
+      }, SPECIAL_STAR.initialDelayMs)
+    );
+    const loop = () => {
+      const [lo, hi] = SPECIAL_STAR.repeatEveryMs;
+      timers.push(
+        setTimeout(() => {
+          if (!on) return;
+          const pk = triggersRef.current.phaseKey;
+          if ((pk === 'night' || pk === 'dusk') && Math.random() < SPECIAL_STAR.repeatChance)
+            triggersRef.current.spawnShoot(false);
+          loop();
+        }, lo + Math.random() * (hi - lo))
+      );
+    };
+    loop();
+    return () => {
+      on = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [live, specialStar]);
+
+  /* lightning: fire a flash at random intervals while the weather is stormy */
+  useEffect(() => {
+    if (!isStormy) return;
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const { min, max } = getLightningIntervalMs(cat);
+      t = setTimeout(() => {
+        if (!on) return;
+        setFlash((f) => f + 1);
+        loop();
+      }, min + Math.random() * (max - min));
+    };
+    loop();
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [isStormy, cat]);
+
+  /* ---------- card actions ---------- */
+  const handleFavourite = async () => {
+    if (!active) return;
+    setActiveFav((v) => !v);
+    await toggleFavourite(active.id);
+    await refreshEntries();
+  };
+  const handleDelete = async () => {
+    if (!active) return;
+    const id = active.id;
+    setActive(null);
+    await softDelete(id);
+    await refreshEntries();
+  };
+
+  const moodMeta = active?.mood ? MOODS[active.mood] : null;
+
+  const pill: React.CSSProperties = {
+    border: '1px solid #d8c9a4',
+    background: '#f0e6cd',
+    color: '#5c5236',
+    borderRadius: 999,
+    padding: '7px 15px',
+    fontFamily: sans,
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+  };
+
+  /* shared style for the phase + weather selector pills (preview controls) */
+  const tabBtn: React.CSSProperties = {
+    border: 'none',
+    cursor: 'pointer',
+    borderRadius: 999,
+    padding: '6px 11px',
+    fontFamily: sans,
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    transition: 'all .3s',
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: sans, background: '#0a0f2a', userSelect: grabbing ? 'none' : 'auto' }}>
+      <style>{`
+        .bj-scroll::-webkit-scrollbar{display:none}
+        @keyframes bj-sway{0%{transform:rotate(-1.7deg)}100%{transform:rotate(1.9deg)}}
+        @keyframes bj-grass{0%{transform:rotate(-3deg)}100%{transform:rotate(3deg)}}
+        @keyframes bj-bloom{0%{transform:scale(0);opacity:0}62%{transform:scale(1.07)}100%{transform:scale(1);opacity:1}}
+        @keyframes bj-drift{from{transform:translateX(-360px)}to{transform:translateX(calc(100vw + 360px))}}
+        @keyframes bj-twinkle{0%,100%{opacity:.12}50%{opacity:.95}}
+        @keyframes bj-pollen{0%{transform:translate(0,0);opacity:0}12%{opacity:.7}85%{opacity:.45}100%{transform:translate(80px,-140px);opacity:0}}
+        @keyframes bj-fire{0%,100%{transform:translate(0,0);opacity:.1}28%{opacity:.95}52%{transform:translate(26px,-22px);opacity:.55}76%{opacity:.9}}
+        @keyframes bj-rain{from{transform:translateY(-14vh)}to{transform:translateY(112vh)}}
+        @keyframes bj-snow{0%{transform:translate(0,-6vh);opacity:0}10%{opacity:.95}90%{opacity:.9}100%{transform:translate(26px,108vh);opacity:0}}
+        @keyframes bj-flash{0%{opacity:0}4%{opacity:.85}10%{opacity:.12}15%{opacity:.7}32%{opacity:0}100%{opacity:0}}
+        @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
+        @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
+        @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+        ${creatures || live ? CREATURE_KEYFRAMES : ''}
+        @media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important;animation-iteration-count:1 !important;transition-duration:.01s !important}}
+      `}</style>
+
+      {/* ===== SKY (fixed) ===== */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+        {PHASE_ORDER.map((k) => (
+          <div key={k} style={{ position: 'absolute', inset: 0, background: PHASES[k].sky, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
+        ))}
+
+        {/* stars */}
+        <div style={{ position: 'absolute', inset: 0, opacity: phase.stars, transition: 'opacity 1.6s ease' }}>
+          {stars.map((st) => (
+            <div key={st.id} style={{ position: 'absolute', left: `${st.x}%`, top: `${st.y}%`, width: st.s, height: st.s, borderRadius: '50%', background: '#fdf6e3', animation: `bj-twinkle ${st.d}s ${st.dl}s ease-in-out infinite` }} />
+          ))}
+        </div>
+
+        {/* sun */}
+        <div
+          style={{
+            position: 'absolute',
+            left: `${sunPos.x}%`,
+            top: `${sunPos.y}%`,
+            width: sunPos.size,
+            height: sunPos.size,
+            marginLeft: -sunPos.size / 2,
+            marginTop: -sunPos.size / 2,
+            borderRadius: '50%',
+            background: phase.sun.core,
+            boxShadow: `0 0 60px 30px ${phase.sun.glow}, 0 0 140px 80px ${phase.sun.glow}`,
+            opacity: phase.sun.o,
+            transition: 'all 1.8s ease',
+          }}
+        />
+
+        {/* moon — doubled disc with the real current lunar-phase shadow */}
+        <div style={{ position: 'absolute', left: `${moonPos.x}%`, top: `${moonPos.y}%`, marginLeft: -48, marginTop: -48, opacity: phase.moon.o, transition: 'all 1.8s ease', filter: 'drop-shadow(0 0 44px rgba(240,238,210,.4))' }}>
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <defs>
+              <clipPath id="bj-moon-clip">
+                <circle cx="48" cy="48" r="48" />
+              </clipPath>
+            </defs>
+            <circle cx="48" cy="48" r="48" fill="#f2eed6" />
+            <circle cx="32" cy="40" r="6.8" fill="rgba(180,176,150,.5)" />
+            <circle cx="56" cy="64" r="4.8" fill="rgba(180,176,150,.45)" />
+            <circle cx="60" cy="32" r="3.6" fill="rgba(180,176,150,.4)" />
+            {moonShadow && <path d={moonShadow} fill="#0a0f2a" clipPath="url(#bj-moon-clip)" />}
+          </svg>
+        </div>
+
+        {/* clouds */}
+        {clouds.map((c) => (
+          <div key={c.id} style={{ position: 'absolute', top: `${c.top}%`, left: 0, opacity: Math.min(1, c.o * cloudBoost), animation: `bj-drift ${c.d}s linear infinite`, animationDelay: `${c.dl}s`, pointerEvents: 'none', transition: 'opacity 1.2s ease' }}>
+            <div style={{ position: 'relative', width: c.w, height: 54 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: `${i * 22}%`,
+                    top: i % 2 ? 12 : 0,
+                    width: c.w * 0.42,
+                    height: 38 + (i % 2) * 10,
+                    borderRadius: '50%',
+                    background: phase.clouds,
+                    filter: 'blur(11px)',
+                    transition: 'background 1.6s ease',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* parallax hills */}
+        {hills.map((h, i) => (
+          <svg key={i} ref={hillRefs[i]} width={h.Wl} height="340" style={{ position: 'absolute', bottom: G - 16, left: 0, display: 'block', willChange: 'transform' }}>
+            <path d={h.d} fill={phase.hills[i]} style={{ transition: 'fill 1.6s ease' }} />
+            {h.trees.map((t) => (
+              <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
+            ))}
+            {creatures && i === 1 && fox && (
+              <g key={fox.run} style={{ ...fox.vars, animation: `bj-fox ${fox.dur}s linear both` }}>
+                <g style={{ animation: `bj-foxlife ${fox.dur}s linear both` }}>
+                  <g style={{ animation: 'bj-trot .48s ease-in-out infinite alternate' }}>
+                    <g transform={`scale(${fox.sc})${fox.dir < 0 ? ' translate(96,0) scale(-1,1)' : ''}`}>
+                      <Fox fill={phase.tree} />
+                    </g>
+                  </g>
+                </g>
+              </g>
+            )}
+          </svg>
+        ))}
+
+        {/* pollen + fireflies */}
+        <div style={{ position: 'absolute', inset: 0, opacity: phase.pollen, transition: 'opacity 1.6s ease', pointerEvents: 'none' }}>
+          {pollen.map((p) => (
+            <div key={p.id} style={{ position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, width: p.s, height: p.s, borderRadius: '50%', background: 'rgba(255,250,225,.85)', filter: 'blur(.6px)', animation: `bj-pollen ${p.d}s ${p.dl}s linear infinite` }} />
+          ))}
+        </div>
+        <div style={{ position: 'absolute', inset: 0, opacity: phase.fire, transition: 'opacity 1.6s ease', pointerEvents: 'none' }}>
+          {fireflies.map((f) => (
+            <div key={f.id} style={{ position: 'absolute', left: `${f.x}%`, top: `${f.y}%`, width: 4, height: 4, borderRadius: '50%', background: '#ffe98a', boxShadow: '0 0 10px 3px rgba(255,228,130,.65)', animation: `bj-fire ${f.d}s ${f.dl}s ease-in-out infinite` }} />
+          ))}
+        </div>
+
+        {/* shooting stars */}
+        {(creatures || live) &&
+          shoot &&
+          shoot.streaks.map((s) => (
+            <div key={`${shoot.run}-${s.id}`} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, transform: `rotate(${s.ang}deg)`, pointerEvents: 'none' }}>
+              <div style={{ position: 'relative', width: s.len, height: 2, animation: `bj-shoot ${s.dur}s ${s.delay}s cubic-bezier(.25,.55,.45,1) both` }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 2, background: 'linear-gradient(90deg, transparent, rgba(255,250,228,.95))' }} />
+                <div style={{ position: 'absolute', right: -2, top: -1.5, width: 5, height: 5, borderRadius: '50%', background: '#fffdf2', boxShadow: '0 0 9px 3px rgba(255,248,216,.85)' }} />
+              </div>
+            </div>
+          ))}
+
+        {/* cloud-cover veil (overcast / fog desaturation) */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: cat === 'fog' ? '#dde2e7' : '#9aa3ad',
+            mixBlendMode: cat === 'fog' ? 'normal' : 'multiply',
+            opacity: hazeOpacity,
+            transition: 'opacity 1.4s ease',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
+
+      {/* ===== MEADOW (scrolls) ===== */}
+      <div
+        ref={scrollerRef}
+        className="bj-scroll"
+        onScroll={onScroll}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        style={{ position: 'absolute', inset: 0, zIndex: 10, overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', cursor: grabbing ? 'grabbing' : 'grab' }}
+      >
+        <div style={{ position: 'relative', width: worldW, height: '100%', filter: phase.filter, transition: 'filter 1.4s ease' }}>
+          {/* ground */}
+          {PHASE_ORDER.map((k) => (
+            <div key={k} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: G, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
+          ))}
+
+          {/* month labels */}
+          {layout.months.map((m, i) => (
+            <div key={m.key} style={{ position: 'absolute', left: m.cx, bottom: G - 34, transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', opacity: activeMonth === i ? 1 : 0.55, transition: 'opacity .5s' }}>
+              <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase', color: 'rgba(250,246,232,.85)', textShadow: '0 1px 8px rgba(20,30,25,.35)' }}>
+                {MONTH_NAMES[m.m]}
+              </div>
+              <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 13, color: 'rgba(250,246,232,.6)' }}>{m.y}</div>
+            </div>
+          ))}
+
+          {/* grass */}
+          <div style={{ position: 'absolute', inset: 0, color: phase.grass, transition: 'color 1.6s ease', pointerEvents: 'none' }}>
+            {tufts.map((t) => (
+              <GrassTuft key={t.id} left={t.left} bottom={t.bottom} sc={t.sc} dur={t.dur} delay={t.dl} z={t.z} />
+            ))}
+          </div>
+
+          {/* flowers */}
+          {layout.entries.map((e, i) => {
+            const anniv = isAnniv(e.createdAt);
+            const isHover = hovered === e.id;
+            const label = e.title || snippet(e.content, 50);
+            return (
+              <div
+                key={e.id}
+                style={{
+                  position: 'absolute',
+                  left: e.x,
+                  bottom: e.yB,
+                  zIndex: isHover ? 200 : e.z,
+                  width: 120,
+                  height: 170,
+                  marginLeft: -60,
+                  transform: `scale(${e.scale})`,
+                  transformOrigin: 'bottom center',
+                  opacity: e.fade,
+                  // Only the bloom-head hit target below is interactive; the empty
+                  // space + stem no longer swallow clicks meant for nearby flowers.
+                  pointerEvents: 'none',
+                }}
+              >
+                {/* ground shadow */}
+                <div style={{ position: 'absolute', left: '50%', bottom: -4, width: 64, height: 14, transform: 'translateX(-50%)', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(15,35,20,.28), transparent 70%)' }} />
+                {/* favourite halo */}
+                {e.isFavourited && (
+                  <div style={{ position: 'absolute', left: '50%', top: 22, width: 110, height: 110, transform: 'translateX(-50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,219,140,.4), transparent 68%)', pointerEvents: 'none' }} />
+                )}
+                <div style={{ position: 'absolute', inset: 0, animation: `bj-bloom .9s cubic-bezier(.18,.9,.32,1.2) both`, animationDelay: `${0.15 + i * 0.04}s`, transformOrigin: 'bottom center', pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', inset: 0, transition: 'transform .3s ease', transform: isHover ? 'translateY(-2px) scale(1.035)' : 'none', transformOrigin: 'bottom center' }}>
+                    <div style={{ position: 'absolute', inset: 0, animation: `bj-sway ${e.sway}s ease-in-out infinite alternate`, animationDelay: `${e.delay}s`, transformOrigin: '60px 170px' }}>
+                      <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: FLOWER_SIZE, height: FLOWER_SIZE, pointerEvents: 'none' }}>
+                        <Flower
+                          mood={e.genome.bloomMood}
+                          seed={e.genome.seed}
+                          size={FLOWER_SIZE}
+                          sway={e.lean}
+                          wordCount={e.genome.wordCount}
+                          wiltDroop={e.genome.wiltFactor * 8}
+                          pumpkinStage={e.genome.specialBloom === 'pumpkin' ? e.genome.pumpkinStage : undefined}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {anniv && (
+                  <>
+                    <div style={{ position: 'absolute', left: 16, top: 28, color: '#ffe49a', fontSize: 13, textShadow: '0 0 8px rgba(255,220,140,.8)', animation: 'bj-spark 3.2s ease-in-out infinite', pointerEvents: 'none' }}>✦</div>
+                    <div style={{ position: 'absolute', right: 18, top: 50, color: '#ffe9b0', fontSize: 9, textShadow: '0 0 6px rgba(255,220,140,.8)', animation: 'bj-spark 2.6s 1.1s ease-in-out infinite', pointerEvents: 'none' }}>✦</div>
+                  </>
+                )}
+                {/* hit target — a circle over the bloom head, so you pick the flower (not the stem) */}
+                <button
+                  onClick={() => {
+                    if (drag.current.moved > 6) return;
+                    setActive(e);
+                  }}
+                  onMouseEnter={() => setHovered(e.id)}
+                  onMouseLeave={() => setHovered((h) => (h === e.id ? null : h))}
+                  aria-label={`${label}, ${fmtFull(e.createdAt)}`}
+                  style={{
+                    position: 'absolute',
+                    left: 60,
+                    top: HEAD_Y,
+                    width: HIT,
+                    height: HIT,
+                    transform: 'translate(-50%,-50%)',
+                    borderRadius: '50%',
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                />
+                {/* hover tooltip */}
+                {isHover && (
+                  <div style={{ position: 'absolute', left: '50%', top: -6, transform: 'translate(-50%,-100%)', maxWidth: 244, background: 'rgba(251,246,236,.96)', border: '1px solid #e3d6bd', borderRadius: 999, padding: '5px 14px', boxShadow: '0 6px 18px rgba(25,35,30,.22)', pointerEvents: 'none', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: '#3d4438', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+                    <span style={{ fontFamily: sans, fontSize: 10.5, color: '#8a8270', fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtShort(e.createdAt)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* butterflies (world-space, scroll with the meadow) */}
+          {creatures && bflies && bflies.flock.map((f) => <Butterfly key={`${bflies.run}-${f.id}`} f={f} />)}
+        </div>
+      </div>
+
+      {/* ===== CLOUD SHADOW SWEEP ===== */}
+      {creatures && cshadow && (
+        <div key={cshadow.run} style={{ position: 'absolute', left: 0, right: 0, top: '32%', bottom: 0, zIndex: 15, pointerEvents: 'none', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '60vw', mixBlendMode: 'multiply', background: 'radial-gradient(ellipse 52% 58% at 50% 46%, rgba(98,114,106,.95), rgba(150,160,152,.55) 56%, rgba(255,255,255,0) 78%)', filter: 'blur(26px)', animation: 'bj-cshadow 23s linear both' }} />
+          <div style={{ position: 'absolute', top: '8%', bottom: 0, left: 0, width: '32vw', mixBlendMode: 'multiply', background: 'radial-gradient(ellipse 50% 55% at 50% 50%, rgba(112,126,118,.85), rgba(255,255,255,0) 74%)', filter: 'blur(24px)', animation: 'bj-cshadow 19s 4.5s linear both' }} />
+        </div>
+      )}
+
+      {/* ===== RAIN ===== */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none', opacity: precip ? 1 : 0, transition: 'opacity 1s ease' }}>
+        <div style={{ position: 'absolute', inset: 0, background: `rgba(70,92,122,${rainFx.sheet})`, transition: 'background 1s ease' }} />
+        <div style={{ position: 'absolute', inset: '-10% 0', transform: `rotate(${(rainSlant - 5).toFixed(1)}deg)` }}>
+          {drops.map((d) => (
+            <div
+              key={d.id}
+              style={{
+                position: 'absolute',
+                left: `${d.x}%`,
+                top: 0,
+                width: 1.5,
+                height: d.h,
+                opacity: rainFx.drop,
+                background: 'linear-gradient(to bottom, transparent, rgba(205,220,240,.6))',
+                animation: precip
+                  ? `bj-rain ${(rainDur.min + d.t * (rainDur.max - rainDur.min)).toFixed(2)}s ${d.dl}s linear infinite`
+                  : 'none',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ===== SNOW ===== */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none', opacity: isSnow ? 1 : 0, transition: 'opacity 1s ease' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(226,232,242,.14)' }} />
+        {flakes.map((f) => (
+          <div
+            key={f.id}
+            style={{
+              position: 'absolute',
+              left: `${f.x}%`,
+              top: 0,
+              width: f.s,
+              height: f.s,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,.92)',
+              filter: 'blur(.4px)',
+              boxShadow: '0 0 4px rgba(255,255,255,.6)',
+              animation: isSnow ? `bj-snow ${f.d}s ${f.dl}s linear infinite` : 'none',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ===== LIGHTNING ===== */}
+      {isStormy && flash > 0 && (
+        <div
+          key={flash}
+          style={{ position: 'absolute', inset: 0, zIndex: 22, pointerEvents: 'none', background: 'rgba(244,248,255,.9)', animation: 'bj-flash 1.2s ease-out both' }}
+        />
+      )}
+
+      {/* ===== HEADER ===== */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '18px 22px', pointerEvents: 'none' }}>
+        <div style={{ pointerEvents: 'auto' }}>
+          <div style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 500, fontSize: 30, color: '#faf6e9', textShadow: '0 2px 16px rgba(15,25,35,.45)', lineHeight: 1 }}>Bloom</div>
+          <div style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.78)', textShadow: '0 1px 10px rgba(15,25,35,.5)', marginTop: 6 }}>
+            {layout.entries.length === 0
+              ? 'sky & weather preview'
+              : `a living journal · ${layout.entries.length} memories`}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Manual sky + weather controls (preview playground only; the live garden is
+              driven by the clock and the real weather). */}
+          {!live && (
+            <>
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {PHASE_ORDER.map((k) => (
+                  <button key={k} onClick={() => setPhaseKey(k)} style={{ ...tabBtn, color: phaseKey === k ? '#2c3328' : 'rgba(247,241,227,.85)', background: phaseKey === k ? '#f3ecd9' : 'transparent' }}>
+                    {PHASES[k].label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {PREVIEW_WEATHER_CATS.map((c) => (
+                  <button key={c} onClick={() => setWeatherCat(c)} aria-pressed={weatherCat === c} style={{ ...tabBtn, color: weatherCat === c ? '#2c3328' : 'rgba(247,241,227,.85)', background: weatherCat === c ? '#f3ecd9' : 'transparent' }}>
+                    {weatherCategoryLabel(c)}
+                  </button>
+                ))}
+              </div>
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {MOON_PRESETS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => {
+                      setMoonPreset(p.key);
+                      // jump to night so the chosen moon is actually visible
+                      if (p.phase !== null && phaseKey !== 'night' && phaseKey !== 'dusk') setPhaseKey('night');
+                    }}
+                    aria-pressed={moonPreset === p.key}
+                    style={{ ...tabBtn, color: moonPreset === p.key ? '#2c3328' : 'rgba(247,241,227,.85)', background: moonPreset === p.key ? '#f3ecd9' : 'transparent' }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {creatures && (
+            <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(247,241,227,.5)', padding: '0 6px 0 9px' }}>Scenes</span>
+              {([
+                ['Butterflies', () => spawnButterflies(), !!bflies],
+                ['Fox', () => spawnFox(true), !!fox],
+                ['Cloud shadow', () => spawnShadow(), !!cshadow],
+                ['Shooting star', () => spawnShoot(true), !!shoot],
+              ] as const).map(([label, fn, on]) => (
+                <button
+                  key={label}
+                  onClick={fn}
+                  style={{
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: 999,
+                    padding: '6px 11px',
+                    fontFamily: sans,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: 1.4,
+                    textTransform: 'uppercase',
+                    color: on ? '#2c3328' : 'rgba(247,241,227,.85)',
+                    background: on ? '#f3ecd9' : 'transparent',
+                    transition: 'all .3s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ===== REPLAY CARD ===== */}
+      {replay && !active && (
+        <div style={{ position: 'absolute', top: 86, left: '50%', zIndex: 52, width: 'min(420px, calc(100vw - 36px))', animation: 'bj-replay .7s ease both', transform: 'translateX(-50%)' }}>
+          <div style={{ background: 'rgba(251,246,236,.97)', border: '1px solid #e6d9bf', borderRadius: 16, padding: '14px 16px', boxShadow: '0 14px 40px rgba(20,30,28,.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: sans, fontSize: 10, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: '#a98c4a' }}>✦ This day in your garden</div>
+              <button onClick={() => setReplay(null)} aria-label="Dismiss" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 15, lineHeight: 1, padding: 4 }}>✕</button>
+            </div>
+            <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 19, color: '#3a4136', margin: '6px 0 3px' }}>“{replay.title || snippet(replay.content, 64)}”</div>
+            <div style={{ fontFamily: sans, fontSize: 11.5, color: '#8b8370' }}>
+              {snapshotLine(replay.timePhase, replay.weather.toLowerCase(), replay.place)} · {agoLabel(replay.createdAt)}
+            </div>
+            <button
+              onClick={() => { visitEntry(replay); setReplay(null); }}
+              style={{ marginTop: 10, border: '1px solid #d8c9a4', background: '#f0e6cd', color: '#5c5236', borderRadius: 999, padding: '6px 16px', fontFamily: sans, fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', cursor: 'pointer' }}
+            >
+              Visit this memory
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== TIMELINE SCRUBBER ===== (raised above the global bottom dock) */}
+      <div style={{ position: 'absolute', bottom: 96, left: '50%', transform: 'translateX(-50%)', zIndex: 50, maxWidth: 'calc(100vw - 28px)' }}>
+        <div style={{ ...glass, borderRadius: 999, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {layout.months.map((m, i) => (
+            <button
+              key={m.key}
+              onClick={() => scrollToX(m.cx)}
+              style={{
+                border: 'none',
+                cursor: 'pointer',
+                background: 'transparent',
+                padding: '3px 7px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 3,
+                color: activeMonth === i ? '#ffe1a0' : 'rgba(247,241,227,.62)',
+                transition: 'color .3s',
+              }}
+            >
+              <span style={{ width: activeMonth === i ? 7 : 5, height: activeMonth === i ? 7 : 5, borderRadius: '50%', background: 'currentColor', transition: 'all .3s' }} />
+              <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 1.1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                {MONTH_ABBR[m.m]}{m.m === 0 || i === 0 ? ` '${String(m.y).slice(2)}` : ''}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* hint */}
+      {layout.entries.length > 0 && (
+        <div style={{ position: 'absolute', bottom: 76, left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
+          drag to wander · tap a bloom to remember
+        </div>
+      )}
+
+      {/* ===== MEMORY CARD ===== */}
+      {active && (
+        <div onClick={() => setActive(null)} style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(12,16,24,.22)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 92px' }}>
+          <div onClick={(ev) => ev.stopPropagation()} style={{ width: 'min(440px, 100%)', background: '#fbf6ec', border: '1px solid #e6d9bf', borderRadius: 20, padding: '20px 22px 18px', boxShadow: '0 24px 70px rgba(15,22,20,.4)', animation: 'bj-card .45s cubic-bezier(.2,.8,.3,1) both' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: moodMeta?.chip || '#999' }} />
+                <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: '#7d7561' }}>{moodMeta?.label || active.mood}</span>
+                {activeFav && <span style={{ color: '#d4a23c', fontSize: 13 }}>♥</span>}
+                {active.bloom === 'pumpkin' && <span style={{ fontSize: 12 }} title="rare bloom">🎃</span>}
+              </div>
+              <button onClick={() => setActive(null)} aria-label="Close" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
+            </div>
+
+            {active.title && (
+              <div style={{ fontFamily: serif, fontWeight: 500, fontSize: 26, lineHeight: 1.15, color: '#33392f', margin: '10px 0 4px' }}>{active.title}</div>
+            )}
+            <div style={{ fontFamily: sans, fontSize: 11.5, color: '#8b8370', marginBottom: 12, marginTop: active.title ? 0 : 10 }}>
+              {fmtFull(active.createdAt)} · {agoLabel(active.createdAt)}{isAnniv(active.createdAt) ? ' ✦' : ''}
+            </div>
+
+            <div style={{ fontFamily: serif, fontSize: 17.5, lineHeight: 1.55, color: '#474e42', borderLeft: '2px solid #e3d3ac', paddingLeft: 14, fontStyle: 'italic' }}>
+              {active.content}
+            </div>
+
+            <div style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase', color: '#a39a83', marginTop: 14 }}>
+              {snapshotLine(active.timePhase, active.weather, active.place)}
+            </div>
+
+            {(active.tags?.length || 0) > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                {active.tags.map((t) => (
+                  <span key={t} style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: '#6f7a64', background: '#eee6d0', border: '1px solid #e0d3b3', borderRadius: 999, padding: '3px 10px' }}>#{t}</span>
+                ))}
+              </div>
+            )}
+
+            {parentOf(active) && (
+              <button onClick={() => setActive(parentOf(active))} style={{ marginTop: 12, display: 'block', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontFamily: sans, fontSize: 12, fontWeight: 700, color: '#8a6f3c', textAlign: 'left' }}>
+                ↩ revisits “{parentOf(active)!.title || snippet(parentOf(active)!.content, 40)}”
+              </button>
+            )}
+            {childrenOf(active).map((c) => (
+              <button key={c.id} onClick={() => setActive(c)} style={{ marginTop: 8, display: 'block', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontFamily: sans, fontSize: 12, fontWeight: 700, color: '#8a6f3c', textAlign: 'left' }}>
+                ↪ revisited on {fmtShort(c.createdAt)} — “{c.title || snippet(c.content, 40)}”
+              </button>
+            ))}
+
+            {/* actions (hidden in the standalone preview, which has no real entries to act on) */}
+            {!preview && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+                <button onClick={() => router.push(`/entry/${active.id}`)} style={pill}>Open full memory</button>
+                <button
+                  onClick={() => void handleFavourite()}
+                  style={{ ...pill, background: activeFav ? '#f7e4b0' : '#f6f1e4', borderColor: activeFav ? '#e2c98a' : '#e0d3b3', color: activeFav ? '#9a6f1e' : '#6f6650' }}
+                >
+                  {activeFav ? '♥ Favourited' : '♡ Favourite'}
+                </button>
+                <button onClick={() => router.push(`/revisit/${active.id}`)} style={{ ...pill, background: '#f6f1e4', borderColor: '#e0d3b3', color: '#6f6650' }}>↻ Revisit</button>
+                <button onClick={() => void handleDelete()} style={{ ...pill, background: '#f6e6df', borderColor: '#e3c4b8', color: '#a8553f' }}>Delete</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* paper grain + vignette */}
+      <svg style={{ position: 'absolute', inset: 0, zIndex: 70, width: '100%', height: '100%', opacity: 0.05, mixBlendMode: 'multiply', pointerEvents: 'none' }}>
+        <filter id="bj-grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" /></filter>
+        <rect width="100%" height="100%" filter="url(#bj-grain)" />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 65, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, transparent 58%, rgba(18,22,30,.2) 100%)' }} />
+    </div>
+  );
+}
+
+export default BloomMeadow;

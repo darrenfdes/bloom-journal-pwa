@@ -1,16 +1,19 @@
 'use client';
 
-import { getAmbientOverlay } from '@bloom/core/scene';
+import { getSceneLight } from '@/lib/scene/atmosphere';
 import type { SceneState } from '@bloom/core/scene';
 
 type Props = {
   scene: SceneState;
 };
 
+/**
+ * Scene-wide lighting grade — phase-keyed vignette, directional glow, and
+ * sky-side wash layered as gradients (replaces the old flat color tint).
+ */
 export function AmbientOverlay({ scene }: Props) {
   const ready = scene.status === 'ready';
-  const { color, opacity } = getAmbientOverlay(scene.timePhase);
-  const effectiveOpacity = ready ? opacity : 0;
+  const { background, opacity } = getSceneLight(scene.timePhase);
 
   return (
     <div
@@ -19,9 +22,9 @@ export function AmbientOverlay({ scene }: Props) {
       style={{
         zIndex: 6,
         mixBlendMode: 'multiply',
-        backgroundColor: color === 'transparent' ? 'transparent' : color,
-        opacity: effectiveOpacity,
-        transition: 'background-color 3s ease, opacity 3s ease',
+        background,
+        opacity: ready ? opacity : 0,
+        transition: 'opacity 3s ease',
       }}
     />
   );
