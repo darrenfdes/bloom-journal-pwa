@@ -119,6 +119,10 @@ export interface AppSettings {
   reminderEnabled: boolean;
   reminderHour: number;
   reminderMinute: number;
+  /** Birthday ('YYYY-MM-DD') for special sky events. Local-only, not synced. */
+  birthday?: string | null;
+  /** When true, the birthday replaces Dec 1 as the yearly shooting-star day. Local-only. */
+  useBirthdayForStars?: boolean;
 }
 
 export interface WriteDraft {

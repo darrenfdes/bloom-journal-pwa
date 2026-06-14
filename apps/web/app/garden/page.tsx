@@ -2,8 +2,10 @@
 
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
+import { getOrCreateSettings } from '@/lib/db/repositories/settings';
+import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
 import { useGeolocation } from '@/lib/scene/useGeolocation';
 import { useWeather } from '@/lib/scene/useWeather';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -31,6 +33,28 @@ export function GardenContent() {
   const geo = useGeolocation();
   const weather = useWeather(geo.coords);
 
+  // Whether today is a "special" day that should send a shooting star across the garden.
+  const [specialStar, setSpecialStar] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void getOrCreateSettings()
+      .then((s) => {
+        if (cancelled) return;
+        setSpecialStar(
+          isShootingStarSpecialDay(new Date(), {
+            birthday: s.birthday,
+            useBirthday: s.useBirthdayForStars,
+          })
+        );
+      })
+      .catch(() => {
+        /* settings unavailable → treat today as an ordinary day */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (!ready || !meta) return;
     if (!meta.hasPlantedFirst) {
@@ -50,7 +74,15 @@ export function GardenContent() {
     return null;
   }
 
-  return <BloomMeadow entries={entries} live liveWeather={weather} />;
+  return (
+    <BloomMeadow
+      entries={entries}
+      live
+      liveWeather={weather}
+      latitude={geo.coords.lat}
+      specialStar={specialStar}
+    />
+  );
 }
 
 export default function GardenPage() {

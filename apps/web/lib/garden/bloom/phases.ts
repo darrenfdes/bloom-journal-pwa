@@ -104,6 +104,38 @@ export const PHASES: Record<PhaseKey, PhasePalette> = {
 export const phaseFromHour = (h: number): PhaseKey =>
   h < 5 ? 'night' : h < 7 ? 'dawn' : h < 16 ? 'day' : h < 18 ? 'golden' : h < 20 ? 'dusk' : 'night';
 
+/**
+ * Continuous sun/moon geometry for live mode. Each segment interpolates *from* its phase keyframe
+ * *to* the next phase's keyframe over the segment's clock span, so a body reaches the next stage's
+ * position exactly as the phase flips (continuous across the join). Night wraps midnight (20:00 →
+ * 05:00). Only geometry is interpolated — opacity/colour stay tied to `phaseKey`. Segment boundaries
+ * match `phaseFromHour` so the discrete sky crossfade and the drifting bodies stay in sync.
+ */
+const CELESTIAL_SEGMENTS: { from: PhaseKey; to: PhaseKey; start: number; end: number }[] = [
+  { from: 'night', to: 'dawn', start: 20, end: 29 }, // 20:00 → 05:00(+1)
+  { from: 'dawn', to: 'day', start: 5, end: 7 },
+  { from: 'day', to: 'golden', start: 7, end: 16 },
+  { from: 'golden', to: 'dusk', start: 16, end: 18 },
+  { from: 'dusk', to: 'night', start: 18, end: 20 },
+];
+
+export function celestialAt(date: Date): {
+  sun: { x: number; y: number; size: number };
+  moon: { x: number; y: number };
+} {
+  const h = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+  const hc = h < 5 ? h + 24 : h; // night-wrap
+  const seg = CELESTIAL_SEGMENTS.find((s) => hc >= s.start && hc < s.end) ?? CELESTIAL_SEGMENTS[0]!;
+  const t = (hc - seg.start) / (seg.end - seg.start);
+  const a = PHASES[seg.from];
+  const b = PHASES[seg.to];
+  const lerp = (p: number, q: number) => p + (q - p) * t;
+  return {
+    sun: { x: lerp(a.sun.x, b.sun.x), y: lerp(a.sun.y, b.sun.y), size: lerp(a.sun.size, b.sun.size) },
+    moon: { x: lerp(a.moon.x, b.moon.x), y: lerp(a.moon.y, b.moon.y) },
+  };
+}
+
 export const PHASE_PRETTY: Record<PhaseKey, string> = {
   dawn: 'Dawn',
   day: 'Midday',

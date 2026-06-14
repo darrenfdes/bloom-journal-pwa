@@ -17,6 +17,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   reminderEnabled: false,
   reminderHour: 20,
   reminderMinute: 0,
+  birthday: null,
+  useBirthdayForStars: false,
 };
 
 async function hashPin(pin: string): Promise<string> {
@@ -60,6 +62,8 @@ export async function updateSettings(
     reminderEnabled: patch.reminderEnabled ?? current.reminderEnabled,
     reminderHour: patch.reminderHour ?? current.reminderHour,
     reminderMinute: patch.reminderMinute ?? current.reminderMinute,
+    birthday: patch.birthday !== undefined ? patch.birthday : current.birthday,
+    useBirthdayForStars: patch.useBirthdayForStars ?? current.useBirthdayForStars,
     pinHash: patch.pinHash !== undefined ? patch.pinHash : current.pinHash,
   });
 
