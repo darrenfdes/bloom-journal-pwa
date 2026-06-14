@@ -1,3 +1,7 @@
+> **Mobile development paused (June 2026).** Active work is on this web app (`apps/web`).
+>
+> **Scope:** Work only under `apps/web/` and `packages/core/`. Do not read, search, or explore `apps/mobile/` unless the user explicitly requests mobile work.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 

@@ -1,4 +1,6 @@
-# Bloom Journal
+# Bloom Journal (Mobile)
+
+> **Development halted (June 2026).** This Expo app is not under active development. Active work is on `apps/web`. Do not start new mobile work unless explicitly requested.
 
 Turn every journal entry into a flower, and every flower into a memory in a living garden.
 

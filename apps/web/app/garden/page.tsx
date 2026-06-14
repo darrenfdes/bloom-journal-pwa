@@ -20,7 +20,7 @@ const BloomMeadow = dynamic(
   }
 );
 
-function GardenContent() {
+export function GardenContent() {
   const router = useRouter();
   const ready = useBloomStore((s) => s.ready);
   const meta = useBloomStore((s) => s.gardenMeta);

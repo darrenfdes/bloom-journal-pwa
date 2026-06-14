@@ -1,5 +1,7 @@
 # Bloom Journal — Cursor Skills
 
+> **Development halted (June 2026).** Do not invoke these skills unless the user explicitly requests mobile work. For web garden/flower work, use `packages/core` and `apps/web` instead.
+
 Project-specific skills for agents working in this repo. Cursor discovers skills in `.cursor/skills/<skill-name>/SKILL.md`.
 
 | Skill | Use when |

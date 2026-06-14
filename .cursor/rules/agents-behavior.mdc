@@ -5,6 +5,12 @@ alwaysApply: true
 
 # Agent Behavioral Guidelines
 
+> **Mobile development paused (June 2026).** Active work is on the web app (`apps/web`).
+>
+> **Stay out of `apps/mobile/` unless explicitly asked.** Do not read, search, list, or explore that folder for context, parity checks, or “how does mobile do it?” comparisons. Shared logic lives in `packages/core`; web UI in `apps/web`. Do not invoke mobile-only skills (`apps/mobile/.cursor/skills/`). Do not change `apps/mobile` unless the project owner explicitly requests mobile work.
+>
+> **Unpause:** revert all pause notices — checklist in [docs/mobile-development-paused.md](../docs/mobile-development-paused.md).
+
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

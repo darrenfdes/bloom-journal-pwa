@@ -1,5 +1,7 @@
 # @bloom/assets
 
+> **Mobile development paused (June 2026).** Mobile branding assets remain in `apps/mobile/` for reference; do not add new mobile-only assets unless explicitly requested.
+
 Bloom Journal uses **procedural SVG** for flowers, sky, ground, and grass — no PNG garden backgrounds.
 
 Visual data lives in `@bloom/core`:

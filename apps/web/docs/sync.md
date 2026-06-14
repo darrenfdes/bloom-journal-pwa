@@ -1,5 +1,7 @@
 # Bloom Web — Supabase Sync Design
 
+> **Mobile development paused (June 2026).** This doc describes the cross-platform sync contract for reference. New sync work targets the web app only unless explicitly requested.
+
 Cloud backup for the Next.js web app and Expo mobile app. **Local-first by default** — Dexie (web) and SQLite (mobile) work without sign-in. Sync activates when the user signs in and Supabase env vars are configured.
 
 ## Goals
