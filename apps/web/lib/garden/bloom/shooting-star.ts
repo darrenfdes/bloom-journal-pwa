@@ -1,9 +1,11 @@
 /**
  * Shooting-star scheduling for the live garden. Normal days show no shooting stars; on "special"
  * days a star appears ~30s after the app opens (high chance) plus occasional repeats through the
- * night. Special days: 18 Jun 2026 (one-off) and 1 Dec every year — a birthday set in settings with
- * the override toggle replaces Dec 1 with the birthday.
+ * night. The hardcoded special dates live in `special-events.config.ts` (one-offs + the annual day);
+ * a birthday set in settings with the override toggle replaces the annual day with the birthday.
  */
+
+import { SHOOTING_STAR_ONE_OFFS, SHOOTING_STAR_ANNUAL } from './special-events.config';
 
 /** True when `now` falls on a special shooting-star day. */
 export function isShootingStarSpecialDay(
@@ -14,15 +16,15 @@ export function isShootingStarSpecialDay(
   const d = now.getDate();
   const y = now.getFullYear();
 
-  if (y === 2026 && m === 5 && d === 18) return true; // 18 Jun 2026, one-off
+  if (SHOOTING_STAR_ONE_OFFS.some((e) => e.year === y && e.month === m && e.day === d)) return true;
 
   if (cfg.useBirthday && cfg.birthday) {
-    // Birthday replaces the annual Dec 1.
+    // Birthday replaces the annual day.
     const b = new Date(cfg.birthday);
     return b.getMonth() === m && b.getDate() === d;
   }
 
-  return m === 11 && d === 1; // 1 Dec, annual
+  return m === SHOOTING_STAR_ANNUAL.month && d === SHOOTING_STAR_ANNUAL.day; // annual
 }
 
 /** Tunable timing/probability for the special-day shooting stars. */

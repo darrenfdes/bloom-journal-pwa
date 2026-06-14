@@ -60,6 +60,22 @@ import {
 } from '@/lib/garden/bloom/phases';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
+import {
+  apsisForEvent,
+  effectsForEvent,
+  filterEvents,
+  moonPresetForEvent,
+  moonScaleForEvent,
+  moonTintForEvent,
+  nearestEventIndex,
+  phaseForEvent,
+  planetForEvent,
+  sunScaleForEvent,
+  type EventGroup,
+} from '@/lib/garden/bloom/event-catalog';
+import { EventEffectsLayer } from '@/components/garden/bloom/EventEffectsLayer';
+import { EventStepper } from '@/components/garden/bloom/EventStepper';
+import type { Rarity } from '@bloom/core/events';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
 
@@ -84,6 +100,15 @@ const FLOWER_SIZE = 168;
 // no longer overlap via big empty rectangles — you click the bloom, not the stem.
 const HEAD_Y = 60;
 const HIT = 92;
+
+// Default moon-disc palette (sphere-shaded). Named full moons (e.g. Strawberry)
+// override this via `moonTintForEvent`; everything else uses this neutral set.
+const NEUTRAL_MOON = {
+  light: '#fbf7e6',
+  mid: '#ece4c8',
+  limb: '#d4ccae',
+  crater: 'rgba(150,146,118,.42)',
+};
 
 /** Weather states offered by the manual selector in the preview playground. */
 const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
@@ -172,6 +197,12 @@ export function BloomMeadow({
   const [cshadow, setCshadow] = useState<{ run: number } | null>(null);
   const [shoot, setShoot] = useState<ShootState | null>(null);
 
+  /* world-events browser (sky playground only) */
+  const [eventMode, setEventMode] = useState(false);
+  const [evGroup, setEvGroup] = useState<EventGroup | null>(null);
+  const [evRarity, setEvRarity] = useState<Rarity | null>(null);
+  const [evIndex, setEvIndex] = useState(0);
+
   const scrollerRef = useRef<HTMLDivElement>(null);
   const hillRefs = [useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null)];
   const drag = useRef({ down: false, x: 0, sl: 0, moved: 0 });
@@ -200,15 +231,57 @@ export function BloomMeadow({
   const rainFx = getRainLayerOpacity(cat); // { sheet, drop }
   const rainDur = getRainDropDurationSec(cat, 'near'); // { min, max } seconds
   const rainSlant = getRainWindSlantDeg(windSpeed); // degrees
-  // Cloud cover veil: fog reads as a pale haze, overcast/partly-cloudy as a grey wash.
-  const hazeOpacity = cat === 'fog' ? 0.5 : cat === 'overcast' ? 0.34 : cat === 'partly_cloudy' ? 0.16 : 0;
-  // Thicken the drifting clouds when it is cloudy or raining.
-  const cloudBoost = cat === 'overcast' || precip ? 1.45 : cat === 'partly_cloudy' || cat === 'fog' ? 1.2 : 1;
+  // Cloud-cover veil: fog reads as a pale haze; overcast/rain a grey wash; storms a dark gloom.
+  const hazeOpacity =
+    cat === 'fog' ? 0.5
+    : cat === 'overcast' ? 0.34
+    : cat === 'heavy_rain' || cat === 'thunderstorm' ? 0.42
+    : cat === 'rain' || cat === 'drizzle' ? 0.22
+    : cat === 'partly_cloudy' ? 0.16
+    : 0;
+  // Thicken (and, in storms, multiply) the drifting clouds as the sky closes in.
+  const cloudBoost = isStormy ? 1.75 : cat === 'overcast' || precip ? 1.45 : cat === 'partly_cloudy' || cat === 'fog' ? 1.2 : 1;
+  // Heavier skies show more clouds; storms the most.
+  const visibleClouds = isStormy ? 9 : cat === 'overcast' || precip || isSnow ? 7 : 5;
 
   const layout = useMemo(() => buildMeadowLayout(entries), [entries]);
   // The meadow world is at least as wide as the viewport so the ground/grass span
   // the full screen even when there are only a few months of entries.
   const worldW = Math.max(layout.W, vw);
+
+  /* world-events browser: available only in the flowerless sky playground (/preview) */
+  const eventsBrowser = preview && !live && layout.entries.length === 0;
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const filteredEvents = useMemo(() => filterEvents(evGroup, evRarity), [evGroup, evRarity]);
+  const selectedEvent =
+    filteredEvents.length > 0 ? filteredEvents[Math.min(evIndex, filteredEvents.length - 1)] ?? null : null;
+  const eventEffects = useMemo(
+    () => (eventMode && selectedEvent ? effectsForEvent(selectedEvent) : []),
+    [eventMode, selectedEvent],
+  );
+  /* per-event sun/moon detail — only in the preview events browser; neutral everywhere else */
+  const evActive = eventsBrowser && eventMode && selectedEvent ? selectedEvent : null;
+  const evMoonScale = evActive ? moonScaleForEvent(evActive) : 1;
+  const evSunScale = evActive ? sunScaleForEvent(evActive) : 1;
+  const evMoonTint = evActive ? moonTintForEvent(evActive) : null;
+  const evPlanet = evActive ? planetForEvent(evActive) : null;
+  const evApsis = evActive ? apsisForEvent(evActive) : null;
+  const moonBody = evMoonTint ?? NEUTRAL_MOON;
+  /** Re-seat the stepper near today whenever the filter set changes. */
+  const pickGroup = (g: EventGroup | null) => {
+    setEvGroup(g);
+    setEvIndex(nearestEventIndex(filterEvents(g, evRarity), todayIso));
+  };
+  const pickRarity = (r: Rarity | null) => {
+    setEvRarity(r);
+    setEvIndex(nearestEventIndex(filterEvents(evGroup, r), todayIso));
+  };
+  const toggleEvents = () => {
+    setEventMode((on) => {
+      if (!on) setEvIndex(nearestEventIndex(filteredEvents, todayIso));
+      return !on;
+    });
+  };
 
   /* ambient particle fields (deterministic) */
   const stars = useMemo(() => {
@@ -233,7 +306,8 @@ export function BloomMeadow({
   }, []);
   const clouds = useMemo(() => {
     const r = mulberry32(551);
-    return [...Array(5)].map((_, i) => ({ id: i, top: 4 + r() * 26, w: 180 + r() * 150, d: 90 + r() * 80, dl: -r() * 120, o: 0.55 + r() * 0.3 }));
+    // Pool of 9; the first 5 are identical to before (same seed) so clear skies are unchanged.
+    return [...Array(9)].map((_, i) => ({ id: i, top: 4 + r() * 26, w: 180 + r() * 150, d: 90 + r() * 80, dl: -r() * 120, o: 0.55 + r() * 0.3 }));
   }, []);
   const tufts = useMemo(() => {
     const r = mulberry32(212);
@@ -506,6 +580,15 @@ export function BloomMeadow({
     };
   }, [live, specialStar]);
 
+  /* events browser: snap the sky phase + moon shape to best show the selected event */
+  useEffect(() => {
+    if (!eventsBrowser || !eventMode || !selectedEvent) return;
+    setPhaseKey(phaseForEvent(selectedEvent));
+    const mp = moonPresetForEvent(selectedEvent);
+    if (mp) setMoonPreset(mp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventsBrowser, eventMode, selectedEvent]);
+
   /* lightning: fire a flash at random intervals while the weather is stormy */
   useEffect(() => {
     if (!isStormy) return;
@@ -619,29 +702,53 @@ export function BloomMeadow({
             background: phase.sun.core,
             boxShadow: `0 0 60px 30px ${phase.sun.glow}, 0 0 140px 80px ${phase.sun.glow}`,
             opacity: phase.sun.o,
+            transform: evSunScale !== 1 ? `scale(${evSunScale})` : undefined,
             transition: 'all 1.8s ease',
           }}
         />
 
-        {/* moon — doubled disc with the real current lunar-phase shadow */}
-        <div style={{ position: 'absolute', left: `${moonPos.x}%`, top: `${moonPos.y}%`, marginLeft: -48, marginTop: -48, opacity: phase.moon.o, transition: 'all 1.8s ease', filter: 'drop-shadow(0 0 44px rgba(240,238,210,.4))' }}>
+        {/* moon — sphere-shaded disc + craters, with the real current lunar-phase shadow */}
+        <div
+          style={{
+            position: 'absolute', left: `${moonPos.x}%`, top: `${moonPos.y}%`, marginLeft: -48, marginTop: -48,
+            opacity: phase.moon.o,
+            transform: evMoonScale !== 1 ? `scale(${evMoonScale})` : undefined,
+            transition: 'all 1.8s ease',
+            filter: `drop-shadow(0 0 44px rgba(${evMoonTint ? evMoonTint.glow : '240,238,210'},.4))`,
+          }}
+        >
           <svg width="96" height="96" viewBox="0 0 96 96">
             <defs>
+              <radialGradient id="bj-moon-body" cx="38%" cy="34%" r="72%">
+                <stop offset="0%" stopColor={moonBody.light} />
+                <stop offset="58%" stopColor={moonBody.mid} />
+                <stop offset="100%" stopColor={moonBody.limb} />
+              </radialGradient>
+              <radialGradient id="bj-moon-edge" cx="50%" cy="50%" r="50%">
+                <stop offset="76%" stopColor="#3c3628" stopOpacity="0" />
+                <stop offset="100%" stopColor="#3c3628" stopOpacity="0.26" />
+              </radialGradient>
               <clipPath id="bj-moon-clip">
                 <circle cx="48" cy="48" r="48" />
               </clipPath>
             </defs>
-            <circle cx="48" cy="48" r="48" fill="#f2eed6" />
-            <circle cx="32" cy="40" r="6.8" fill="rgba(180,176,150,.5)" />
-            <circle cx="56" cy="64" r="4.8" fill="rgba(180,176,150,.45)" />
-            <circle cx="60" cy="32" r="3.6" fill="rgba(180,176,150,.4)" />
+            <circle cx="48" cy="48" r="48" fill="url(#bj-moon-body)" />
+            <g clipPath="url(#bj-moon-clip)" fill={moonBody.crater}>
+              <ellipse cx="33" cy="38" rx="8" ry="7" />
+              <circle cx="58" cy="62" r="5.4" />
+              <circle cx="62" cy="33" r="3.6" />
+              <circle cx="40" cy="65" r="3" opacity="0.7" />
+              <circle cx="71" cy="50" r="2.5" opacity="0.6" />
+              <circle cx="26" cy="56" r="2.3" opacity="0.55" />
+            </g>
+            <circle cx="48" cy="48" r="48" fill="url(#bj-moon-edge)" />
             {moonShadow && <path d={moonShadow} fill="#0a0f2a" clipPath="url(#bj-moon-clip)" />}
           </svg>
         </div>
 
         {/* clouds */}
-        {clouds.map((c) => (
-          <div key={c.id} style={{ position: 'absolute', top: `${c.top}%`, left: 0, opacity: Math.min(1, c.o * cloudBoost), animation: `bj-drift ${c.d}s linear infinite`, animationDelay: `${c.dl}s`, pointerEvents: 'none', transition: 'opacity 1.2s ease' }}>
+        {clouds.slice(0, visibleClouds).map((c) => (
+          <div key={c.id} style={{ position: 'absolute', top: `${c.top}%`, left: 0, opacity: Math.min(1, c.o * cloudBoost), animation: `bj-drift ${c.d}s linear infinite`, animationDelay: `${c.dl}s`, pointerEvents: 'none', transition: 'opacity 1.2s ease, filter 1.2s ease', filter: isStormy ? 'brightness(.62) saturate(.85)' : undefined }}>
             <div style={{ position: 'relative', width: c.w, height: 54 }}>
               {[0, 1, 2, 3].map((i) => (
                 <div
@@ -708,12 +815,24 @@ export function BloomMeadow({
             </div>
           ))}
 
+        {/* world-event visuals (preview events browser) */}
+        {eventsBrowser && eventMode && eventEffects.length > 0 && (
+          <EventEffectsLayer
+            effects={eventEffects}
+            moonPos={moonPos}
+            sunPos={sunPos}
+            planet={evPlanet}
+            apsis={evApsis}
+            moonTint={evMoonTint}
+          />
+        )}
+
         {/* cloud-cover veil (overcast / fog desaturation) */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: cat === 'fog' ? '#dde2e7' : '#9aa3ad',
+            background: cat === 'fog' ? '#dde2e7' : isStormy ? '#5b6470' : '#9aa3ad',
             mixBlendMode: cat === 'fog' ? 'normal' : 'multiply',
             opacity: hazeOpacity,
             transition: 'opacity 1.4s ease',
@@ -739,6 +858,17 @@ export function BloomMeadow({
           {PHASE_ORDER.map((k) => (
             <div key={k} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: G, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
           ))}
+
+          {/* settled snow on the meadow floor — fades in while snowing; grass + flowers rise through it */}
+          <div
+            style={{
+              position: 'absolute', left: 0, bottom: 0, width: '100%', height: Math.round(G * 0.72), zIndex: 1,
+              opacity: isSnow ? 1 : 0, transition: 'opacity 1.2s ease', pointerEvents: 'none',
+              background:
+                'radial-gradient(26px 13px at 50% 100%, #ffffff 60%, rgba(255,255,255,0) 72%) 0 4px / 52px 16px repeat-x,' +
+                'linear-gradient(180deg, rgba(248,250,255,0) 0%, rgba(246,249,255,.82) 30%, rgba(255,255,255,.96) 100%)',
+            }}
+          />
 
           {/* month labels */}
           {layout.months.map((m, i) => (
@@ -958,6 +1088,17 @@ export function BloomMeadow({
                   </button>
                 ))}
               </div>
+              {eventsBrowser && (
+                <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2 }}>
+                  <button
+                    onClick={toggleEvents}
+                    aria-pressed={eventMode}
+                    style={{ ...tabBtn, color: eventMode ? '#2c3328' : 'rgba(247,241,227,.85)', background: eventMode ? '#f3ecd9' : 'transparent' }}
+                  >
+                    ✦ Events
+                  </button>
+                </div>
+              )}
             </>
           )}
           {creatures && (
@@ -1015,6 +1156,20 @@ export function BloomMeadow({
             </button>
           </div>
         </div>
+      )}
+
+      {/* ===== EVENTS STEPPER ===== (preview sky playground only) */}
+      {eventsBrowser && eventMode && (
+        <EventStepper
+          events={filteredEvents}
+          index={evIndex}
+          onIndex={setEvIndex}
+          group={evGroup}
+          onGroup={pickGroup}
+          rarity={evRarity}
+          onRarity={pickRarity}
+          onClose={() => setEventMode(false)}
+        />
       )}
 
       {/* ===== TIMELINE SCRUBBER ===== (raised above the global bottom dock) */}

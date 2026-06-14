@@ -1,0 +1,47 @@
+[
+  {
+    "designation": "C/2024 E1 (Wierzchos)",
+    "name": "Comet Wierzchos",
+    "perihelion": "2026-01-20",
+    "peakDate": "2026-02-17",
+    "peakMagnitude": 8,
+    "hemisphere": "south",
+    "note": "Closest to Earth ~Feb 17 2026 at ~1 AU; low on the SW horizon. Telescope object."
+  },
+  {
+    "designation": "C/2025 R3 (PanSTARRS)",
+    "name": "Comet PanSTARRS R3",
+    "perihelion": "2026-04-20",
+    "peakDate": "2026-04-27",
+    "peakMagnitude": 4,
+    "hemisphere": "both",
+    "note": "The standout apparition of 2026. Flirted with naked-eye visibility in the predawn sky. Brightness highly uncertain — verify before shipping."
+  },
+  {
+    "designation": "10P/Tempel 2",
+    "name": "Comet Tempel 2",
+    "perihelion": "2026-08-02",
+    "peakDate": "2026-08-03",
+    "peakMagnitude": 7,
+    "hemisphere": "both",
+    "note": "Jupiter-family periodic comet, ~5.4 yr orbit. Binocular/small-telescope object near perihelion."
+  },
+  {
+    "designation": "161P/Hartley-IRAS",
+    "name": "Comet Hartley-IRAS",
+    "perihelion": "2026-10-05",
+    "peakDate": "2026-10-05",
+    "peakMagnitude": 10,
+    "hemisphere": "both",
+    "note": "Visible Sep–Dec 2026; Halley-type, ~21 yr orbit. Telescope object (mag 10–14)."
+  },
+  {
+    "designation": "2P/Encke",
+    "name": "Comet Encke",
+    "perihelion": "2027-02-09",
+    "peakDate": "2027-02-09",
+    "peakMagnitude": 7,
+    "hemisphere": "both",
+    "note": "Shortest-period known comet (~3.3 yr). Brightens late Jan–mid Feb 2027."
+  }
+]
