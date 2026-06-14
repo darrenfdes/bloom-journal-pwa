@@ -91,6 +91,9 @@ const glass: React.CSSProperties = {
 };
 
 const G = 150; // ground strip height
+// Snow-covered parallax hills (back → front). Hazy blue in the distance,
+// fading to near-white up close, so the back range reads as snowy peaks.
+const SNOW_HILLS: [string, string, string] = ['#b6cde7', '#d3e2f3', '#edf4fc'];
 // Rendered size of each meadow bloom. The `Flower` SVG is square with the
 // plant bottom-aligned + horizontally centered, so centering it on the 120×170
 // flower button seats the stem at the button's bottom-center (60,170) — the
@@ -778,7 +781,7 @@ export function BloomMeadow({
         {/* parallax hills */}
         {hills.map((h, i) => (
           <svg key={i} ref={hillRefs[i]} width={h.Wl} height="340" style={{ position: 'absolute', bottom: G - 16, left: 0, display: 'block', willChange: 'transform' }}>
-            <path d={h.d} fill={phase.hills[i]} style={{ transition: 'fill 1.6s ease' }} />
+            <path d={h.d} fill={isSnow ? SNOW_HILLS[i] : phase.hills[i]} style={{ transition: 'fill 1.6s ease' }} />
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
@@ -857,14 +860,15 @@ export function BloomMeadow({
             <div key={k} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: G, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
           ))}
 
-          {/* settled snow on the meadow floor — fades in while snowing; grass + flowers rise through it */}
+          {/* settled snow on the meadow floor — fades in while snowing and blankets the
+              whole ground (grass hidden); flowers still rise through it */}
           <div
             style={{
-              position: 'absolute', left: 0, bottom: 0, width: '100%', height: Math.round(G * 0.72), zIndex: 1,
+              position: 'absolute', left: 0, bottom: 0, width: '100%', height: G, zIndex: 1,
               opacity: isSnow ? 1 : 0, transition: 'opacity 1.2s ease', pointerEvents: 'none',
               background:
                 'radial-gradient(26px 13px at 50% 100%, #ffffff 60%, rgba(255,255,255,0) 72%) 0 4px / 52px 16px repeat-x,' +
-                'linear-gradient(180deg, rgba(248,250,255,0) 0%, rgba(246,249,255,.82) 30%, rgba(255,255,255,.96) 100%)',
+                'linear-gradient(180deg, rgba(208,224,243,.85) 0%, #e6f0fb 14%, #f5f9ff 38%, #ffffff 70%, #ffffff 100%)',
             }}
           />
 
@@ -878,8 +882,8 @@ export function BloomMeadow({
             </div>
           ))}
 
-          {/* grass */}
-          <div style={{ position: 'absolute', inset: 0, color: phase.grass, transition: 'color 1.6s ease', pointerEvents: 'none' }}>
+          {/* grass — hidden under the blanket of settled snow while it's snowing */}
+          <div style={{ position: 'absolute', inset: 0, color: phase.grass, opacity: isSnow ? 0 : 1, transition: 'color 1.6s ease, opacity 1s ease', pointerEvents: 'none' }}>
             {tufts.map((t) => (
               <GrassTuft key={t.id} left={t.left} bottom={t.bottom} sc={t.sc} dur={t.dur} delay={t.dl} z={t.z} />
             ))}
