@@ -17,6 +17,7 @@
     "dev:web": "npm run dev -w @bloom/web",
     "dev:mobile": "npm run start -w bloom-journal",
     "build:web": "npm run build -w @bloom/web",
-    "test:web": "npm test -w @bloom/web"
+    "test:web": "npm test -w @bloom/web",
+    "precompute:events": "npm run precompute:events -w @bloom/core"
   }
 }
