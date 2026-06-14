@@ -91,6 +91,7 @@ export interface Streak {
   len: number;
   dur: number;
   delay: number;
+  dist?: number;
 }
 export interface ShootState {
   run: number;
@@ -112,6 +113,5 @@ export const CREATURE_KEYFRAMES = `
   @keyframes bj-fox{0%{transform:translate(var(--fx0),var(--fy0))}25%{transform:translate(var(--fx1),var(--fy1))}50%{transform:translate(var(--fx2),var(--fy2))}75%{transform:translate(var(--fx3),var(--fy3))}100%{transform:translate(var(--fx4),var(--fy4))}}
   @keyframes bj-foxlife{0%{opacity:0}6%{opacity:.96}93%{opacity:.96}100%{opacity:0}}
   @keyframes bj-trot{from{transform:translateY(0) rotate(.5deg)}to{transform:translateY(-2.6px) rotate(-.9deg)}}
-  @keyframes bj-shoot{0%{transform:translateX(0);opacity:0}8%{opacity:1}72%{opacity:.95}100%{transform:translateX(500px);opacity:0}}
   @keyframes bj-cshadow{0%{transform:translateX(-85vw);opacity:0}9%{opacity:1}88%{opacity:1}100%{transform:translateX(145vw);opacity:0}}
 `;
