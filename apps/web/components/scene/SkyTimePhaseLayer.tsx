@@ -1,6 +1,6 @@
 'use client';
 
-import { getSkyCssBackground } from '@bloom/core/scene';
+import { getSkyBackground } from '@/lib/scene/atmosphere';
 import type { SceneState } from '@bloom/core/scene';
 
 type Props = {
@@ -8,10 +8,11 @@ type Props = {
   className?: string;
 };
 
+/** Painterly multi-stop sky for the active time phase + weather grade. */
 export function SkyTimePhaseLayer({ scene, className }: Props) {
   const ready = scene.status === 'ready';
   const cloudCover = scene.weather?.cloudCover ?? 0;
-  const background = getSkyCssBackground(
+  const background = getSkyBackground(
     scene.timePhase,
     cloudCover,
     scene.weather?.category
@@ -26,7 +27,7 @@ export function SkyTimePhaseLayer({ scene, className }: Props) {
         inset: 0,
         background,
         opacity: ready ? 1 : 0,
-        transition: 'opacity 1.2s ease, background 2s ease',
+        transition: 'opacity 1.2s ease',
         pointerEvents: 'none',
       }}
     />

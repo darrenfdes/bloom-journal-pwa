@@ -1,8 +1,9 @@
 'use client';
 
-import { WeatherPreviewScene } from '@/components/scene/WeatherPreviewScene';
-import { NIGHT_STORM_PREVIEW_SCENE } from '@/lib/scene/preview-scenes';
+import { DeprecatedWeatherPreviewScene } from '@/components/scene/DeprecatedWeatherPreviewScene';
+import { NIGHT_STORM_PREVIEW_SCENE } from '@/lib/scene/preview-scenes.deprecated';
 
+/** @deprecated Old fixed-scenery preview — superseded by the live `/preview` meadow. */
 export default function NightStormPreviewPage() {
-  return <WeatherPreviewScene scene={NIGHT_STORM_PREVIEW_SCENE} label="Night storm" demoLightning />;
+  return <DeprecatedWeatherPreviewScene scene={NIGHT_STORM_PREVIEW_SCENE} label="Night storm" demoLightning />;
 }

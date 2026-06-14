@@ -1,11 +1,12 @@
 'use client';
 
-import { WeatherPreviewScene } from '@/components/scene/WeatherPreviewScene';
-import { DAY_PREVIEW_SCENE } from '@/lib/scene/preview-scenes';
+import { DeprecatedWeatherPreviewScene } from '@/components/scene/DeprecatedWeatherPreviewScene';
+import { DAY_PREVIEW_SCENE } from '@/lib/scene/preview-scenes.deprecated';
 
+/** @deprecated Old fixed-scenery preview — superseded by the live `/preview` meadow. */
 export default function DayPreviewPage() {
   return (
-    <WeatherPreviewScene
+    <DeprecatedWeatherPreviewScene
       scene={DAY_PREVIEW_SCENE}
       label="Day preview"
       demoLightning={false}

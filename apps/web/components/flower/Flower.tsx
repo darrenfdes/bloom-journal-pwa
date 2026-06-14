@@ -2,12 +2,16 @@
 
 import React, { useMemo } from 'react';
 
+import { AsterBloom } from '@/components/flower/blooms/Aster';
 import { CalmLavender } from '@/components/flower/blooms/Calm';
+import { CosmosBloom } from '@/components/flower/blooms/Cosmos';
 import { HopefulTulip } from '@/components/flower/blooms/Hopeful';
 import { JoyDaisy } from '@/components/flower/blooms/Joy';
 import { LoveRose } from '@/components/flower/blooms/Love';
+import { PoppyBloom } from '@/components/flower/blooms/Poppy';
 import { Pumpkin } from '@/components/flower/blooms/Pumpkin';
 import { RestlessDahlia } from '@/components/flower/blooms/Restless';
+import { SunflowerBloom } from '@/components/flower/blooms/Sunflower';
 import { WistfulBluebells } from '@/components/flower/blooms/Wistful';
 import type { BloomProps } from '@/components/flower/blooms/bloomTypes';
 import { renderFoliage } from '@/components/flower/foliage/renderFoliage';
@@ -26,6 +30,10 @@ const BLOOM_COMPONENTS: Record<BloomMood, (props: BloomProps) => React.ReactElem
   wistful: WistfulBluebells,
   restless: RestlessDahlia,
   hopeful: HopefulTulip,
+  dreamy: CosmosBloom,
+  anxious: AsterBloom,
+  energized: PoppyBloom,
+  ecstatic: SunflowerBloom,
 };
 
 export interface FlowerProps {

@@ -1,5 +1,7 @@
 # Bloom Journal — Product Specification (Current State)
 
+> **Mobile development paused (June 2026).** This spec still describes the mobile app as built, but active development is on the web app (`apps/web`). Agents should not read or explore `apps/mobile/` for context unless explicitly asked.
+
 **Version basis:** Codebase as of May 2026. Monorepo: `apps/web`, `apps/mobile`, `packages/core`.
 
 Related specs:
@@ -27,7 +29,7 @@ Related specs:
 | Platform | Stack | Local storage |
 |----------|-------|---------------|
 | Web PWA | Next.js 15, Tailwind v4, shadcn/ui | Dexie / IndexedDB |
-| Mobile | Expo 54, React Native, Expo Router | SQLite + Drizzle |
+| Mobile *(paused)* | Expo 54, React Native, Expo Router | SQLite + Drizzle |
 | Shared logic | `@bloom/core` | Types, flowers, garden, scene, sync, sentiment |
 
 ---
@@ -136,6 +138,8 @@ From garden flower tap or direct route `/entry/[id]`:
 | PIN / biometric app lock | UI stub (“coming soon”) | Implemented (`LockGate`) |
 | Daily writing reminders | Stub | Implemented (requires dev build, not Expo Go) |
 
+> Mobile column reflects the last built state. Mobile development is paused (June 2026); new work targets web only.
+
 ### 3.7 Optional cloud (Supabase)
 
 **Not required to use the app.** Without env vars, all data stays local with `userId: 'local'`.
@@ -215,9 +219,9 @@ Syncable: reminder time/enabled. Client-only: `pinHash`, `writeDraft`, biometric
 
 Bottom nav: Garden / + Write / Settings (`apps/web/components/nav/AppNav.tsx`).
 
-### Mobile (`apps/mobile/app/`)
+### Mobile (`apps/mobile/app/`) — development paused
 
-Same logical screens via Expo Router; app lock overlay in root layout.
+Same logical screens via Expo Router; app lock overlay in root layout. **Not under active development (June 2026).**
 
 ---
 
@@ -267,7 +271,7 @@ Not implemented in code — useful if extending this doc into a full PRD:
 
 - **Privacy default:** All journaling works offline; cloud is opt-in backup
 - **Deterministic flowers:** Same entry always renders the same bloom (important for “memory” metaphor)
-- **Platform parity:** Core behaviour shared; mobile leads on lock + notifications
+- **Platform parity:** Core behaviour shared via `@bloom/core`; mobile development is paused (June 2026) — web is the active target
 - **Activation:** Supabase requires env vars + dashboard auth provider setup per `apps/web/docs/sync.md`
 
 ---

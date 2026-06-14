@@ -165,44 +165,46 @@ export function applyMoonPhaseShadow(
   ctx.restore();
 }
 
-/** SVG path for the sky-colored phase shadow (local moon coords, origin top-left of svg). */
+/**
+ * SVG path for the sky-colored phase shadow (local moon coords, disc centered at (r, r)).
+ *
+ * The unlit region is bounded by two arcs that meet at the poles (top & bottom of the disc):
+ *   1. the dark outer limb — a true semicircle of radius `r`, and
+ *   2. the terminator — a half-ellipse whose horizontal radius shrinks with the lit fraction
+ *      (`rx = r·|1 − 2·illumination|`): `r` at new/full, `0` (a straight line) at the quarters.
+ * Crescents (illumination < 0.5) have the terminator bulge toward the lit limb; gibbous phases have
+ * it bulge over the dark limb, leaving only a thin lens of shadow.
+ */
 export function getMoonPhaseShadowSvgPath(
   r: number,
   moon: MoonPhaseState,
   latitude = 0
 ): string | null {
-  const geom = getMoonPhaseMaskGeometry(moon, latitude);
-  if (geom.kind === 'none') return null;
+  const illum = moon.illumination;
+  if (illum >= 0.985) return null; // full moon → no shadow
 
   const cx = r;
   const cy = r;
-  const w = r * 2 * geom.shadowWidthFrac;
+  const top = `${cx} ${cy - r}`;
+  const bottom = `${cx} ${cy + r}`;
 
-  if (geom.kind === 'outer') {
-    if (geom.shadowSide === 'left') {
-      const x0 = cx - r;
-      const x1 = cx - r + w;
-      return [
-        `M ${x0} ${cy - r}`,
-        `L ${x1} ${cy - r}`,
-        `A ${r} ${r} 0 0 1 ${x1} ${cy + r}`,
-        `L ${x0} ${cy + r}`,
-        'Z',
-      ].join(' ');
-    }
-    const x1 = cx + r;
-    const x0 = cx + r - w;
-    return [
-      `M ${x1} ${cy - r}`,
-      `L ${x0} ${cy - r}`,
-      `A ${r} ${r} 0 0 0 ${x0} ${cy + r}`,
-      `L ${x1} ${cy + r}`,
-      'Z',
-    ].join(' ');
+  if (illum <= 0.015) {
+    // New moon → the whole disc is in shadow.
+    return `M ${top} A ${r} ${r} 0 1 0 ${bottom} A ${r} ${r} 0 1 0 ${top} Z`;
   }
 
-  const offsetX = geom.shadowSide === 'left' ? cx - w : cx + w;
-  return `M ${offsetX + r} ${cy} A ${r} ${r} 0 1 0 ${offsetX - r} ${cy} A ${r} ${r} 0 1 0 ${offsetX + r} ${cy} Z`;
+  const rx = r * Math.abs(1 - 2 * illum); // terminator half-width (0 at the quarters)
+  const litRight = latitude >= 0 ? moon.waxing : !moon.waxing; // hemisphere flips the lit side
+  const crescent = illum < 0.5;
+  const limbSweep = litRight ? 0 : 1; // dark outer limb: left when lit is on the right
+  const termSweep = litRight ? (crescent ? 0 : 1) : crescent ? 1 : 0;
+
+  return [
+    `M ${top}`,
+    `A ${r} ${r} 0 0 ${limbSweep} ${bottom}`, // dark outer limb
+    `A ${rx} ${r} 0 0 ${termSweep} ${top}`, // terminator
+    'Z',
+  ].join(' ');
 }
 
 export function shouldHideMoonForWeather(category?: WeatherCategory | null): boolean {

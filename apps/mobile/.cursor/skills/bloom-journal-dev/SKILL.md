@@ -1,7 +1,9 @@
 ---
 name: bloom-journal-dev
-description: Develop Bloom Journal (Expo 54 React Native journaling app). Covers expo-router, async expo-sqlite, zustand store, watercolor theme, and privacy features. Use when editing this repo, adding screens, DB logic, or Expo configuration.
+description: Develop Bloom Journal (Expo 54 React Native journaling app). MOBILE PAUSED — do not invoke unless the user explicitly requests mobile work. Covers expo-router, async expo-sqlite, zustand store, watercolor theme, and privacy features.
 ---
+
+> **Development halted (June 2026).** Mobile work is paused. Do not use this skill for new mobile features unless explicitly requested. Active development is on `apps/web`.
 
 # Bloom Journal — Development
 

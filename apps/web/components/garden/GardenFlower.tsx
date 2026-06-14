@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import React, { memo } from 'react';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
@@ -58,6 +58,7 @@ function GardenFlowerInner({
   onGardenTap,
 }: Props) {
   const scene = useSceneContextOptional();
+  const reducedMotion = useReducedMotion();
   const { flowerSize, width: visualWidth, height: visualHeight } = flowerPlotSize(entry);
   const windSpeed = scene?.weather?.windSpeed ?? 0;
   const swayAmplitude = getWindSwayDegrees(windSpeed);
@@ -91,12 +92,24 @@ function GardenFlowerInner({
         width: visualWidth,
         height: visualHeight,
         zIndex: isHighlighted ? 9999 : position.z + zBoost,
+        transformOrigin: '50% 100%',
       }}
+      initial={
+        reducedMotion
+          ? false
+          : { opacity: 0, scale: baseScale * 0.55, rotate: baseRotate }
+      }
       animate={{
+        opacity: 1,
         scale: isHighlighted ? baseScale * 1.08 : baseScale,
         rotate: baseRotate,
       }}
-      transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+      transition={{
+        type: 'spring',
+        stiffness: 260,
+        damping: 22,
+        delay: reducedMotion ? 0 : Math.min(index * 0.045, 0.4),
+      }}
     >
       <button
         type="button"

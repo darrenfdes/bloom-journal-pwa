@@ -2,6 +2,7 @@ import React from 'react';
 
 import { nsId } from '@/components/flower/blooms/bloomTypes';
 import { petalPath } from '@/components/flower/petalPathHelpers';
+import { createRng } from '@bloom/core/flowers/prng';
 import { PUMPKIN_PALETTE } from '@bloom/core/flowers/moodPalettes';
 
 export interface PumpkinProps {
@@ -16,10 +17,11 @@ const PETAL_COUNT = 5;
 /** Ripe pumpkin body radius; bottom sits at viewBox stem base (y=138). */
 const RIPE_FRUIT_RY = 17.5;
 
-export function Pumpkin({ ns, seed: _seed, cx, cy, stage }: PumpkinProps) {
+export function Pumpkin({ ns, seed, cx, cy, stage }: PumpkinProps) {
   const petalGrad = nsId(ns, 'pumpkinPetal');
   const throatGrad = nsId(ns, 'pumpkinThroat');
   const fruitGrad = nsId(ns, 'pumpkinFruit');
+  const lobeGrad = nsId(ns, 'pumpkinLobe');
   const ribShade = nsId(ns, 'pumpkinRib');
 
   return (
@@ -35,22 +37,31 @@ export function Pumpkin({ ns, seed: _seed, cx, cy, stage }: PumpkinProps) {
           <stop offset="60%" stopColor={PUMPKIN_PALETTE.petalDark} />
           <stop offset="100%" stopColor={PUMPKIN_PALETTE.fruitDeepest} />
         </radialGradient>
-        <radialGradient id={fruitGrad} cx="38%" cy="32%" r="78%">
+        <radialGradient id={fruitGrad} cx="36%" cy="28%" r="80%">
           <stop offset="0%" stopColor={PUMPKIN_PALETTE.fruitHighlight} />
-          <stop offset="55%" stopColor={PUMPKIN_PALETTE.fruitMid} />
+          <stop offset="52%" stopColor={PUMPKIN_PALETTE.fruitMid} />
           <stop offset="100%" stopColor={PUMPKIN_PALETTE.fruitDark} />
         </radialGradient>
+        <radialGradient id={lobeGrad} cx="42%" cy="26%" r="85%">
+          <stop offset="0%" stopColor={PUMPKIN_PALETTE.fruitHighlight} />
+          <stop offset="45%" stopColor={PUMPKIN_PALETTE.fruitMid} />
+          <stop offset="88%" stopColor={PUMPKIN_PALETTE.fruitDark} />
+          <stop offset="100%" stopColor={PUMPKIN_PALETTE.fruitDeepest} />
+        </radialGradient>
         <linearGradient id={ribShade} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={PUMPKIN_PALETTE.fruitDeepest} stopOpacity="0.55" />
-          <stop offset="100%" stopColor={PUMPKIN_PALETTE.fruitDeepest} stopOpacity="0.15" />
+          <stop offset="0%" stopColor={PUMPKIN_PALETTE.fruitDeepest} stopOpacity="0.6" />
+          <stop offset="100%" stopColor={PUMPKIN_PALETTE.fruitDeepest} stopOpacity="0.18" />
         </linearGradient>
       </defs>
 
-      {stage === 0 ? <PumpkinFlower cx={cx} cy={cy} petalGrad={petalGrad} throatGrad={throatGrad} /> : null}
+      {stage === 0 ? (
+        <PumpkinFlower cx={cx} cy={cy} seed={seed} petalGrad={petalGrad} throatGrad={throatGrad} />
+      ) : null}
       {stage === 1 ? (
         <PumpkinFruiting
           cx={cx}
           cy={cy}
+          seed={seed}
           petalGrad={petalGrad}
           throatGrad={throatGrad}
           fruitGrad={fruitGrad}
@@ -58,23 +69,65 @@ export function Pumpkin({ ns, seed: _seed, cx, cy, stage }: PumpkinProps) {
         />
       ) : null}
       {stage === 2 ? (
-        <PumpkinRipe cx={cx} fruitGrad={fruitGrad} ribShade={ribShade} stemBaseY={138} />
+        <PumpkinRipe
+          cx={cx}
+          seed={seed}
+          lobeGrad={lobeGrad}
+          fruitGrad={fruitGrad}
+          ribShade={ribShade}
+          stemBaseY={138}
+        />
       ) : null}
     </g>
+  );
+}
+
+/** Curly squash tendril — a stroked spiral with a seeded wobble. */
+function Tendril({
+  x,
+  y,
+  scale,
+  flip,
+  seed,
+}: {
+  x: number;
+  y: number;
+  scale: number;
+  flip: boolean;
+  seed: number;
+}) {
+  const rng = createRng(seed ^ 0x7e4d);
+  const s = scale * (flip ? -1 : 1);
+  const wob = (rng() - 0.5) * 2;
+  const d = `M ${x} ${y}
+      C ${x + 4 * s} ${y - 5 * scale} ${x + 9 * s} ${y - 5 * scale + wob} ${x + 10 * s} ${y - 1 * scale}
+      C ${x + 10.8 * s} ${y + 2 * scale} ${x + 7.5 * s} ${y + 3 * scale} ${x + 6.6 * s} ${y + 0.8 * scale}
+      C ${x + 6 * s} ${y - 0.8 * scale} ${x + 8 * s} ${y - 1.4 * scale} ${x + 8.6 * s} ${y - 0.2 * scale}`;
+  return (
+    <path
+      d={d}
+      stroke={PUMPKIN_PALETTE.tendril}
+      strokeWidth={1}
+      fill="none"
+      strokeLinecap="round"
+    />
   );
 }
 
 function PumpkinFlower({
   cx,
   cy,
+  seed,
   petalGrad,
   throatGrad,
 }: {
   cx: number;
   cy: number;
+  seed: number;
   petalGrad: string;
   throatGrad: string;
 }) {
+  const rng = createRng(seed ^ 0x5b10);
   const backLen = 24;
   const backW = 12;
   const frontLen = 21;
@@ -82,15 +135,15 @@ function PumpkinFlower({
 
   return (
     <g>
-      <ellipse cx={cx + 0.4} cy={cy + 2} rx={26} ry={22} fill="rgba(40, 32, 22, 0.18)" />
+      <ellipse cx={cx + 0.4} cy={cy + 2} rx={26} ry={22} fill="rgba(40, 32, 22, 0.16)" />
 
       <g>
         {Array.from({ length: PETAL_COUNT }, (_, i) => {
-          const angle = (360 / PETAL_COUNT) * i + 36;
+          const angle = (360 / PETAL_COUNT) * i + 36 + (rng() * 2 - 1) * 3;
           return (
             <path
               key={`back-${i}`}
-              d={petalPath(cx, cy, angle, backLen, backW, 0)}
+              d={petalPath(cx, cy, angle, backLen, backW, 0.06)}
               fill={`url(#${petalGrad})`}
               fillOpacity={0.92}
               stroke={PUMPKIN_PALETTE.petalDark}
@@ -106,10 +159,6 @@ function PumpkinFlower({
         {Array.from({ length: PETAL_COUNT }, (_, i) => {
           const angle = (360 / PETAL_COUNT) * i;
           const a = (angle * Math.PI) / 180;
-          const veinTipX = cx + Math.sin(a) * frontLen * 0.82;
-          const veinTipY = cy - Math.cos(a) * frontLen * 0.82;
-          const veinBaseX = cx + Math.sin(a) * 3;
-          const veinBaseY = cy - Math.cos(a) * 3;
           return (
             <g key={`front-${i}`}>
               <path
@@ -120,15 +169,22 @@ function PumpkinFlower({
                 strokeOpacity={0.6}
                 strokeLinejoin="round"
               />
-              <line
-                x1={veinBaseX}
-                y1={veinBaseY}
-                x2={veinTipX}
-                y2={veinTipY}
-                stroke={PUMPKIN_PALETTE.petalDark}
-                strokeWidth={0.45}
-                strokeOpacity={0.4}
-              />
+              {/* Fluted pleats — squash blossoms crease in threes */}
+              {[-0.3, 0, 0.3].map((spread, vi) => {
+                const va = a + spread * 0.36;
+                return (
+                  <line
+                    key={`vein-${vi}`}
+                    x1={cx + Math.sin(va) * 4}
+                    y1={cy - Math.cos(va) * 4}
+                    x2={cx + Math.sin(va) * frontLen * (vi === 1 ? 0.84 : 0.6)}
+                    y2={cy - Math.cos(va) * frontLen * (vi === 1 ? 0.84 : 0.6)}
+                    stroke={PUMPKIN_PALETTE.petalDark}
+                    strokeWidth={vi === 1 ? 0.5 : 0.35}
+                    strokeOpacity={0.4}
+                  />
+                );
+              })}
             </g>
           );
         })}
@@ -136,6 +192,7 @@ function PumpkinFlower({
 
       <circle cx={cx} cy={cy} r={6.2} fill={`url(#${throatGrad})`} />
       <circle cx={cx} cy={cy} r={2.4} fill={PUMPKIN_PALETTE.fruitDeepest} fillOpacity={0.7} />
+      <ellipse cx={cx - 1.6} cy={cy - 1.8} rx={1.6} ry={0.9} fill={PUMPKIN_PALETTE.petalHighlight} fillOpacity={0.6} />
 
       <g>
         {Array.from({ length: PETAL_COUNT }, (_, i) => {
@@ -158,6 +215,8 @@ function PumpkinFlower({
           );
         })}
       </g>
+
+      <Tendril x={cx + 16} y={cy + 18} scale={1} flip={false} seed={seed} />
     </g>
   );
 }
@@ -165,6 +224,7 @@ function PumpkinFlower({
 function PumpkinFruiting({
   cx,
   cy,
+  seed,
   petalGrad,
   throatGrad,
   fruitGrad,
@@ -172,6 +232,7 @@ function PumpkinFruiting({
 }: {
   cx: number;
   cy: number;
+  seed: number;
   petalGrad: string;
   throatGrad: string;
   fruitGrad: string;
@@ -207,7 +268,15 @@ function PumpkinFruiting({
         <circle cx={flowerCx} cy={flowerCy} r={3.2} fill={`url(#${throatGrad})`} />
       </g>
 
-      <ellipse cx={fruitCx} cy={fruitCy} rx={fruitRx} ry={fruitRy} fill={`url(#${fruitGrad})`} stroke={PUMPKIN_PALETTE.fruitDark} strokeWidth={0.4} />
+      <ellipse
+        cx={fruitCx}
+        cy={fruitCy}
+        rx={fruitRx}
+        ry={fruitRy}
+        fill={`url(#${fruitGrad})`}
+        stroke={PUMPKIN_PALETTE.fruitDark}
+        strokeWidth={0.4}
+      />
 
       {[-0.55, 0, 0.55].map((offsetFrac, i) => {
         const ribX = fruitCx + offsetFrac * fruitRx;
@@ -224,7 +293,7 @@ function PumpkinFruiting({
         );
       })}
 
-      <ellipse cx={fruitCx - fruitRx * 0.45} cy={fruitCy - fruitRy * 0.5} rx={2.4} ry={1.1} fill={PUMPKIN_PALETTE.fruitHighlight} fillOpacity={0.55} />
+      <ellipse cx={fruitCx - fruitRx * 0.45} cy={fruitCy - fruitRy * 0.5} rx={2.6} ry={1.2} fill={PUMPKIN_PALETTE.fruitHighlight} fillOpacity={0.6} />
 
       <rect
         x={fruitCx - 1.4}
@@ -234,17 +303,22 @@ function PumpkinFruiting({
         rx={0.8}
         fill={PUMPKIN_PALETTE.stemBrown}
       />
+      <Tendril x={fruitCx + fruitRx + 1} y={fruitCy + 2} scale={0.8} flip={false} seed={seed} />
     </g>
   );
 }
 
 function PumpkinRipe({
   cx,
+  seed,
+  lobeGrad,
   fruitGrad,
   ribShade,
   stemBaseY,
 }: {
   cx: number;
+  seed: number;
+  lobeGrad: string;
   fruitGrad: string;
   ribShade: string;
   stemBaseY: number;
@@ -258,67 +332,70 @@ function PumpkinRipe({
 
   return (
     <g>
-      <ellipse cx={fruitCx + 0.8} cy={fruitBottom - 1} rx={fruitRx + 1.2} ry={RIPE_FRUIT_RY * 0.22} fill="rgba(40, 32, 22, 0.22)" />
+      <ellipse cx={fruitCx + 0.8} cy={fruitBottom - 1} rx={fruitRx + 2} ry={RIPE_FRUIT_RY * 0.24} fill="rgba(40, 32, 22, 0.26)" />
 
-      {/* Vine from ground into the pumpkin base */}
+      {/* Trailing vine into the ground with a curly tendril and leaf */}
       <path
-        d={`M ${fruitCx.toFixed(2)} ${stemBaseY.toFixed(2)}
-            C ${(fruitCx + 5).toFixed(2)} ${(fruitBottom - 8).toFixed(2)} ${(fruitCx + 4).toFixed(2)} ${(fruitCy + 6).toFixed(2)} ${(fruitCx + 1).toFixed(2)} ${(fruitBottom - 3).toFixed(2)}`}
-        stroke={PUMPKIN_PALETTE.stemBrown}
-        strokeWidth={2.2}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d={`M ${fruitCx.toFixed(2)} ${stemBaseY.toFixed(2)}
-            C ${(fruitCx - 4).toFixed(2)} ${(fruitBottom - 10).toFixed(2)} ${(fruitCx - 2).toFixed(2)} ${(fruitCy + 4).toFixed(2)} ${fruitCx.toFixed(2)} ${(fruitBottom - 2).toFixed(2)}`}
-        stroke={PUMPKIN_PALETTE.stemBrown}
-        strokeWidth={1.5}
+        d={`M ${(fruitCx - fruitRx - 6).toFixed(2)} ${(fruitBottom - 0.5).toFixed(2)}
+            C ${(fruitCx - fruitRx + 2).toFixed(2)} ${(fruitBottom - 4).toFixed(2)} ${(fruitCx - 8).toFixed(2)} ${(fruitBottom - 2).toFixed(2)} ${fruitCx.toFixed(2)} ${(fruitBottom - 1.5).toFixed(2)}`}
+        stroke={PUMPKIN_PALETTE.leaf}
+        strokeWidth={1.6}
         fill="none"
         strokeLinecap="round"
         strokeOpacity={0.85}
       />
+      <Tendril x={fruitCx - fruitRx - 4} y={fruitBottom - 4} scale={1.1} flip seed={seed} />
+      <path
+        d={`M ${(fruitCx - fruitRx - 7).toFixed(2)} ${(fruitBottom - 2).toFixed(2)}
+            c -4 -2 -6.5 -6 -5.5 -10 c 3.5 0.5 6.5 4 7.5 8 Z`}
+        fill={PUMPKIN_PALETTE.leaf}
+        fillOpacity={0.9}
+      />
 
-      <ellipse cx={fruitCx - fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.5} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} fillOpacity={0.92} />
-      <ellipse cx={fruitCx + fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.5} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} fillOpacity={0.92} />
-      <ellipse cx={fruitCx - fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.55} ry={RIPE_FRUIT_RY * 0.99} fill={`url(#${fruitGrad})`} fillOpacity={0.96} />
-      <ellipse cx={fruitCx + fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.55} ry={RIPE_FRUIT_RY * 0.99} fill={`url(#${fruitGrad})`} fillOpacity={0.96} />
-      <ellipse cx={fruitCx} cy={fruitCy} rx={fruitRx * 0.6} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} />
+      {/* Body — back disc, then individually shaded lobes out to in */}
+      <ellipse cx={fruitCx} cy={fruitCy} rx={fruitRx} ry={RIPE_FRUIT_RY} fill={`url(#${fruitGrad})`} />
+      <ellipse cx={fruitCx - fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.42} ry={RIPE_FRUIT_RY * 0.97} fill={`url(#${lobeGrad})`} fillOpacity={0.95} />
+      <ellipse cx={fruitCx + fruitRx * 0.62} cy={fruitCy} rx={fruitRx * 0.42} ry={RIPE_FRUIT_RY * 0.97} fill={`url(#${lobeGrad})`} fillOpacity={0.95} />
+      <ellipse cx={fruitCx - fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.5} ry={RIPE_FRUIT_RY} fill={`url(#${lobeGrad})`} fillOpacity={0.97} />
+      <ellipse cx={fruitCx + fruitRx * 0.32} cy={fruitCy} rx={fruitRx * 0.5} ry={RIPE_FRUIT_RY} fill={`url(#${lobeGrad})`} fillOpacity={0.97} />
+      <ellipse cx={fruitCx} cy={fruitCy} rx={fruitRx * 0.56} ry={RIPE_FRUIT_RY} fill={`url(#${lobeGrad})`} />
 
+      {/* Creases between lobes */}
       {[-0.78, -0.42, 0, 0.42, 0.78].map((offsetFrac, i) => {
         const ribX = fruitCx + offsetFrac * fruitRx;
         return (
           <path
             key={`rib-${i}`}
-            d={`M ${ribX.toFixed(2)} ${(fruitTop + 0.6).toFixed(2)} Q ${(ribX + offsetFrac * 1.6).toFixed(2)} ${fruitCy.toFixed(2)} ${ribX.toFixed(2)} ${(fruitBottom - 0.6).toFixed(2)}`}
+            d={`M ${ribX.toFixed(2)} ${(fruitTop + 0.8).toFixed(2)} Q ${(ribX + offsetFrac * 2).toFixed(2)} ${fruitCy.toFixed(2)} ${ribX.toFixed(2)} ${(fruitBottom - 0.8).toFixed(2)}`}
             stroke={`url(#${ribShade})`}
-            strokeWidth={0.9}
+            strokeWidth={1.1}
             fill="none"
             strokeLinecap="round"
           />
         );
       })}
 
-      <ellipse cx={fruitCx - fruitRx * 0.42} cy={fruitTop + RIPE_FRUIT_RY * 0.45} rx={4.2} ry={1.6} fill={PUMPKIN_PALETTE.fruitHighlight} fillOpacity={0.55} />
+      {/* Warm top light + reflected ground light below */}
+      <ellipse cx={fruitCx - fruitRx * 0.36} cy={fruitTop + RIPE_FRUIT_RY * 0.4} rx={5.5} ry={2} fill={PUMPKIN_PALETTE.fruitHighlight} fillOpacity={0.6} />
+      <ellipse cx={fruitCx + fruitRx * 0.2} cy={fruitBottom - 2.6} rx={8} ry={1.6} fill="#FFCF8E" fillOpacity={0.18} />
 
-      {/* Brown peduncle stem on top */}
+      {/* Gnarled peduncle */}
       <path
-        d={`M ${(fruitCx - 2).toFixed(2)} ${(fruitTop + 1).toFixed(2)}
-            C ${(fruitCx - 2.5).toFixed(2)} ${(fruitTop - 5).toFixed(2)} ${(fruitCx + 1.5).toFixed(2)} ${(fruitTop - 7).toFixed(2)} ${(fruitCx + 2).toFixed(2)} ${(fruitTop - 1).toFixed(2)}
-            L ${(fruitCx + 1.2).toFixed(2)} ${(fruitTop + 1.5).toFixed(2)} Z`}
+        d={`M ${(fruitCx - 2.6).toFixed(2)} ${(fruitTop + 1.4).toFixed(2)}
+            C ${(fruitCx - 3.4).toFixed(2)} ${(fruitTop - 4).toFixed(2)} ${(fruitCx - 1.5).toFixed(2)} ${(fruitTop - 8.5).toFixed(2)} ${(fruitCx + 2.4).toFixed(2)} ${(fruitTop - 8).toFixed(2)}
+            C ${(fruitCx + 3.4).toFixed(2)} ${(fruitTop - 7.8).toFixed(2)} ${(fruitCx + 3).toFixed(2)} ${(fruitTop - 5.5).toFixed(2)} ${(fruitCx + 2.2).toFixed(2)} ${(fruitTop - 5.8).toFixed(2)}
+            C ${(fruitCx + 1).toFixed(2)} ${(fruitTop - 6.2).toFixed(2)} ${(fruitCx + 0.4).toFixed(2)} ${(fruitTop - 3).toFixed(2)} ${(fruitCx + 1.8).toFixed(2)} ${(fruitTop + 1.2).toFixed(2)} Z`}
         fill={PUMPKIN_PALETTE.stemBrown}
         stroke={PUMPKIN_PALETTE.fruitDeepest}
         strokeWidth={0.45}
         strokeLinejoin="round"
       />
-      <rect
-        x={fruitCx - 1.1}
-        y={fruitTop - 9}
-        width={2.2}
-        height={5}
-        rx={0.7}
-        fill={PUMPKIN_PALETTE.stemBrown}
+      <path
+        d={`M ${(fruitCx - 1.4).toFixed(2)} ${(fruitTop - 0.5).toFixed(2)} C ${(fruitCx - 1.8).toFixed(2)} ${(fruitTop - 4).toFixed(2)} ${(fruitCx - 0.6).toFixed(2)} ${(fruitTop - 6.5).toFixed(2)} ${(fruitCx + 1).toFixed(2)} ${(fruitTop - 7).toFixed(2)}`}
+        stroke="rgba(40, 26, 12, 0.45)"
+        strokeWidth={0.6}
+        fill="none"
+        strokeLinecap="round"
       />
     </g>
   );

@@ -4,6 +4,7 @@ import React from 'react';
 
 import { AmbientSky } from '@/components/garden/AmbientSky';
 import { NightSceneCanvas } from '@/components/scene/NightSceneCanvas';
+import { GRAIN_DATA_URI } from '@/lib/scene/atmosphere';
 import { computeGroundVariant } from '@bloom/core/garden/ground';
 import { getHorizonGlow } from '@bloom/core/garden/season-hills';
 import { getGardenSkyHeight } from '@bloom/core/garden/scene-layout';
@@ -19,6 +20,8 @@ type Props = {
   viewportHeight: number;
   /** Measured sky band height — extends through UI chrome to meet the meadow horizon. */
   skyBandHeight?: number;
+  /** World scroll position — drives ridge/treeline parallax in the sky band. */
+  scrollLeft?: number;
   /** Layers between the base sky SVG and scene content (time-phase sky, celestial). */
   skyOverlays?: React.ReactNode;
   /** When true, replace the SVG sky stack with a full-viewport night canvas. */
@@ -38,6 +41,7 @@ export function SeasonBackground({
   width,
   viewportHeight,
   skyBandHeight,
+  scrollLeft = 0,
   skyOverlays,
   nightCanvasActive = false,
   nightShowMoon = true,
@@ -90,12 +94,24 @@ export function SeasonBackground({
             </svg>
             {skyOverlays}
             {/* After time-phase overlay so distant peaks stay visible at the horizon */}
-            <AmbientSky month={month} width={width} skyHeight={skyH} />
+            <AmbientSky month={month} width={width} skyHeight={skyH} scrollLeft={scrollLeft} />
           </div>
         </div>
       )}
 
       <div className="relative z-[1] flex min-h-0 flex-1 flex-col">{children}</div>
+
+      {/* Paper-grain finish over the whole scene — static, blends both ways */}
+      <div
+        className="pointer-events-none absolute inset-0 z-[2]"
+        aria-hidden
+        style={{
+          backgroundImage: GRAIN_DATA_URI,
+          backgroundSize: '180px 180px',
+          mixBlendMode: 'soft-light',
+          opacity: 0.35,
+        }}
+      />
     </div>
   );
 }
