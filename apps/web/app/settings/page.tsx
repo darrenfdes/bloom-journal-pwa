@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { exportBackup } from '@/lib/export/backup';
+import { exportBackup, importBackup } from '@/lib/export/backup';
+import { useBloomStore } from '@/stores/useBloomStore';
 import { usePwaStatus } from '@/lib/pwa/usePwaStatus';
 import { getOrCreateSettings, updateSettings } from '@/lib/db/repositories/settings';
 import { searchEntries } from '@/lib/db/repositories/entries';
@@ -27,8 +28,11 @@ export default function SettingsPage() {
   const { user, loading: authLoading, configured } = useAuth();
   const supabaseConfigured = isSupabaseConfigured();
   const pwaStatus = usePwaStatus();
+  const refreshEntries = useBloomStore((s) => s.refreshEntries);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus);
   const [birthday, setBirthday] = useState('');
   const [useBirthdayForStars, setUseBirthdayForStars] = useState(false);
@@ -70,6 +74,24 @@ export default function SettingsPage() {
       toast.error('Export failed');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      const { imported } = await importBackup(file);
+      await refreshEntries();
+      toast.success(
+        imported === 1 ? 'Imported 1 memory' : `Imported ${imported} memories`
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Import failed');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -179,10 +201,28 @@ export default function SettingsPage() {
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">
         <h2 className="font-display text-lg font-medium text-ink">Backup</h2>
-        <p className="text-sm text-ink-soft">Export all entries and garden metadata as JSON.</p>
-        <Button variant="outline" disabled={exporting} onClick={() => void handleExport()}>
-          {exporting ? 'Exporting…' : 'Download backup'}
-        </Button>
+        <p className="text-sm text-ink-soft">
+          Export all entries and garden metadata as JSON, or import a previous backup.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+            {exporting ? 'Exporting…' : 'Download backup'}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={importing}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {importing ? 'Importing…' : 'Import backup'}
+          </Button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => void handleImportFile(e)}
+        />
       </section>
 
       {process.env.NODE_ENV === 'development' ? (

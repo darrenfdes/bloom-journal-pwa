@@ -37,7 +37,8 @@ export async function GET(request: Request) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(`${origin}/login?error=auth`);
+    // Send the user back to the email-based flow as a fallback.
+    return NextResponse.redirect(`${origin}/login?error=google`);
   }
 
   return NextResponse.redirect(`${origin}${next}`);

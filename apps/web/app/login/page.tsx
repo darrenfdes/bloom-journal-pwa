@@ -15,7 +15,7 @@ import {
   signInWithPassword,
   signUpWithPassword,
 } from '@/lib/auth/session';
-import { pullForUser } from '@/lib/sync/engine';
+import { syncNow } from '@/lib/sync/engine';
 
 function authErrorMessage(error: { message: string; code?: string }): string {
   switch (error.code) {
@@ -96,7 +96,7 @@ function LoginForm() {
         return;
       }
       const uid = data.user?.id ?? data.session?.user.id;
-      if (uid) await pullForUser(uid);
+      if (uid) await syncNow(uid);
       await refresh();
       toast.success(mode === 'signin' ? 'Signed in' : 'Account created');
       router.push('/settings');
@@ -112,9 +112,14 @@ function LoginForm() {
     setBusy(true);
     try {
       const { error } = await signInWithGoogle();
-      if (error) toast.error(error.message);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Google sign in failed');
+      // On error, fall back to the email flow — the form below stays available.
+      if (error) {
+        setMode('signin');
+        toast.error('Google sign-in didn’t work — use your email and password below instead.');
+      }
+    } catch {
+      setMode('signin');
+      toast.error('Google sign-in didn’t work — use your email and password below instead.');
     } finally {
       setBusy(false);
     }
@@ -133,7 +138,9 @@ function LoginForm() {
 
       {authError ? (
         <p className="rounded-lg border border-rose/30 bg-rose/10 px-3 py-2 text-sm text-ink">
-          Sign in failed. Please try again.
+          {authError === 'google'
+            ? 'Google sign-in didn’t complete. You can sign in or create an account with your email below.'
+            : 'Sign in failed. Please try again, or use your email below.'}
         </p>
       ) : null}
 
