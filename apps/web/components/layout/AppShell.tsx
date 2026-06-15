@@ -11,8 +11,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { QuickWrite } from '@/components/write/QuickWrite';
 import { cn } from '@/lib/utils';
 
-const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview'];
-const HIDE_NAV_PREFIXES = ['/plant-confirm', '/preview'];
+const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview', '/welcome'];
+const HIDE_NAV_PREFIXES = ['/plant-confirm', '/preview', '/welcome'];
 
 function isFullWidthRoute(pathname: string): boolean {
   return FULL_WIDTH_PREFIXES.some(

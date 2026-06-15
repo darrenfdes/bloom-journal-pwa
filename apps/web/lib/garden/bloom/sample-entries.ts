@@ -9,6 +9,8 @@
 import type { EntryRecord, Mood } from '@bloom/core';
 import type { EntryWeatherSnapshot, TimePhase, WeatherCategory } from '@bloom/core/scene/types';
 
+import { PREVIEW_USER_ID } from '@/lib/db/sentinels';
+
 /** Reference weather display string → the closest `WeatherCategory`. */
 const WEATHER: Record<string, WeatherCategory> = {
   Clear: 'clear',
@@ -57,7 +59,7 @@ const E = (
   o: Opt = {}
 ): EntryRecord => ({
   id,
-  userId: 'preview',
+  userId: PREVIEW_USER_ID,
   title,
   content,
   mood,
