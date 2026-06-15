@@ -3,6 +3,13 @@ import { createId } from '@/lib/id';
 import { afterLocalMutation } from '@/lib/sync/hooks';
 import type { GardenMeta } from '@/lib/types';
 
+export function gardenIsAccessible(
+  meta: GardenMeta | null | undefined,
+  entryCount: number,
+): boolean {
+  return Boolean(meta?.hasPlantedFirst) || entryCount > 0;
+}
+
 export async function getOrCreateGardenMeta(): Promise<GardenMeta> {
   const db = getDb();
   const existing = await db.garden_meta.toCollection().first();
@@ -21,6 +28,18 @@ export async function getOrCreateGardenMeta(): Promise<GardenMeta> {
   };
 
   await db.garden_meta.add(meta);
+  return meta;
+}
+
+/** Keep `hasPlantedFirst` aligned when entries exist but the flag was cleared (e.g. sync). */
+export async function repairGardenMetaIfNeeded(): Promise<GardenMeta> {
+  const db = getDb();
+  const meta = await getOrCreateGardenMeta();
+  const entryCount = await db.entries.filter((e) => !e.isDeleted).count();
+  if (!meta.hasPlantedFirst && entryCount > 0) {
+    await db.garden_meta.update(meta.id, { hasPlantedFirst: true });
+    return { ...meta, hasPlantedFirst: true };
+  }
   return meta;
 }
 

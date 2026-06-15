@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { MigrateLocalDialog } from '@/components/auth/MigrateLocalDialog';
-import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
+import { repairGardenMetaIfNeeded } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings, loadWriteDraft } from '@/lib/db/repositories/settings';
 import { pullForUser, setActiveSyncUser } from '@/lib/sync/engine';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -21,7 +21,7 @@ export function BloomProvider({ children }: { children: React.ReactNode }) {
 
     async function bootstrap() {
       const [meta, , draft] = await Promise.all([
-        getOrCreateGardenMeta(),
+        repairGardenMetaIfNeeded(),
         getOrCreateSettings(),
         loadWriteDraft(),
       ]);
@@ -52,7 +52,7 @@ export function BloomProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       await pullForUser(uid);
       await refreshEntries();
-      const meta = await getOrCreateGardenMeta();
+      const meta = await repairGardenMetaIfNeeded();
       setGardenMeta(meta);
     })();
   }, [user?.id, authLoading, refreshEntries, setGardenMeta]);
