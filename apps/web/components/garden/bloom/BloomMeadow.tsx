@@ -69,6 +69,7 @@ import {
   moonScaleForEvent,
   moonTintForEvent,
   nearestEventIndex,
+  nextWorldEvent,
   phaseForEvent,
   planetForEvent,
   sunScaleForEvent,
@@ -88,6 +89,12 @@ const glass: React.CSSProperties = {
   WebkitBackdropFilter: 'blur(10px)',
   border: '1px solid rgba(247,241,227,.16)',
   color: '#f7f1e3',
+};
+
+/** "2026-08-12" → "12 Aug" (year-less, timezone-safe — no Date parsing). */
+const fmtEventDate = (iso: string): string => {
+  const [, m, d] = iso.split('-');
+  return `${Number(d)} ${MONTH_ABBR[Number(m) - 1] ?? m}`;
 };
 
 const G = 150; // ground strip height
@@ -265,6 +272,9 @@ export function BloomMeadow({
   /* world-events browser: available only in the flowerless sky playground (/preview) */
   const eventsBrowser = preview && !live && layout.entries.length === 0;
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Subtle "what's coming" hint for the live garden: the next world event strictly after today
+  // (today's event, if any, is already painted in the sky). Date only — no name, not interactive.
+  const nextEvent = useMemo(() => (live ? nextWorldEvent(todayIso) : null), [live, todayIso]);
   const filteredEvents = useMemo(() => filterEvents(evGroup, evRarity), [evGroup, evRarity]);
   const selectedEvent =
     filteredEvents.length > 0 ? filteredEvents[Math.min(evIndex, filteredEvents.length - 1)] ?? null : null;
@@ -1114,6 +1124,13 @@ export function BloomMeadow({
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Live garden: a subtle, non-interactive hint of the next world event's date.
+              No name, no link — just the date, balancing the title on the left. */}
+          {live && nextEvent && (
+            <div style={{ pointerEvents: 'none', textAlign: 'right', fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)' }}>
+              Next · {fmtEventDate(nextEvent.date)}
+            </div>
+          )}
           {/* Manual sky + weather controls (preview playground only; the live garden is
               driven by the clock and the real weather). */}
           {!live && (
