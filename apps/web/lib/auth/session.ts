@@ -1,5 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js';
 
+import { clearDek } from '@/lib/crypto/key-session';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export function isSupabaseConfigured(): boolean {
@@ -22,6 +23,7 @@ export async function signOut(): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) return;
   await supabase.auth.signOut();
+  clearDek(); // a different user on this browser must not reuse the cached key
 }
 
 export async function signInWithPassword(email: string, password: string) {
