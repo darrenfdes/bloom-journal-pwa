@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useIsAdmin } from '@/lib/auth/useIsAdmin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ function formatSyncTime(iso: string | null): string {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading, configured } = useAuth();
+  const isAdmin = useIsAdmin();
   const supabaseConfigured = isSupabaseConfigured();
   const pwaStatus = usePwaStatus();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
@@ -231,6 +233,23 @@ export default function SettingsPage() {
           <Button variant="outline" asChild>
             <Link href="/flowers">Preview mood blooms</Link>
           </Button>
+        </section>
+      ) : null}
+
+      {isAdmin ? (
+        <section className="space-y-4 rounded-xl border border-parchment p-4">
+          <h2 className="font-display text-lg font-medium text-ink">Preview (admin)</h2>
+          <p className="text-sm text-ink-soft">
+            Sky &amp; weather and the sample meadow playgrounds.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/preview">Sky &amp; weather</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/preview/meadow">Sample meadow</Link>
+            </Button>
+          </div>
         </section>
       ) : null}
 

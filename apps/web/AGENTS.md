@@ -29,4 +29,24 @@ hidden). `/preview/meadow` is the same meadow with the reference sample garden +
 - Live meadow: `apps/web/components/garden/bloom/BloomMeadow.tsx` (`preview`, `live`, `liveWeather` props)
 - Weather effects are driven from `WeatherCategory` via `@bloom/core/scene` helpers (`getRainLayerOpacity`, `getRainDropDurationSec`, `shouldShowLightning`, …).
 
+### Access (admin-only in production)
+
+`/preview*` is open to everyone in development and **admin-only in production**. The gate is
+`isAdminUser()` (`apps/web/lib/auth/admin.ts`): always true in dev, otherwise requires a Supabase user
+with `app_metadata.role === 'admin'`. Enforced in `apps/web/lib/supabase/middleware.ts` (redirects
+non-admins to `/garden`); Settings surfaces preview links only for admins via `useIsAdmin()`.
+
+Grant admin to a user (Supabase SQL editor or MCP `execute_sql`):
+
+```sql
+update auth.users
+set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}'::jsonb
+where email = 'someone@example.com';
+```
+
+`app_metadata` is server-controlled (users can't edit it), so it's safe as the source of truth.
+
+> Sample `/preview/meadow` flowers use the `'preview'` `userId` sentinel (`apps/web/lib/db/sentinels.ts`),
+> live only in memory, and are never written to Dexie or pushed to Supabase.
+
 **Deprecated:** the old fixed-scenery pages (`/preview/{dawn,day,golden-hour,heavy-rain,night-storm,full-moon,flowers}`) still load but are no longer linked. Their renderer is `apps/web/components/scene/DeprecatedWeatherPreviewScene.tsx` with presets in `apps/web/lib/scene/preview-scenes.deprecated.ts` — both marked `@deprecated`. Don't build new previews on them.
