@@ -49,7 +49,7 @@ Migrations live in `supabase/migrations/`. All user-owned rows use `user_id uuid
 | `tags` | `jsonb` | string array |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | LWW key |
-| `flower_seed` | `integer` | |
+| `flower_seed` | `bigint` | unsigned 32-bit hash (>int4 max) |
 | `flower_style` | `text` | JSON string |
 | `garden_position` | `jsonb` | nullable |
 | `is_favourited` | `boolean` | default false |
