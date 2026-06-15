@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
-import { MigrateLocalDialog } from '@/components/auth/MigrateLocalDialog';
 import { repairGardenMetaIfNeeded } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings, loadWriteDraft } from '@/lib/db/repositories/settings';
 import { backfillEncryption } from '@/lib/sync/backfill-encryption';
-import { pullForUser, setActiveSyncUser } from '@/lib/sync/engine';
+import { pullForUser, setActiveSyncUser, syncNow } from '@/lib/sync/engine';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 /** Encrypt any legacy plaintext rows in Supabase once per device/user. Idempotent + best-effort. */
@@ -63,31 +63,44 @@ export function BloomProvider({ children }: { children: React.ReactNode }) {
     if (!uid) return;
 
     void (async () => {
-      await pullForUser(uid);
+      // Adopt any local-only memories, pull remote, then push everything pending.
+      const { merged } = await syncNow(uid);
       await refreshEntries();
       const meta = await repairGardenMetaIfNeeded();
       setGardenMeta(meta);
+      if (merged > 0) {
+        toast.success(
+          merged === 1
+            ? 'Synced 1 memory to your account'
+            : `Synced ${merged} memories to your account`
+        );
+      }
       void runEncryptionBackfill(uid);
     })();
   }, [user?.id, authLoading, refreshEntries, setGardenMeta]);
 
   useEffect(() => {
     if (!user?.id) return;
+    const uid = user.id;
 
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        void pullForUser(user.id).then(() => refreshEntries());
+        void pullForUser(uid).then(() => refreshEntries());
       }
     };
 
+    // Flush anything queued while offline as soon as connectivity returns.
+    const onOnline = () => {
+      void syncNow(uid).then(() => refreshEntries());
+    };
+
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
+    };
   }, [user?.id, refreshEntries]);
 
-  return (
-    <>
-      {children}
-      <MigrateLocalDialog />
-    </>
-  );
+  return <>{children}</>;
 }

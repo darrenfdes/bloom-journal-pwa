@@ -6,12 +6,13 @@ import { AuthProvider } from '@/components/auth/AuthProvider';
 import { BloomProvider } from '@/components/BloomProvider';
 import { AppNav } from '@/components/nav/AppNav';
 import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
+import { SyncBadge } from '@/components/sync/SyncBadge';
 import { Toaster } from '@/components/ui/sonner';
 import { QuickWrite } from '@/components/write/QuickWrite';
 import { cn } from '@/lib/utils';
 
-const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview'];
-const HIDE_NAV_PREFIXES = ['/plant-confirm', '/preview'];
+const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview', '/welcome'];
+const HIDE_NAV_PREFIXES = ['/plant-confirm', '/preview', '/welcome'];
 
 function isFullWidthRoute(pathname: string): boolean {
   return FULL_WIDTH_PREFIXES.some(
@@ -43,6 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
+      {!hideNav ? <SyncBadge /> : null}
       {!hideNav ? <AppNav /> : null}
       {!hideNav ? <QuickWrite /> : null}
       <PwaLifecycle />
