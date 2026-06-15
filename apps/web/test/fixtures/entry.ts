@@ -1,6 +1,11 @@
 import type { EntryRecord } from '@bloom/core';
 
-export function entry(overrides: Partial<EntryRecord> & { createdAt?: string | Date } = {}): EntryRecord {
+export function entry(
+  overrides: Partial<Omit<EntryRecord, 'createdAt' | 'updatedAt'>> & {
+    createdAt?: string | Date;
+    updatedAt?: string;
+  } = {},
+): EntryRecord {
   const { createdAt: createdAtOverride, updatedAt: updatedAtOverride, ...rest } = overrides;
   const createdAt =
     createdAtOverride instanceof Date

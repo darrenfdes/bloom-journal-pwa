@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GardenContent } from './page';
+import { GardenContent } from './GardenContent';
 
 const mockReplace = vi.fn();
 
