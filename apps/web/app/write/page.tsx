@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FIRST_OPEN_TAGLINE, JOURNAL_PROMPTS } from '@bloom/core/constants/prompts';
+import { gardenIsAccessible } from '@/lib/db/repositories/garden';
 import { saveWriteDraft } from '@/lib/db/repositories/settings';
 import { resolveMood } from '@/lib/sentiment/infer';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -18,11 +19,12 @@ import { useBloomStore } from '@/stores/useBloomStore';
 export default function WritePage() {
   const router = useRouter();
   const meta = useBloomStore((s) => s.gardenMeta);
+  const entries = useBloomStore((s) => s.entries);
   const draft = useBloomStore((s) => s.draft);
   const setDraft = useBloomStore((s) => s.setDraft);
   const setPendingPlant = useBloomStore((s) => s.setPendingPlant);
 
-  const isFirstOpen = !meta?.hasPlantedFirst;
+  const isFirstOpen = !gardenIsAccessible(meta, entries.length);
   const prompt = useMemo(
     () => JOURNAL_PROMPTS[Math.floor(Date.now() / 86400000) % JOURNAL_PROMPTS.length],
     []
@@ -55,7 +57,7 @@ export default function WritePage() {
   return (
     <div className="flex flex-1 flex-col gap-6 pb-[calc(2rem+var(--safe-bottom))]">
         <div className="flex items-center justify-between">
-          {meta?.hasPlantedFirst ? (
+          {gardenIsAccessible(meta, entries.length) ? (
             <Link href="/garden" className="text-sm text-ink-soft hover:text-ink">
               ← Garden
             </Link>

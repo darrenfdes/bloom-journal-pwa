@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { sceneEffectsForDay, useDayEvents } from '@bloom/core/events';
 import type { EventsUserContext } from '@bloom/core/events';
 
+import { gardenIsAccessible } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
 import { useGeolocation } from '@/lib/scene/useGeolocation';
@@ -78,12 +79,14 @@ export function GardenContent() {
     [dayEvents],
   );
 
+  const canViewGarden = gardenIsAccessible(meta, entries.length);
+
   useEffect(() => {
     if (!ready || !meta) return;
-    if (!meta.hasPlantedFirst) {
+    if (!canViewGarden) {
       router.replace('/write');
     }
-  }, [ready, meta, router]);
+  }, [ready, meta, canViewGarden, router]);
 
   if (!ready) {
     return (
@@ -93,7 +96,7 @@ export function GardenContent() {
     );
   }
 
-  if (!meta?.hasPlantedFirst) {
+  if (!canViewGarden) {
     return null;
   }
 

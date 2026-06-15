@@ -77,7 +77,13 @@ export async function pullForUser(userId: string): Promise<void> {
       const localStamp = localMeta.lastEntryAt ?? localMeta.createdAt;
       const remoteStamp = remoteMeta.last_entry_at ?? remoteMeta.created_at;
       if (shouldApplyRemote(localStamp, remoteStamp)) {
-        await db.garden_meta.put(remoteToGardenMeta(remoteMeta, localMeta.id));
+        const remote = remoteToGardenMeta(remoteMeta, localMeta.id);
+        const localEntryCount = await db.entries.filter((e) => !e.isDeleted).count();
+        await db.garden_meta.put({
+          ...remote,
+          hasPlantedFirst:
+            remote.hasPlantedFirst || localMeta.hasPlantedFirst || localEntryCount > 0,
+        });
       }
     }
 
