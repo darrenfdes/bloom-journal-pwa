@@ -3,18 +3,31 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sprout, Plus, Settings } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
+import { useIdle } from '@/lib/hooks/useIdle';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
   const setQuickWriteOpen = useBloomStore((s) => s.setQuickWriteOpen);
+  const memoryCardOpen = useBloomStore((s) => s.memoryCardOpen);
 
   const isGarden = pathname === '/garden' || pathname.startsWith('/garden/');
   const isSettings = pathname === '/settings' || pathname.startsWith('/settings/');
+
+  // In the immersive garden, tuck the nav away once the user goes idle so it
+  // stops covering the meadow; the peek handle (and any interaction) brings it
+  // back. A memory card forces it away too. Other routes keep the nav visible.
+  const reduceMotion = useReducedMotion();
+  const { idle, wake } = useIdle(2800, isGarden);
+  const hidden = memoryCardOpen || (isGarden && idle);
+  const showHandle = isGarden && idle && !memoryCardOpen;
+  const slideTransition = reduceMotion
+    ? { duration: 0 }
+    : { type: 'spring' as const, stiffness: 260, damping: 30 };
 
   // On the garden, capture a memory inline via the quick-add modal; elsewhere fall back to
   // the full write page.
@@ -24,11 +37,14 @@ export function AppNav() {
   };
 
   return (
+    <>
     <motion.nav
       initial={{ y: 80, x: '-50%', opacity: 0 }}
-      animate={{ y: 0, x: '-50%', opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 30, delay: 0.1 }}
-      className="fixed bottom-6 left-1/2 z-40 w-[90%] max-w-sm rounded-full border border-white/40 bg-cream/75 px-5 py-2.5 shadow-[0_8px_32px_0_rgba(61,56,50,0.12)] backdrop-blur-md select-none"
+      animate={{ y: hidden ? 120 : 0, x: '-50%', opacity: hidden ? 0 : 1 }}
+      transition={slideTransition}
+      aria-hidden={hidden}
+      style={{ bottom: 'calc(1.5rem + var(--safe-bottom))', pointerEvents: hidden ? 'none' : 'auto' }}
+      className="fixed left-1/2 z-40 w-[90%] max-w-sm rounded-full border border-white/40 bg-cream/75 px-5 py-2.5 shadow-[0_8px_32px_0_rgba(61,56,50,0.12)] backdrop-blur-md select-none"
     >
       <div className="grid grid-cols-3 items-center">
         {/* Garden Tab */}
@@ -88,5 +104,33 @@ export function AppNav() {
         </div>
       </div>
     </motion.nav>
+
+      {/* Peek handle — the affordance that brings the tucked-away nav back. */}
+      <AnimatePresence>
+        {showHandle && (
+          <motion.button
+            key="nav-peek"
+            type="button"
+            onClick={wake}
+            onFocus={wake}
+            aria-label="Show navigation"
+            initial={{ opacity: 0, y: 10, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 10, x: '-50%' }}
+            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed left-1/2 z-40 flex items-center justify-center rounded-full px-5 py-2.5"
+            style={{
+              bottom: 'calc(0.5rem + var(--safe-bottom))',
+              background: 'rgba(22,27,36,.38)',
+              border: '1px solid rgba(247,241,227,.16)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+            }}
+          >
+            <span className="block h-1 w-8 rounded-full" style={{ background: 'rgba(247,241,227,.55)' }} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
