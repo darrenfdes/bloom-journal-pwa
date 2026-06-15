@@ -8,10 +8,12 @@ import {
   shouldApplyRemote,
   type RemoteEntryRow,
 } from '@bloom/core';
+import { toast } from 'sonner';
 
 import { getDek } from '@/lib/crypto/key-session';
 import { decryptRemoteRow, encryptRemoteRow } from '@/lib/crypto/remote-row-cipher';
 import { getDb, type LocalEntryRecord } from '@/lib/db/client';
+import { PREVIEW_USER_ID } from '@/lib/db/sentinels';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -19,12 +21,38 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { setSyncStatus } from './status';
 
 const PUSH_DEBOUNCE_MS = 2000;
+const ERROR_TOAST_COOLDOWN_MS = 10_000;
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let activeUserId: string | null = null;
+let lastErrorToastAt = 0;
 
 function supabase() {
   return getSupabaseBrowserClient();
+}
+
+function isOffline() {
+  return typeof navigator !== 'undefined' && !navigator.onLine;
+}
+
+/**
+ * Record a sync failure. Being offline is expected (the status badge surfaces it), so it never
+ * raises a toast; a genuine failure while online does, throttled to avoid spamming on flaky links.
+ */
+function reportSyncError(err: unknown) {
+  if (isOffline()) {
+    setSyncStatus({ offline: true, syncing: false });
+    return;
+  }
+
+  const message = err instanceof Error ? err.message : 'Unknown sync error';
+  setSyncStatus({ offline: false, syncing: false, lastError: message });
+
+  const now = Date.now();
+  if (now - lastErrorToastAt > ERROR_TOAST_COOLDOWN_MS) {
+    lastErrorToastAt = now;
+    toast.error("Couldn't sync to the cloud — we'll retry automatically.");
+  }
 }
 
 async function countPending(): Promise<number> {
@@ -118,9 +146,10 @@ export async function pullForUser(userId: string): Promise<void> {
       pendingChanges: pending,
       offline: false,
       syncing: false,
+      lastError: null,
     });
-  } catch {
-    setSyncStatus({ offline: true, syncing: false });
+  } catch (err) {
+    reportSyncError(err);
   }
 }
 
@@ -136,8 +165,12 @@ export async function pushPending(userId: string): Promise<void> {
 
   try {
     const db = getDb();
+    // The `userId` equality already excludes the in-memory `/preview` sample flowers, but we guard
+    // against the `'preview'` sentinel explicitly so preview data can never be pushed to Supabase.
     const entriesForPush = await db.entries
-      .filter((e) => e.userId === userId && e.pendingPush === true)
+      .filter(
+        (e) => e.userId === userId && e.userId !== PREVIEW_USER_ID && e.pendingPush === true
+      )
       .toArray();
 
     if (entriesForPush.length > 0) {
@@ -170,9 +203,10 @@ export async function pushPending(userId: string): Promise<void> {
       pendingChanges: pending,
       syncing: false,
       offline: false,
+      lastError: null,
     });
-  } catch {
-    setSyncStatus({ offline: true, syncing: false });
+  } catch (err) {
+    reportSyncError(err);
   }
 }
 
@@ -195,6 +229,48 @@ export function schedulePush(userId?: string) {
 
 export function setActiveSyncUser(userId: string | null) {
   activeUserId = userId;
+}
+
+/** The signed-in user id sync is currently bound to, or null when local-only. */
+export function getActiveSyncUser(): string | null {
+  return activeUserId;
+}
+
+/**
+ * Re-tag any entries (and garden meta) still owned by the local-only `'local'` pseudo-user to the
+ * signed-in account so they become eligible for push. Returns how many entries were merged.
+ */
+export async function reparentLocalEntries(userId: string): Promise<number> {
+  const db = getDb();
+  const locals = await db.entries.filter((e) => e.userId === 'local').toArray();
+
+  for (const entry of locals) {
+    // Keep updatedAt untouched so conflict resolution is unaffected — only ownership changes.
+    await db.entries.update(entry.id, { userId, pendingPush: true });
+  }
+
+  const meta = await db.garden_meta.toCollection().first();
+  if (meta && meta.userId === 'local') {
+    await db.garden_meta.update(meta.id, { userId });
+  }
+
+  if (locals.length > 0) await refreshPendingCount();
+  return locals.length;
+}
+
+/**
+ * Full reconcile for a freshly-connected user: adopt any local-only data, pull remote changes,
+ * then push everything pending. Used on sign-in, on app load while signed in, and on reconnect.
+ * Returns the number of local-only entries merged (for first-merge messaging).
+ */
+export async function syncNow(userId: string): Promise<{ merged: number }> {
+  if (!supabase()) return { merged: 0 };
+
+  activeUserId = userId;
+  const merged = await reparentLocalEntries(userId);
+  await pullForUser(userId);
+  await pushPending(userId);
+  return { merged };
 }
 
 export async function refreshPendingCount() {

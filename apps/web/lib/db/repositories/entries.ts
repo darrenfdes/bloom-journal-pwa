@@ -3,6 +3,7 @@ import { assignPositionForNewEntry } from '@bloom/core/garden/layout';
 
 import { getDb } from '@/lib/db/client';
 import { createId } from '@/lib/id';
+import { getActiveSyncUser } from '@/lib/sync/engine';
 import { afterLocalMutation } from '@/lib/sync/hooks';
 import { resolveMood } from '@/lib/sentiment/infer';
 import type { EntryRecord, TimePhase, WriteDraft } from '@/lib/types';
@@ -47,7 +48,7 @@ export async function plantEntry(
 
   const record: EntryRecord = {
     id,
-    userId: 'local',
+    userId: getActiveSyncUser() ?? 'local',
     title: draft.title.trim() || null,
     content: draft.content.trim(),
     mood,

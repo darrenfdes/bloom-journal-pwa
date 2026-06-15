@@ -3,6 +3,7 @@ export type SyncStatus = {
   pendingChanges: number;
   offline: boolean;
   syncing: boolean;
+  lastError: string | null;
 };
 
 let status: SyncStatus = {
@@ -10,6 +11,7 @@ let status: SyncStatus = {
   pendingChanges: 0,
   offline: false,
   syncing: false,
+  lastError: null,
 };
 
 const listeners = new Set<() => void>();
