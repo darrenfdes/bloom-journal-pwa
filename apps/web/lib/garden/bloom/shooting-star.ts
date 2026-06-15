@@ -5,7 +5,35 @@
  * a birthday set in settings with the override toggle replaces the annual day with the birthday.
  */
 
-import { SHOOTING_STAR_ONE_OFFS, SHOOTING_STAR_ANNUAL } from './special-events.config';
+import {
+  SHOOTING_STAR_ONE_OFFS,
+  SHOOTING_STAR_ANNUAL,
+  type OneOffSpecialDay,
+} from './special-events.config';
+
+/** True when `now` falls within a one-off's window: its day, plus an optional spill into the next morning. */
+function matchesOneOff(e: OneOffSpecialDay, now: Date): boolean {
+  const m = now.getMonth();
+  const d = now.getDate();
+  const y = now.getFullYear();
+
+  if (e.year === y && e.month === m && e.day === d) return true; // the configured day, any time
+
+  if (e.untilNextDayHour != null) {
+    // The morning after — same wall-clock date as `e.day + 1` (Date math rolls month/year over).
+    const next = new Date(e.year, e.month, e.day + 1);
+    if (
+      next.getFullYear() === y &&
+      next.getMonth() === m &&
+      next.getDate() === d &&
+      now.getHours() < e.untilNextDayHour
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /** True when `now` falls on a special shooting-star day. */
 export function isShootingStarSpecialDay(
@@ -14,9 +42,8 @@ export function isShootingStarSpecialDay(
 ): boolean {
   const m = now.getMonth();
   const d = now.getDate();
-  const y = now.getFullYear();
 
-  if (SHOOTING_STAR_ONE_OFFS.some((e) => e.year === y && e.month === m && e.day === d)) return true;
+  if (SHOOTING_STAR_ONE_OFFS.some((e) => matchesOneOff(e, now))) return true;
 
   if (cfg.useBirthday && cfg.birthday) {
     // Birthday replaces the annual day.
