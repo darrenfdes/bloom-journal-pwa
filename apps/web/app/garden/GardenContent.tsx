@@ -1,13 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { sceneEffectsForDay, useDayEvents } from '@bloom/core/events';
 import type { EventsUserContext } from '@bloom/core/events';
 
-import { gardenIsAccessible } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
 import { useGeolocation } from '@/lib/scene/useGeolocation';
@@ -27,7 +25,6 @@ const BloomMeadow = dynamic(
 );
 
 export function GardenContent() {
-  const router = useRouter();
   const ready = useBloomStore((s) => s.ready);
   const meta = useBloomStore((s) => s.gardenMeta);
   const entries = useBloomStore((s) => s.entries);
@@ -79,25 +76,12 @@ export function GardenContent() {
     [dayEvents],
   );
 
-  const canViewGarden = gardenIsAccessible(meta, entries.length);
-
-  useEffect(() => {
-    if (!ready || !meta) return;
-    if (!canViewGarden) {
-      router.replace('/write');
-    }
-  }, [ready, meta, canViewGarden, router]);
-
   if (!ready) {
     return (
       <div className="flex min-h-dvh flex-1 items-center justify-center">
         <p className="text-ink-muted">Loading garden…</p>
       </div>
     );
-  }
-
-  if (!canViewGarden) {
-    return null;
   }
 
   return (

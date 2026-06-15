@@ -1,14 +1,12 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { GardenContent } from './GardenContent';
-
-const mockReplace = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
-    replace: mockReplace,
+    replace: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
@@ -68,27 +66,25 @@ function mockStore(state: StoreSlice) {
 }
 
 describe('GardenContent', () => {
-  beforeEach(() => {
-    mockReplace.mockClear();
-  });
-
   it('shows loading when store is not ready', () => {
     mockStore({ ready: false, gardenMeta: null, entries: [] });
     render(<GardenContent />);
     expect(screen.getByText('Loading garden…')).toBeInTheDocument();
   });
 
-  it('redirects to write when first plant has not happened', () => {
+  it('renders live meadow with no entries', () => {
     mockStore({
       ready: true,
       gardenMeta: { hasPlantedFirst: false },
       entries: [],
     });
     render(<GardenContent />);
-    expect(mockReplace).toHaveBeenCalledWith('/write');
+    const meadow = screen.getByTestId('bloom-meadow');
+    expect(meadow).toHaveAttribute('data-live', 'true');
+    expect(meadow).toHaveAttribute('data-entry-count', '0');
   });
 
-  it('renders live meadow when garden is ready', () => {
+  it('renders live meadow when garden has entries', () => {
     mockStore({
       ready: true,
       gardenMeta: { hasPlantedFirst: true },
