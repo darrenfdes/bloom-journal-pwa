@@ -10,6 +10,8 @@ import {
 } from '@bloom/core';
 import { toast } from 'sonner';
 
+import { getDek } from '@/lib/crypto/key-session';
+import { decryptRemoteRow, encryptRemoteRow } from '@/lib/crypto/remote-row-cipher';
 import { getDb, type LocalEntryRecord } from '@/lib/db/client';
 import { PREVIEW_USER_ID } from '@/lib/db/sentinels';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
@@ -82,8 +84,13 @@ export async function pullForUser(userId: string): Promise<void> {
 
     if (entriesError) throw entriesError;
 
-    for (const row of (remoteEntries ?? []) as RemoteEntryRow[]) {
-      const remote = remoteToEntry(row);
+    // Only fetch the key if at least one row is encrypted (legacy-only pulls need none).
+    const rows = (remoteEntries ?? []) as RemoteEntryRow[];
+    const needsKey = rows.some((r) => r.enc_version === 1 && r.enc_blob);
+    const dek = needsKey ? await getDek() : null;
+
+    for (const row of rows) {
+      const remote = remoteToEntry(await decryptRemoteRow(row, dek));
       const local = await db.entries.get(remote.id);
       if (!local || shouldApplyRemote(local.updatedAt, remote.updatedAt)) {
         await db.entries.put({
@@ -167,7 +174,12 @@ export async function pushPending(userId: string): Promise<void> {
       .toArray();
 
     if (entriesForPush.length > 0) {
-      const payload = entriesForPush.map((e) => entryToRemote(stripSyncMeta(e), userId));
+      // Encrypt sensitive fields before they leave the device. If the key is unavailable this
+      // throws and the catch below leaves entries pendingPush — we never push plaintext.
+      const dek = await getDek();
+      const payload = await Promise.all(
+        entriesForPush.map((e) => encryptRemoteRow(entryToRemote(stripSyncMeta(e), userId), dek)),
+      );
       const { error } = await client.from('entries').upsert(payload);
       if (error) throw error;
 

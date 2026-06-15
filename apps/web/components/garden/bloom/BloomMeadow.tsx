@@ -69,6 +69,7 @@ import {
   moonScaleForEvent,
   moonTintForEvent,
   nearestEventIndex,
+  nextWorldEvent,
   phaseForEvent,
   planetForEvent,
   sunScaleForEvent,
@@ -88,6 +89,12 @@ const glass: React.CSSProperties = {
   WebkitBackdropFilter: 'blur(10px)',
   border: '1px solid rgba(247,241,227,.16)',
   color: '#f7f1e3',
+};
+
+/** "2026-08-12" → "12 Aug" (year-less, timezone-safe — no Date parsing). */
+const fmtEventDate = (iso: string): string => {
+  const [, m, d] = iso.split('-');
+  return `${Number(d)} ${MONTH_ABBR[Number(m) - 1] ?? m}`;
 };
 
 const G = 150; // ground strip height
@@ -184,6 +191,7 @@ export function BloomMeadow({
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
+  const setMemoryCardOpen = useBloomStore((s) => s.setMemoryCardOpen);
 
   const [phaseKey, setPhaseKey] = useState<PhaseKey>(() =>
     live && liveSceneEffects.includes('cometArc')
@@ -265,6 +273,9 @@ export function BloomMeadow({
   /* world-events browser: available only in the flowerless sky playground (/preview) */
   const eventsBrowser = preview && !live && layout.entries.length === 0;
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Subtle "what's coming" hint for the live garden: the next world event strictly after today
+  // (today's event, if any, is already painted in the sky). Date only — no name, not interactive.
+  const nextEvent = useMemo(() => (live ? nextWorldEvent(todayIso) : null), [live, todayIso]);
   const filteredEvents = useMemo(() => filterEvents(evGroup, evRarity), [evGroup, evRarity]);
   const selectedEvent =
     filteredEvents.length > 0 ? filteredEvents[Math.min(evIndex, filteredEvents.length - 1)] ?? null : null;
@@ -434,6 +445,13 @@ export function BloomMeadow({
   useEffect(() => {
     if (active) setActiveFav(active.isFavourited);
   }, [active]);
+
+  // Tell the app chrome a memory card is open so the bottom nav steps aside;
+  // always release the flag on close or unmount (e.g. leaving the garden).
+  useEffect(() => {
+    setMemoryCardOpen(!!active);
+    return () => setMemoryCardOpen(false);
+  }, [active, setMemoryCardOpen]);
 
   const onScroll = () => {
     if (ticking.current) return;
@@ -1114,6 +1132,13 @@ export function BloomMeadow({
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Live garden: a subtle, non-interactive hint of the next world event's date.
+              No name, no link — just the date, balancing the title on the left. */}
+          {live && nextEvent && (
+            <div style={{ pointerEvents: 'none', textAlign: 'right', fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)' }}>
+              Next · {fmtEventDate(nextEvent.date)}
+            </div>
+          )}
           {/* Manual sky + weather controls (preview playground only; the live garden is
               driven by the clock and the real weather). */}
           {!live && (
@@ -1232,8 +1257,9 @@ export function BloomMeadow({
         />
       )}
 
-      {/* ===== TIMELINE SCRUBBER ===== (raised above the global bottom dock) */}
-      <div style={{ position: 'absolute', bottom: 96, left: '50%', transform: 'translateX(-50%)', zIndex: 50, maxWidth: 'calc(100vw - 28px)' }}>
+      {/* ===== TIMELINE SCRUBBER ===== (raised clear of the auto-hiding nav; hidden while a memory is open) */}
+      {!active && (
+      <div style={{ position: 'absolute', bottom: 'calc(112px + var(--safe-bottom))', left: '50%', transform: 'translateX(-50%)', zIndex: 50, maxWidth: 'calc(100vw - 28px)' }}>
         <div style={{ ...glass, borderRadius: 999, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {layout.months.map((m, i) => (
             <button
@@ -1260,18 +1286,19 @@ export function BloomMeadow({
           ))}
         </div>
       </div>
+      )}
 
-      {/* hint */}
-      {layout.entries.length > 0 && (
-        <div style={{ position: 'absolute', bottom: 76, left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
+      {/* hint — sits just above the timeline, also hidden while a memory is open */}
+      {layout.entries.length > 0 && !active && (
+        <div style={{ position: 'absolute', bottom: 'calc(150px + var(--safe-bottom))', left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
           drag to wander · tap a bloom to remember
         </div>
       )}
 
       {/* ===== MEMORY CARD ===== */}
       {active && (
-        <div onClick={() => setActive(null)} style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(12,16,24,.22)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 92px' }}>
-          <div onClick={(ev) => ev.stopPropagation()} style={{ width: 'min(440px, 100%)', background: '#fbf6ec', border: '1px solid #e6d9bf', borderRadius: 20, padding: '20px 22px 18px', boxShadow: '0 24px 70px rgba(15,22,20,.4)', animation: 'bj-card .45s cubic-bezier(.2,.8,.3,1) both' }}>
+        <div onClick={() => setActive(null)} style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(12,16,24,.34)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px calc(28px + var(--safe-bottom))' }}>
+          <div onClick={(ev) => ev.stopPropagation()} style={{ width: 'min(440px, 100%)', maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto', background: '#fbf6ec', border: '1px solid #e6d9bf', borderRadius: 20, padding: '20px 22px 18px', boxShadow: '0 24px 70px rgba(15,22,20,.4)', animation: 'bj-card .45s cubic-bezier(.2,.8,.3,1) both' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: moodMeta?.chip || '#999' }} />

@@ -35,7 +35,7 @@ export function remoteToEntry(row: RemoteEntryRow): EntryRecord {
     id: row.id,
     userId: row.user_id,
     title: row.title,
-    content: row.content,
+    content: row.content ?? '',
     mood: row.mood as Mood | null,
     inferredSentiment: row.inferred_sentiment as Sentiment | null,
     tags: row.tags ?? [],

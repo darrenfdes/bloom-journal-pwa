@@ -4,6 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Capture every Supabase upsert so we can assert what the push actually sent.
 const upserts: Record<string, unknown[]> = {};
+vi.mock('@/lib/crypto/key-session', () => ({
+  getDek: vi.fn().mockResolvedValue({}),
+}));
+vi.mock('@/lib/crypto/remote-row-cipher', () => ({
+  encryptRemoteRow: vi.fn(async (row: unknown) => row),
+  decryptRemoteRow: vi.fn(async (row: unknown) => row),
+}));
 vi.mock('@/lib/supabase/client', () => ({
   getSupabaseBrowserClient: () => ({
     // `afterLocalMutation` (fired by plantEntry) reads the session; stay signed-out so it no-ops.
