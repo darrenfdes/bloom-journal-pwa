@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner';
 
 import { getDb, type LocalEntryRecord } from '@/lib/db/client';
+import { PREVIEW_USER_ID } from '@/lib/db/sentinels';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -157,8 +158,12 @@ export async function pushPending(userId: string): Promise<void> {
 
   try {
     const db = getDb();
+    // The `userId` equality already excludes the in-memory `/preview` sample flowers, but we guard
+    // against the `'preview'` sentinel explicitly so preview data can never be pushed to Supabase.
     const entriesForPush = await db.entries
-      .filter((e) => e.userId === userId && e.pendingPush === true)
+      .filter(
+        (e) => e.userId === userId && e.userId !== PREVIEW_USER_ID && e.pendingPush === true
+      )
       .toArray();
 
     if (entriesForPush.length > 0) {

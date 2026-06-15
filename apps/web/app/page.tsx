@@ -3,16 +3,20 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
+import { hasSeenWelcome } from '@/lib/onboarding/welcome';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 export default function HomePage() {
   const router = useRouter();
   const ready = useBloomStore((s) => s.ready);
+  const entries = useBloomStore((s) => s.entries);
 
   useEffect(() => {
     if (!ready) return;
-    router.replace('/garden');
-  }, [ready, router]);
+    // Entries are loaded before `ready` flips, so this count is settled by now.
+    const isNewUser = entries.length === 0 && !hasSeenWelcome();
+    router.replace(isNewUser ? '/welcome' : '/garden');
+  }, [ready, entries.length, router]);
 
   if (!ready) {
     return (
