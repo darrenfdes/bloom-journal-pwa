@@ -53,7 +53,7 @@ export default function WritePage() {
   const resolved = resolveMood(draft.mood, draft.content);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 pb-[calc(2rem+var(--safe-bottom))]">
+    <div className="flex flex-1 flex-col gap-6">
         <div className="flex items-center justify-between">
           <Link href="/garden" className="text-sm text-ink-soft hover:text-ink">
             ← Garden

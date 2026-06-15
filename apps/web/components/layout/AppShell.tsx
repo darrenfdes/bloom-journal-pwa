@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           'flex w-full flex-1 flex-col',
           fullWidth
             ? 'max-w-none overflow-hidden p-0'
-            : 'mx-auto max-w-lg px-4 py-6'
+            : 'mx-auto max-w-lg px-4 pt-6 pb-[calc(7rem+var(--safe-bottom))]'
         )}
       >
         {children}

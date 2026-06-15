@@ -54,6 +54,11 @@ export function nearestEventIndex(events: WorldEvent[], isoDate: string): number
   return i === -1 ? events.length - 1 : i;
 }
 
+/** The first world event strictly after `isoToday` (events are date-sorted), else null. */
+export function nextWorldEvent(isoToday: string): WorldEvent | null {
+  return ALL_WORLD_EVENTS.find((e) => e.date > isoToday) ?? null;
+}
+
 const TYPE_LABELS: Record<EventType, string> = {
   fullMoon: 'Full moon',
   newMoon: 'New moon',

@@ -10,6 +10,7 @@ export const mockReplace = vi.fn();
 export const mockRefreshEntries = vi.fn().mockResolvedValue(undefined);
 export const mockToggleFavourite = vi.fn().mockResolvedValue(undefined);
 export const mockSoftDelete = vi.fn().mockResolvedValue(undefined);
+export const mockSetMemoryCardOpen = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -23,8 +24,12 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/stores/useBloomStore', () => ({
-  useBloomStore: (selector: (s: { refreshEntries: typeof mockRefreshEntries }) => unknown) =>
-    selector({ refreshEntries: mockRefreshEntries }),
+  useBloomStore: (
+    selector: (s: {
+      refreshEntries: typeof mockRefreshEntries;
+      setMemoryCardOpen: typeof mockSetMemoryCardOpen;
+    }) => unknown
+  ) => selector({ refreshEntries: mockRefreshEntries, setMemoryCardOpen: mockSetMemoryCardOpen }),
 }));
 
 vi.mock('@/lib/db/repositories/entries', () => ({
@@ -69,4 +74,5 @@ export function resetMeadowMocks() {
   mockRefreshEntries.mockClear();
   mockToggleFavourite.mockClear();
   mockSoftDelete.mockClear();
+  mockSetMemoryCardOpen.mockClear();
 }

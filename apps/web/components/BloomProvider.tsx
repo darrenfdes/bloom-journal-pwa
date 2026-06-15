@@ -6,8 +6,21 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { repairGardenMetaIfNeeded } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings, loadWriteDraft } from '@/lib/db/repositories/settings';
+import { backfillEncryption } from '@/lib/sync/backfill-encryption';
 import { pullForUser, setActiveSyncUser, syncNow } from '@/lib/sync/engine';
 import { useBloomStore } from '@/stores/useBloomStore';
+
+/** Encrypt any legacy plaintext rows in Supabase once per device/user. Idempotent + best-effort. */
+async function runEncryptionBackfill(userId: string) {
+  const flag = `bloom.enc_backfill.${userId}`;
+  if (localStorage.getItem(flag) === 'done') return;
+  try {
+    await backfillEncryption(userId);
+    localStorage.setItem(flag, 'done');
+  } catch {
+    // Leave the flag unset so it retries next session (backfill is idempotent).
+  }
+}
 
 export function BloomProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -62,6 +75,7 @@ export function BloomProvider({ children }: { children: React.ReactNode }) {
             : `Synced ${merged} memories to your account`
         );
       }
+      void runEncryptionBackfill(uid);
     })();
   }, [user?.id, authLoading, refreshEntries, setGardenMeta]);
 

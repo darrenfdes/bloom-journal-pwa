@@ -6,7 +6,8 @@ export interface RemoteEntryRow {
   id: string;
   user_id: string;
   title: string | null;
-  content: string;
+  /** Null for encrypted rows (content lives in enc_blob); set for legacy plaintext rows. */
+  content: string | null;
   mood: string | null;
   inferred_sentiment: string | null;
   tags: string[];
@@ -21,6 +22,9 @@ export interface RemoteEntryRow {
   weather: EntryWeatherSnapshot | null;
   time_phase: string | null;
   scene_season: string | null;
+  /** Encryption (sync-boundary). Absent/0 = legacy plaintext; 1 = AES-GCM bundle in enc_blob. */
+  enc_blob?: string | null;
+  enc_version?: number;
 }
 
 /** Postgres `garden_meta` row. */

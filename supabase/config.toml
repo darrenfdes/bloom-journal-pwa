@@ -14,3 +14,8 @@ major_version = 15
 [studio]
 enabled = true
 port = 54323
+
+# Returns each user's wrapped Data Encryption Key for client-side entry encryption.
+# Requires the ENTRY_MASTER_KEK secret (see supabase/functions/.env.example).
+[functions.get-encryption-key]
+verify_jwt = true

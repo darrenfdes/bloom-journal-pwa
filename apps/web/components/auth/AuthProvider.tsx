@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 
+import { clearDek } from '@/lib/crypto/key-session';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type AuthContextValue = {
@@ -53,9 +54,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
+    let prevUserId: string | null = null;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUserId = session?.user?.id ?? null;
+      // Drop the cached encryption key when the user actually changes (not on token refresh)
+      // so a different account never reuses the previous user's key.
+      if (nextUserId !== prevUserId) {
+        clearDek();
+        prevUserId = nextUserId;
+      }
       setUser(session?.user ?? null);
       setLoading(false);
     });
