@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Cormorant_Garamond, Nunito } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 
 import { AppShell } from '@/components/layout/AppShell';
 
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${body.variable} h-full min-h-dvh`}>
       <body className="flex min-h-dvh flex-col bg-cream text-ink antialiased">
         <AppShell>{children}</AppShell>
+        <Analytics />
       </body>
     </html>
   );
