@@ -3,13 +3,6 @@ import { createId } from '@/lib/id';
 import { afterLocalMutation } from '@/lib/sync/hooks';
 import type { GardenMeta } from '@/lib/types';
 
-export function gardenIsAccessible(
-  meta: GardenMeta | null | undefined,
-  entryCount: number,
-): boolean {
-  return Boolean(meta?.hasPlantedFirst) || entryCount > 0;
-}
-
 export async function getOrCreateGardenMeta(): Promise<GardenMeta> {
   const db = getDb();
   const existing = await db.garden_meta.toCollection().first();
