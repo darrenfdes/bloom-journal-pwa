@@ -1,5 +1,7 @@
 import { entryToRemote, gardenMetaToRemote, appSettingsToRemote } from '@bloom/core';
 
+import { getDek } from '@/lib/crypto/key-session';
+import { encryptRemoteRow } from '@/lib/crypto/remote-row-cipher';
 import { getDb } from '@/lib/db/client';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
@@ -29,11 +31,11 @@ export async function uploadLocalGarden(userId: string): Promise<void> {
   const meta = await getOrCreateGardenMeta();
   await db.garden_meta.put({ ...meta, userId });
 
-  const payload = entries.map((e) =>
-    entryToRemote({ ...e, userId }, userId)
-  );
-
-  if (payload.length > 0) {
+  if (entries.length > 0) {
+    const dek = await getDek();
+    const payload = await Promise.all(
+      entries.map((e) => encryptRemoteRow(entryToRemote({ ...e, userId }, userId), dek)),
+    );
     const { error } = await client.from('entries').upsert(payload);
     if (error) throw error;
   }
