@@ -254,16 +254,9 @@ export default function SettingsPage() {
       ) : null}
 
       <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Privacy lock</h2>
-        <p className="text-sm text-ink-soft">PIN lock via Web Crypto is planned for a follow-up.</p>
-        <Badge variant="outline">Coming soon</Badge>
-      </section>
-
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Special sky days</h2>
+        <h2 className="font-display text-lg font-medium text-ink">Your special day</h2>
         <p className="text-sm text-ink-soft">
-          On special days a shooting star streaks across your garden shortly after you open the app.
-          Set your birthday to make it your own day instead of the default (Dec 1).
+          Add your birthday and your garden may mark the occasion.
         </p>
         <label className="flex flex-col gap-1 text-sm text-ink">
           <span className="text-ink-soft">Birthday</span>
@@ -280,16 +273,8 @@ export default function SettingsPage() {
             onChange={(e) => handleUseBirthdayChange(e.target.checked)}
             disabled={!birthday}
           />
-          <span>Use my birthday for the yearly shooting-star day (replaces Dec 1)</span>
+          <span>Use my birthday as my special day</span>
         </label>
-      </section>
-
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Reminders</h2>
-        <p className="text-sm text-ink-soft">
-          Daily journal reminders will use browser notifications when supported.
-        </p>
-        <Badge variant="outline">Stub — not scheduled yet</Badge>
       </section>
     </div>
   );

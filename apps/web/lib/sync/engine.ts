@@ -84,20 +84,35 @@ export async function pullForUser(userId: string): Promise<void> {
 
     if (entriesError) throw entriesError;
 
-    // Only fetch the key if at least one row is encrypted (legacy-only pulls need none).
+    // Only fetch the key if at least one row is encrypted (legacy-only pulls need none). If the key
+    // is briefly unavailable we keep going with dek=null: legacy plaintext rows still sync and
+    // encrypted rows simply get skipped below, rather than aborting the whole pull.
     const rows = (remoteEntries ?? []) as RemoteEntryRow[];
     const needsKey = rows.some((r) => r.enc_version === 1 && r.enc_blob);
-    const dek = needsKey ? await getDek() : null;
+    let dek: CryptoKey | null = null;
+    if (needsKey) {
+      try {
+        dek = await getDek();
+      } catch {
+        dek = null;
+      }
+    }
 
+    let skipped = 0;
     for (const row of rows) {
-      const remote = remoteToEntry(await decryptRemoteRow(row, dek));
-      const local = await db.entries.get(remote.id);
-      if (!local || shouldApplyRemote(local.updatedAt, remote.updatedAt)) {
-        await db.entries.put({
-          ...remote,
-          syncedAt: new Date().toISOString(),
-          pendingPush: false,
-        });
+      try {
+        const remote = remoteToEntry(await decryptRemoteRow(row, dek));
+        const local = await db.entries.get(remote.id);
+        if (!local || shouldApplyRemote(local.updatedAt, remote.updatedAt)) {
+          await db.entries.put({
+            ...remote,
+            syncedAt: new Date().toISOString(),
+            pendingPush: false,
+          });
+        }
+      } catch {
+        // A single undecryptable/corrupt row must not block the rest of the pull.
+        skipped += 1;
       }
     }
 
@@ -135,7 +150,6 @@ export async function pullForUser(userId: string): Promise<void> {
         id: 'default',
         biometricLock: local.biometricLock,
         pinEnabled: local.pinEnabled,
-        pinHash: local.pinHash,
         ...syncable,
       });
     }
@@ -146,7 +160,8 @@ export async function pullForUser(userId: string): Promise<void> {
       pendingChanges: pending,
       offline: false,
       syncing: false,
-      lastError: null,
+      // Surface a non-fatal note when some rows couldn't be read so the failure isn't silent.
+      lastError: skipped > 0 ? `${skipped} entr${skipped === 1 ? 'y' : 'ies'} couldn't be read` : null,
     });
   } catch (err) {
     reportSyncError(err);
@@ -191,11 +206,13 @@ export async function pushPending(userId: string): Promise<void> {
 
     const meta = await getOrCreateGardenMeta();
     const metaRow = gardenMetaToRemote({ ...meta, userId }, userId);
-    await client.from('garden_meta').upsert(metaRow);
+    const { error: metaError } = await client.from('garden_meta').upsert(metaRow);
+    if (metaError) throw metaError;
 
     const settings = await getOrCreateSettings();
     const settingsRow = appSettingsToRemote(settings, userId, new Date().toISOString());
-    await client.from('app_settings').upsert(settingsRow);
+    const { error: settingsError } = await client.from('app_settings').upsert(settingsRow);
+    if (settingsError) throw settingsError;
 
     const pending = await countPending();
     setSyncStatus({

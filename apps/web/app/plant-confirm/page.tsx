@@ -128,7 +128,7 @@ export default function PlantConfirmPage() {
             >
               <div className="mb-6 h-16 w-16 rounded-full bg-gradient-to-tr from-sage to-sage-dark shadow-[0_0_30px_rgba(143,168,138,0.6)] animate-pulse" />
               <p className="font-display text-2xl font-semibold text-ink">
-                Nurturing your memory...
+                Planting…
               </p>
             </motion.div>
           </motion.div>
