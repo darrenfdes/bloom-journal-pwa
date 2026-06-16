@@ -1,0 +1,43 @@
+# Prevents Supabase free-tier projects from pausing after ~7 days of inactivity.
+# Pings the public /auth/v1/health endpoint daily (counts as project activity).
+#
+# Required GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL       — e.g. https://xxxxx.supabase.co
+#   SUPABASE_ANON_KEY  — Project Settings → API → anon / publishable key (NOT service_role)
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # Daily at 06:00 UTC (well within the 7-day inactivity window)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase health endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Set SUPABASE_URL and SUPABASE_ANON_KEY in repository secrets."
+            exit 1
+          fi
+
+          base_url="${SUPABASE_URL%/}"
+          http_code=$(curl -sS -o /tmp/supabase-health.json -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            "${base_url}/auth/v1/health")
+
+          echo "HTTP ${http_code}"
+          cat /tmp/supabase-health.json
+          echo
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Supabase health check failed (HTTP ${http_code})"
+            exit 1
+          fi
+
+          echo "Supabase project is reachable."
