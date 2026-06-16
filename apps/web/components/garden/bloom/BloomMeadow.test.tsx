@@ -180,7 +180,7 @@ describe('BloomMeadow', () => {
       });
 
       await act(async () => {
-        screen.getByRole('button', { name: 'Visit this memory' }).click();
+        screen.getByRole('button', { name: 'Open this memory' }).click();
         vi.advanceTimersByTime(700);
       });
       expect(screen.getByText('Replay body text.')).toBeInTheDocument();
