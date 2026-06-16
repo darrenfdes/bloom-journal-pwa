@@ -1,3 +1,5 @@
+import { shouldApplyRemote } from '@bloom/core';
+
 import { getDb, type LocalEntryRecord } from '@/lib/db/client';
 import { listEntries } from '@/lib/db/repositories/entries';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
@@ -60,12 +62,15 @@ export async function importBackup(file: File): Promise<{ imported: number }> {
   const db = getDb();
   const userId = getActiveSyncUser() ?? 'local';
 
-  const rows: LocalEntryRecord[] = payload.entries.map((entry) => ({
-    ...entry,
-    userId,
-    pendingPush: true,
-    syncedAt: null,
-  }));
+  // Apply the same last-write-wins guard the sync engine uses: never let an older backup clobber a
+  // newer local entry (which would also push the stale copy to the server). New ids and entries
+  // newer-or-equal to what's stored win; older ones are skipped.
+  const rows: LocalEntryRecord[] = [];
+  for (const entry of payload.entries) {
+    const local = await db.entries.get(entry.id);
+    if (local && !shouldApplyRemote(local.updatedAt, entry.updatedAt)) continue;
+    rows.push({ ...entry, userId, pendingPush: true, syncedAt: null });
+  }
 
   await db.entries.bulkPut(rows);
 

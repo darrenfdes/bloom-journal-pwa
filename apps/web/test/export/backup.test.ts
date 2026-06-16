@@ -80,4 +80,46 @@ describe('importBackup', () => {
       expect(row.pendingPush).toBe(true);
     }
   });
+
+  it('does not let an older backup overwrite a newer local entry', async () => {
+    await getDb().entries.put({
+      ...sampleEntry('e1'),
+      content: 'newer local',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+      userId: 'local',
+      pendingPush: false,
+      syncedAt: null,
+    });
+
+    const payload = JSON.stringify({
+      version: 1,
+      entries: [{ ...sampleEntry('e1'), content: 'older backup', updatedAt: '2026-01-01T00:00:00.000Z' }],
+    });
+    const { imported } = await importBackup(fakeFile(payload));
+
+    expect(imported).toBe(0);
+    expect((await getDb().entries.get('e1'))?.content).toBe('newer local');
+  });
+
+  it('imports a newer backup entry over an older local one', async () => {
+    await getDb().entries.put({
+      ...sampleEntry('e2'),
+      content: 'older local',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      userId: 'local',
+      pendingPush: false,
+      syncedAt: null,
+    });
+
+    const payload = JSON.stringify({
+      version: 1,
+      entries: [{ ...sampleEntry('e2'), content: 'newer backup', updatedAt: '2026-02-01T00:00:00.000Z' }],
+    });
+    const { imported } = await importBackup(fakeFile(payload));
+
+    expect(imported).toBe(1);
+    const local = await getDb().entries.get('e2');
+    expect(local?.content).toBe('newer backup');
+    expect(local?.pendingPush).toBe(true);
+  });
 });

@@ -272,7 +272,9 @@ export function BloomMeadow({
 
   /* world-events browser: available only in the flowerless sky playground (/preview) */
   const eventsBrowser = preview && !live && layout.entries.length === 0;
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Track the live clock so the "next event" hint and comet session key roll over at midnight on a
+  // long-open garden (liveNow ticks each minute in live mode; in preview it's set once at mount).
+  const todayIso = useMemo(() => liveNow.toISOString().slice(0, 10), [liveNow]);
   // Subtle "what's coming" hint for the live garden: the next world event strictly after today
   // (today's event, if any, is already painted in the sky). Date only — no name, not interactive.
   const nextEvent = useMemo(() => (live ? nextWorldEvent(todayIso) : null), [live, todayIso]);
