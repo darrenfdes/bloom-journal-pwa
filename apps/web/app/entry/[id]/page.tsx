@@ -146,7 +146,7 @@ export default function EntryPage() {
           <DialogHeader>
             <DialogTitle>Remove from garden?</DialogTitle>
             <DialogDescription>
-              This memory will be softly hidden. You can still recover it from backups later.
+              This entry will be removed from your garden. You can still recover it from a backup later.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

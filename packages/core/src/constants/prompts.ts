@@ -9,4 +9,4 @@ export const JOURNAL_PROMPTS = [
   'Who or what made you feel loved today?',
 ];
 
-export const FIRST_OPEN_TAGLINE = 'Every entry grows a flower. Start your garden.';
+export const FIRST_OPEN_TAGLINE = 'Every entry grows a flower.';

@@ -10,7 +10,6 @@ export type LocalEntryRecord = EntryRecord & {
 
 export interface AppSettingsRow extends AppSettings {
   id: string;
-  pinHash: string | null;
 }
 
 export interface DraftRow {
