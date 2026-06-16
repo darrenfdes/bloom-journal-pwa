@@ -135,7 +135,6 @@ export async function pullForUser(userId: string): Promise<void> {
         id: 'default',
         biometricLock: local.biometricLock,
         pinEnabled: local.pinEnabled,
-        pinHash: local.pinHash,
         ...syncable,
       });
     }

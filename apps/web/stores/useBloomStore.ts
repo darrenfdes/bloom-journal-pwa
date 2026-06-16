@@ -13,7 +13,6 @@ const emptyDraft: WriteDraft = {
 
 interface BloomState {
   ready: boolean;
-  unlocked: boolean;
   gardenMeta: GardenMeta | null;
   entries: EntryRecord[];
   draft: WriteDraft;
@@ -23,7 +22,6 @@ interface BloomState {
   quickWriteOpen: boolean;
   memoryCardOpen: boolean;
   setReady: (ready: boolean) => void;
-  setUnlocked: (unlocked: boolean) => void;
   setGardenMeta: (meta: GardenMeta) => void;
   setEntries: (entries: EntryRecord[]) => void;
   setDraft: (draft: Partial<WriteDraft>) => void;
@@ -38,7 +36,6 @@ interface BloomState {
 
 export const useBloomStore = create<BloomState>((set, get) => ({
   ready: false,
-  unlocked: true,
   gardenMeta: null,
   entries: [],
   draft: { ...emptyDraft },
@@ -48,7 +45,6 @@ export const useBloomStore = create<BloomState>((set, get) => ({
   quickWriteOpen: false,
   memoryCardOpen: false,
   setReady: (ready) => set({ ready }),
-  setUnlocked: (unlocked) => set({ unlocked }),
   setGardenMeta: (gardenMeta) => set({ gardenMeta }),
   setEntries: (entries) => set({ entries }),
   setDraft: (patch) => set({ draft: { ...get().draft, ...patch } }),

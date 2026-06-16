@@ -26,11 +26,11 @@ describe('BloomMeadow', () => {
       expect(screen.getByText('sky & weather preview')).toBeInTheDocument();
     });
 
-    it('shows memory count and wander hint when entries exist', () => {
+    it('shows memory count and explore hint when entries exist', () => {
       const entries = buildSampleEntries().slice(0, 3);
       renderMeadow({ preview: true, entries });
       expect(screen.getByText(/3 memories/)).toBeInTheDocument();
-      expect(screen.getByText('drag to wander · tap a bloom to remember')).toBeInTheDocument();
+      expect(screen.getByText('drag to explore · tap a flower to open')).toBeInTheDocument();
     });
 
     it('renders timeline month abbreviations', () => {
