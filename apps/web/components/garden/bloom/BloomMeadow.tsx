@@ -272,7 +272,9 @@ export function BloomMeadow({
 
   /* world-events browser: available only in the flowerless sky playground (/preview) */
   const eventsBrowser = preview && !live && layout.entries.length === 0;
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Track the live clock so the "next event" hint and comet session key roll over at midnight on a
+  // long-open garden (liveNow ticks each minute in live mode; in preview it's set once at mount).
+  const todayIso = useMemo(() => liveNow.toISOString().slice(0, 10), [liveNow]);
   // Subtle "what's coming" hint for the live garden: the next world event strictly after today
   // (today's event, if any, is already painted in the sky). Date only — no name, not interactive.
   const nextEvent = useMemo(() => (live ? nextWorldEvent(todayIso) : null), [live, todayIso]);
@@ -1128,14 +1130,15 @@ export function BloomMeadow({
           <div style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.78)', textShadow: '0 1px 10px rgba(15,25,35,.5)', marginTop: 6 }}>
             {layout.entries.length === 0
               ? 'sky & weather preview'
-              : `a living journal · ${layout.entries.length} memories`}
+              : `${layout.entries.length} ${layout.entries.length === 1 ? 'memory' : 'memories'}`}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* Live garden: a subtle, non-interactive hint of the next world event's date.
-              No name, no link — just the date, balancing the title on the left. */}
+              No name, no link — just the date, balancing the title on the left. Dropped
+              below the fixed SyncBadge (top-right, ~38px tall) so the two don't collide. */}
           {live && nextEvent && (
-            <div style={{ pointerEvents: 'none', textAlign: 'right', fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)' }}>
+            <div style={{ pointerEvents: 'none', textAlign: 'right', fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)', marginTop: 'calc(var(--safe-top) + 26px)' }}>
               Next · {fmtEventDate(nextEvent.date)}
             </div>
           )}
@@ -1237,7 +1240,7 @@ export function BloomMeadow({
               onClick={() => { visitEntry(replay); setReplay(null); }}
               style={{ marginTop: 10, border: '1px solid #d8c9a4', background: '#f0e6cd', color: '#5c5236', borderRadius: 999, padding: '6px 16px', fontFamily: sans, fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', cursor: 'pointer' }}
             >
-              Visit this memory
+              Open this memory
             </button>
           </div>
         </div>
@@ -1291,7 +1294,7 @@ export function BloomMeadow({
       {/* hint — sits just above the timeline, also hidden while a memory is open */}
       {layout.entries.length > 0 && !active && (
         <div style={{ position: 'absolute', bottom: 'calc(150px + var(--safe-bottom))', left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
-          drag to wander · tap a bloom to remember
+          drag to explore · tap a flower to open
         </div>
       )}
 

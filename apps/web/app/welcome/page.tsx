@@ -16,7 +16,7 @@ const PANELS = [
   {
     emoji: '🌱',
     title: 'Welcome to Bloom',
-    body: 'A journal that grows a garden. Every entry you write blooms into a flower.',
+    body: 'A journal that grows a garden. Every entry you write becomes a flower.',
   },
   {
     emoji: '✍️',
@@ -25,7 +25,7 @@ const PANELS = [
   },
   {
     emoji: '🌸',
-    title: 'Watch it bloom',
+    title: 'See your garden grow',
     body: 'Each memory becomes a flower in your garden, under a sky that shifts with the time of day and the weather.',
   },
 ];
