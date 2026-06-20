@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { FAN_SPREAD_DEG, flowerAngles, shuffleOrder, tiePoint } from './layout';
+import { FAN_SPREAD_DEG, flowerAngles, greeneryOffsets, shuffleOrder, tiePoint } from './layout';
 
 describe('flowerAngles', () => {
   it('centres a single flower upright', () => {
@@ -16,6 +16,26 @@ describe('flowerAngles', () => {
       FAN_SPREAD_DEG,
       2 * FAN_SPREAD_DEG,
     ]);
+  });
+});
+
+describe('greeneryOffsets', () => {
+  it('centres a single accent on the tie', () => {
+    expect(greeneryOffsets(1)).toEqual([0]);
+  });
+
+  it('fans accents symmetrically around the centre', () => {
+    const two = greeneryOffsets(2);
+    expect(two[0]).toBeCloseTo(-two[1]!);
+    const three = greeneryOffsets(3);
+    expect(three[1]).toBe(0);
+    expect(three[0]).toBeCloseTo(-three[2]!);
+  });
+
+  it('spreads accents wide enough to frame the flowers, not hide behind them', () => {
+    // The outer accents must fan clearly past the central blooms.
+    expect(Math.abs(greeneryOffsets(2)[0]!)).toBeGreaterThanOrEqual(0.15);
+    expect(Math.abs(greeneryOffsets(3)[0]!)).toBeGreaterThanOrEqual(0.15);
   });
 });
 

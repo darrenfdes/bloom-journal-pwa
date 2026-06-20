@@ -29,10 +29,12 @@ export function tiePoint(size: number): { x: number; y: number } {
  */
 export function greeneryOffsets(n: number): number[] {
   if (n <= 0) return [];
-  // Spread accents left/right of centre; the gap widens with count but stays within the cone span.
-  const SPREAD = 0.07;
+  // Fan accents symmetrically left/right of centre, endpoints at ±SPREAD regardless of count, so the
+  // fuller greenery frames the flowers rather than hiding behind the central blooms.
+  const SPREAD = 0.18;
   return Array.from({ length: n }, (_, i) => {
-    const t = n === 1 ? 0 : (i - (n - 1) / 2) / Math.max(1, (n - 1) / 2);
+    if (n === 1) return 0;
+    const t = (i - (n - 1) / 2) / ((n - 1) / 2); // normalised to -1 .. 1
     return t * SPREAD;
   });
 }

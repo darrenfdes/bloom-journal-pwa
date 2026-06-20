@@ -163,9 +163,13 @@ export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): 
   const offsets = greeneryOffsets(accents.length);
   const greeneryGroups = accents
     .map((kind, i) => {
+      // Render inside a throwaway <svg> so React keeps SVG-namespace tag casing (e.g. linearGradient),
+      // then strip the wrapper — the real nested <svg> is built from the string below.
       const inner = renderToStaticMarkup(
-        renderBouquetGreenery({ kind, seed: 1000 + i * 31 + kind.length }),
-      );
+        createElement('svg', null, renderBouquetGreenery({ kind, seed: 1000 + i * 31 + kind.length })),
+      )
+        .replace(/^<svg[^>]*>/, '')
+        .replace(/<\/svg>$/, '');
       const cx = tie.x + (offsets[i] ?? 0) * size - flowerSize / 2;
       const cy = tie.y - flowerSize;
       return (
