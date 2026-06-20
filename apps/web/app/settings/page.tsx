@@ -7,18 +7,21 @@ import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { BackLink } from '@/components/layout/BackLink';
-import { useIsAdmin } from '@/lib/auth/useIsAdmin';
+import { SettingsCard } from '@/components/settings/SettingsCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { exportBackup, importBackup } from '@/lib/export/backup';
+import { useSettingsField } from '@/lib/hooks/useSettingsField';
+import { useSyncStatus } from '@/lib/hooks/useSyncStatus';
 import { useBloomStore } from '@/stores/useBloomStore';
 import { usePwaStatus } from '@/lib/pwa/usePwaStatus';
-import { getOrCreateSettings, updateSettings } from '@/lib/db/repositories/settings';
+import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { searchEntries } from '@/lib/db/repositories/entries';
 import { signOut } from '@/lib/auth/session';
-import { getSyncStatus, subscribeSyncStatus, type SyncStatus } from '@/lib/sync/status';
 import { isSupabaseConfigured } from '@/lib/auth/session';
+import { useIsAdmin } from '@/lib/auth/useIsAdmin';
 
 function formatSyncTime(iso: string | null): string {
   if (!iso) return 'Never';
@@ -36,28 +39,24 @@ export default function SettingsPage() {
   const [query, setQuery] = useState('');
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus);
-  const [birthday, setBirthday] = useState('');
-  const [useBirthdayForStars, setUseBirthdayForStars] = useState(false);
+  const syncStatus = useSyncStatus();
 
-  useEffect(() => subscribeSyncStatus(() => setSyncStatus(getSyncStatus())), []);
+  // Birthday settings load asynchronously from Dexie; the field hooks reset to
+  // the loaded value once `initial` arrives.
+  const [birthdayInitial, setBirthdayInitial] = useState('');
+  const [useBirthdayForStarsInitial, setUseBirthdayForStarsInitial] = useState(false);
+  const [birthday, setBirthday, birthdaySaveState] = useSettingsField('birthday', birthdayInitial);
+  const [useBirthdayForStars, setUseBirthdayForStars, starsSaveState] = useSettingsField(
+    'useBirthdayForStars',
+    useBirthdayForStarsInitial
+  );
 
   useEffect(() => {
     void getOrCreateSettings().then((s) => {
-      setBirthday(s.birthday ?? '');
-      setUseBirthdayForStars(s.useBirthdayForStars ?? false);
+      setBirthdayInitial(s.birthday ?? '');
+      setUseBirthdayForStarsInitial(s.useBirthdayForStars ?? false);
     });
   }, []);
-
-  const handleBirthdayChange = (value: string) => {
-    setBirthday(value);
-    void updateSettings({ birthday: value || null });
-  };
-
-  const handleUseBirthdayChange = (value: boolean) => {
-    setUseBirthdayForStars(value);
-    void updateSettings({ useBirthdayForStars: value });
-  };
 
   const handleSearch = async () => {
     const results = await searchEntries(query);
@@ -133,8 +132,7 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Account</h2>
+      <SettingsCard title="Account">
         {authLoading ? (
           <p className="text-sm text-ink-soft">Loading account…</p>
         ) : user ? (
@@ -145,31 +143,30 @@ export default function SettingsPage() {
             </Button>
           </>
         ) : configured ? (
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/login">Create account</Link>
-            </Button>
-          </div>
+          <Button asChild>
+            {/* /login handles both sign-in and sign-up, so a single CTA suffices. */}
+            <Link href="/login">Sign in or create account</Link>
+          </Button>
         ) : (
           <p className="text-sm text-ink-soft">
             Copy <code className="text-xs">.env.local.example</code> to enable cloud backup.
           </p>
         )}
-      </section>
+      </SettingsCard>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Cloud sync</h2>
-        <p className="text-sm text-ink-soft">{syncLabel}</p>
+      <SettingsCard title="Cloud sync">
+        <p className="text-sm text-ink-soft" aria-live="polite">
+          {syncLabel}
+        </p>
+        {syncStatus.lastError ? (
+          <p className="text-xs text-danger">Last error: {syncStatus.lastError}</p>
+        ) : null}
         <Badge variant={supabaseConfigured ? 'default' : 'secondary'}>
           {supabaseConfigured ? (user ? 'Signed in' : 'Ready — not signed in') : 'Local only'}
         </Badge>
-      </section>
+      </SettingsCard>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">App status</h2>
+      <SettingsCard title="App status">
         <div className="flex flex-wrap gap-2">
           <Badge variant={pwaStatus.online ? 'default' : 'secondary'}>
             {pwaStatus.online ? 'Online' : 'Offline'}
@@ -186,10 +183,9 @@ export default function SettingsPage() {
             Install app
           </Button>
         ) : null}
-      </section>
+      </SettingsCard>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Search memories</h2>
+      <SettingsCard title="Search memories">
         <div className="flex gap-2">
           <Input
             value={query}
@@ -201,13 +197,12 @@ export default function SettingsPage() {
             Go
           </Button>
         </div>
-      </section>
+      </SettingsCard>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Bouquets</h2>
-        <p className="text-sm text-ink-soft">
-          Gather a handful of your flowers into a bouquet to share, or open one a friend sent you.
-        </p>
+      <SettingsCard
+        title="Bouquets"
+        description="Gather a handful of your flowers into a bouquet to share, or open one a friend sent you."
+      >
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
             <Link href="/bouquet/new">Make a bouquet</Link>
@@ -216,13 +211,12 @@ export default function SettingsPage() {
             <Link href="/bouquets">My bouquets</Link>
           </Button>
         </div>
-      </section>
+      </SettingsCard>
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Backup</h2>
-        <p className="text-sm text-ink-soft">
-          Export all entries and garden metadata as JSON, or import a previous backup.
-        </p>
+      <SettingsCard
+        title="Backup"
+        description="Export all entries and garden metadata as JSON, or import a previous backup."
+      >
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" disabled={exporting} onClick={() => void handleExport()}>
             {exporting ? 'Exporting…' : 'Download backup'}
@@ -242,23 +236,21 @@ export default function SettingsPage() {
           className="hidden"
           onChange={(e) => void handleImportFile(e)}
         />
-      </section>
+      </SettingsCard>
 
       {process.env.NODE_ENV === 'development' ? (
-        <section className="space-y-4 rounded-xl border border-parchment p-4">
-          <h2 className="font-display text-lg font-medium text-ink">Flower gallery</h2>
+        <SettingsCard title="Flower gallery">
           <Button variant="outline" asChild>
             <Link href="/flowers">Preview mood blooms</Link>
           </Button>
-        </section>
+        </SettingsCard>
       ) : null}
 
       {isAdmin ? (
-        <section className="space-y-4 rounded-xl border border-parchment p-4">
-          <h2 className="font-display text-lg font-medium text-ink">Preview (admin)</h2>
-          <p className="text-sm text-ink-soft">
-            Sky &amp; weather and the sample meadow playgrounds.
-          </p>
+        <SettingsCard
+          title="Preview (admin)"
+          description="Sky & weather and the sample meadow playgrounds."
+        >
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
               <Link href="/preview">Sky &amp; weather</Link>
@@ -267,32 +259,42 @@ export default function SettingsPage() {
               <Link href="/preview/meadow">Sample meadow</Link>
             </Button>
           </div>
-        </section>
+        </SettingsCard>
       ) : null}
 
-      <section className="space-y-4 rounded-xl border border-parchment p-4">
-        <h2 className="font-display text-lg font-medium text-ink">Your special day</h2>
-        <p className="text-sm text-ink-soft">
-          Add your birthday and your garden may mark the occasion.
-        </p>
-        <label className="flex flex-col gap-1 text-sm text-ink">
-          <span className="text-ink-soft">Birthday</span>
+      <SettingsCard
+        title="Your special day"
+        description="Add your birthday and your garden may mark the occasion."
+      >
+        <div className="space-y-1">
+          <Label htmlFor="birthday">Birthday</Label>
           <Input
+            id="birthday"
             type="date"
-            value={birthday}
-            onChange={(e) => handleBirthdayChange(e.target.value)}
+            value={birthday ?? ''}
+            onChange={(e) => setBirthday(e.target.value || null)}
           />
-        </label>
-        <label className="flex items-center gap-2 text-sm text-ink">
+          {birthdaySaveState === 'error' ? (
+            <p className="text-xs text-danger">Could not save your birthday.</p>
+          ) : null}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="use-birthday-stars">Use my birthday as my special day</Label>
           <input
+            id="use-birthday-stars"
             type="checkbox"
             checked={useBirthdayForStars}
-            onChange={(e) => handleUseBirthdayChange(e.target.checked)}
+            onChange={(e) => setUseBirthdayForStars(e.target.checked)}
             disabled={!birthday}
           />
-          <span>Use my birthday as my special day</span>
-        </label>
-      </section>
+          {!birthday ? (
+            <p className="text-xs text-ink-muted">Add a birthday to enable this.</p>
+          ) : null}
+          {starsSaveState === 'error' ? (
+            <p className="text-xs text-danger">Could not save this setting.</p>
+          ) : null}
+        </div>
+      </SettingsCard>
     </div>
   );
 }

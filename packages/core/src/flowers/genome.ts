@@ -4,7 +4,7 @@ import { MOOD_COLORS } from '../constants/moods';
 import { foliageDensityForWordCount, pickFoliageVariant } from '../flowers/foliage';
 import { appMoodToBloomMood } from '../flowers/moodBloom';
 import { SeededRNG, hashString } from '../flowers/seeded-rng';
-import { matchesAny } from '../sentiment/text';
+import { matchesEcstaticContent } from '../sentiment/infer';
 import type {
   EntryRecord,
   FlowerGenome,
@@ -12,30 +12,6 @@ import type {
   Mood,
   PetalShape,
 } from '../types';
-
-/**
- * Phrases that escalate `joyful` into the pumpkin easter egg. Matched
- * case-insensitively against entry content. `!!!` (3+ exclamation marks
- * in a row) also triggers.
- */
-const ECSTATIC_KEYWORDS = [
-  'extremely happy',
-  'so excited',
-  'so happy',
-  'ecstatic',
-  'thrilled',
-  'elated',
-  'overjoyed',
-  'over the moon',
-  'on cloud nine',
-];
-
-const TRIPLE_BANG = /!{3,}/;
-
-function matchesEcstaticContent(content: string): boolean {
-  if (TRIPLE_BANG.test(content)) return true;
-  return matchesAny(content, ECSTATIC_KEYWORDS);
-}
 
 /**
  * Decide whether an entry should render as the pumpkin easter egg. The
