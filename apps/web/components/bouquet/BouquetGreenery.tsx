@@ -94,7 +94,7 @@ function lens(bx: number, by: number, tx: number, ty: number, w: number): string
 }
 /** A soft shadow puddle to ground the accent at the tie. */
 function groundShadow(cx: number, baseY: number): React.ReactElement {
-  return <ellipse key="ground" cx={cx} cy={baseY - 0.5} rx={17} ry={2.6} fill="#2B4A1A" fillOpacity={0.12} />;
+  return <ellipse key="ground" cx={cx} cy={baseY - 0.5} rx={22} ry={2.7} fill="#2B4A1A" fillOpacity={0.12} />;
 }
 
 export function renderBouquetGreenery(props: Props): React.ReactElement {
@@ -128,10 +128,10 @@ function Reeds({ ns, seed, cx, baseY }: Sub) {
   const angles: number[] = [];
   for (let i = 0; i < count; i++) {
     const dir = (i / (count - 1)) * 2 - 1; // -1 .. 1
-    const len = 96 - Math.abs(dir) * 24 + rngRange(rng, -4, 6);
-    const tipX = cx + dir * 36 + rngRange(rng, -1.5, 1.5);
+    const len = 96 - Math.abs(dir) * 22 + rngRange(rng, -4, 6);
+    const tipX = cx + dir * 46 + rngRange(rng, -1.5, 1.5);
     const tipY = baseY - len;
-    const ctrlX = cx + dir * 16 + dir * 8;
+    const ctrlX = cx + dir * 20 + dir * 10;
     const ctrlY = baseY - len * 0.55;
     const w = 2.5 - Math.abs(dir) * 0.8;
     els.push(
@@ -155,7 +155,7 @@ function Reeds({ ns, seed, cx, baseY }: Sub) {
     els.push(
       <path
         key={`reed-short-${i}`}
-        d={`M ${f1(cx)} ${f1(baseY)} Q ${f1(cx + dir * 10)} ${f1(baseY - len * 0.6)} ${f1(cx + dir * 22)} ${f1(baseY - len)}`}
+        d={`M ${f1(cx)} ${f1(baseY)} Q ${f1(cx + dir * 14)} ${f1(baseY - len * 0.6)} ${f1(cx + dir * 30)} ${f1(baseY - len)}`}
         stroke={FOLIAGE.dark}
         strokeWidth={1.6}
         strokeOpacity={0.85}
@@ -235,8 +235,8 @@ function Sprigs({ ns, seed, cx, baseY }: Sub) {
   const els: React.ReactElement[] = [groundShadow(cx, baseY)];
 
   const branches = [
-    { tip: { x: cx - 16, y: 48 }, ctrl: { x: cx - 17, y: 96 }, leaves: 7 },
-    { tip: { x: cx + 17, y: 40 }, ctrl: { x: cx + 16, y: 92 }, leaves: 8 },
+    { tip: { x: cx - 25, y: 50 }, ctrl: { x: cx - 25, y: 96 }, leaves: 7 },
+    { tip: { x: cx + 26, y: 42 }, ctrl: { x: cx + 24, y: 92 }, leaves: 8 },
   ];
 
   branches.forEach((br, bi) => {
@@ -330,9 +330,9 @@ function Fern({ ns, seed, cx, baseY }: Sub) {
   const els: React.ReactElement[] = [groundShadow(cx, baseY)];
 
   const fronds = [
-    { tip: { x: cx - 26, y: 54 }, ctrl: { x: cx - 20, y: 96 } },
+    { tip: { x: cx - 33, y: 56 }, ctrl: { x: cx - 26, y: 96 } },
     { tip: { x: cx, y: 28 }, ctrl: { x: cx + 2, y: 84 } },
-    { tip: { x: cx + 27, y: 50 }, ctrl: { x: cx + 21, y: 94 } },
+    { tip: { x: cx + 34, y: 52 }, ctrl: { x: cx + 27, y: 94 } },
   ];
 
   fronds.forEach((fr, fi) => {
@@ -397,7 +397,7 @@ function BabysBreath({ seed, cx, baseY }: Omit<Sub, 'ns'>) {
     els.push(
       <circle
         key={`bb-bg-${i}`}
-        cx={f1(cx + rngRange(rng, -30, 30))}
+        cx={f1(cx + rngRange(rng, -37, 37))}
         cy={f1(rngRange(rng, 38, 82))}
         r={f1(2.8 + rngRange(rng, 0, 1.8))}
         fill={BREATH.petal}
@@ -409,9 +409,9 @@ function BabysBreath({ seed, cx, baseY }: Omit<Sub, 'ns'>) {
   const stems = 8;
   for (let s = 0; s < stems; s++) {
     const dir = (s / (stems - 1)) * 2 - 1; // -1 .. 1
-    const tipX = cx + dir * 33 + rngRange(rng, -2, 2);
+    const tipX = cx + dir * 41 + rngRange(rng, -2, 2);
     const tipY = 44 - (1 - Math.abs(dir)) * 12 + rngRange(rng, -3, 3);
-    const ctrl = { x: cx + dir * 16, y: baseY - 46 };
+    const ctrl = { x: cx + dir * 20, y: baseY - 46 };
     const p0 = { x: cx, y: baseY };
     const tip = { x: tipX, y: tipY };
     els.push(
@@ -474,9 +474,9 @@ function Wheat({ ns, seed, cx, baseY }: Sub) {
   const els: React.ReactElement[] = [groundShadow(cx, baseY)];
 
   const stalks = [
-    { tip: { x: cx - 22, y: 50 }, headFrac: 0.5 },
+    { tip: { x: cx - 30, y: 52 }, headFrac: 0.5 },
     { tip: { x: cx, y: 30 }, headFrac: 0.46 },
-    { tip: { x: cx + 23, y: 48 }, headFrac: 0.5 },
+    { tip: { x: cx + 31, y: 50 }, headFrac: 0.5 },
   ];
 
   stalks.forEach((stk, si) => {
