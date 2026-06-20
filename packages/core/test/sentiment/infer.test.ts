@@ -4,7 +4,8 @@ import { inferMood, inferSentiment, resolveMood } from '../../src/sentiment/infe
 
 describe('inferMood — detects all 8 moods', () => {
   it('joyful', () => {
-    expect(inferMood('I feel so happy and full of joy today.')).toBe('joyful');
+    // "happy"/"joy" read joyful; avoid "so happy", which is an ecstatic phrase.
+    expect(inferMood('I feel happy and full of joy today.')).toBe('joyful');
   });
 
   it('peaceful', () => {
@@ -99,6 +100,48 @@ describe('resolveMood', () => {
     expect(resolveMood(null, "I'm so grateful and thankful, truly blessed.")).toEqual({
       mood: 'grateful',
       inferredSentiment: 'positive',
+    });
+  });
+});
+
+describe('inferMood — ecstatic escalation (powers the pumpkin)', () => {
+  it.each([
+    'I am extremely happy today',
+    'I am really happy right now',
+    'I am so excited for this',
+    'I feel absolutely ecstatic',
+    'Honestly thrilled about it',
+    'I was elated all evening',
+    'Completely overjoyed',
+    'Absolutely over the moon tonight',
+    'I am on cloud nine',
+  ])('escalates "%s" to ecstatic', (text) => {
+    expect(inferMood(text)).toBe('ecstatic');
+  });
+
+  it('negation blocks escalation ("not really happy")', () => {
+    expect(inferMood('I am not really happy today')).not.toBe('ecstatic');
+  });
+
+  it('bare "!!!" does not escalate a negative entry', () => {
+    expect(inferMood('I am so stressed!!!')).toBe('anxious');
+  });
+
+  it('bare "!!!" without a happy keyword does not escalate', () => {
+    expect(inferMood('Today was wild!!!')).not.toBe('ecstatic');
+  });
+
+  it('resolveMood returns ecstatic + positive for an ecstatic keyword', () => {
+    expect(resolveMood(null, 'I am really happy')).toEqual({
+      mood: 'ecstatic',
+      inferredSentiment: 'positive',
+    });
+  });
+
+  it('explicit mood still wins over ecstatic content', () => {
+    expect(resolveMood('peaceful', 'I am really happy')).toEqual({
+      mood: 'peaceful',
+      inferredSentiment: null,
     });
   });
 });

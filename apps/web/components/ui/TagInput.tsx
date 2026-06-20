@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 type Props = {
@@ -28,6 +29,7 @@ export function TagInput({ tags, onChange }: Props) {
             key={tag}
             variant="secondary"
             className="cursor-pointer"
+            aria-label={`Remove tag ${tag}`}
             onClick={() => onChange(tags.filter((x) => x !== tag))}
           >
             {tag} ×
@@ -39,20 +41,25 @@ export function TagInput({ tags, onChange }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            // Enter or comma commits the tag — comma is the common delimiter
+            // users expect, so we consume it rather than letting it land in
+            // the field.
+            if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();
               addTag();
             }
           }}
           placeholder="Add a tag"
         />
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
           onClick={addTag}
-          className="shrink-0 rounded-md border border-parchment px-3 text-sm text-ink-soft hover:bg-parchment"
         >
           Add
-        </button>
+        </Button>
       </div>
     </div>
   );
