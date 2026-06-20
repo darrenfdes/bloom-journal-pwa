@@ -2,9 +2,11 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { Flower } from '@/components/flower/Flower';
-import type { BouquetFlower, BouquetPayload } from '@bloom/core';
+import { renderBouquetGreenery } from '@/components/bouquet/BouquetGreenery';
+import type { BouquetFlower, BouquetGreenery as BouquetGreeneryKind, BouquetPayload } from '@bloom/core';
 
-import { FLOWER_SIZE_RATIO, flowerAngles, tiePoint } from './layout';
+import { bouquetFilename } from './filename';
+import { FLOWER_SIZE_RATIO, flowerAngles, greeneryOffsets, tiePoint } from './layout';
 
 /** Warm card palette for the standalone image (no Tailwind available in a serialized SVG). */
 const COLOR = {
@@ -84,7 +86,13 @@ function ribbonTail(tx: number, ty: number, size: number, dir: 1 | -1): string {
   ].join(' ');
 }
 
-type SvgOpts = { size?: number; to?: string | null; from?: string | null; note?: string | null };
+type SvgOpts = {
+  size?: number;
+  to?: string | null;
+  from?: string | null;
+  note?: string | null;
+  greenery?: BouquetGreeneryKind[] | null;
+};
 
 /**
  * Build a fully self-contained SVG of a tied bouquet: warm background, paper wrap, the flowers
@@ -97,6 +105,7 @@ export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): 
   const to = opts.to?.trim() || null;
   const from = opts.from?.trim() || null;
   const note = opts.note?.trim() || null;
+  const accents = opts.greenery?.length ? opts.greenery.slice(0, 3) : [];
   const tie = tiePoint(size);
   const flowerSize = size * FLOWER_SIZE_RATIO;
   const W = size;
@@ -147,6 +156,26 @@ export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): 
     })
     .join('');
 
+  // Greenery accents framing the tie, behind the stems. Each renders into a flower-sized box whose
+  // bottom sits on the tie point and whose centre is nudged left/right per `greeneryOffsets` — the
+  // same anchor and offsets the live preview uses, so the two never drift. The nested <svg> shares
+  // the accent's `0 0 100 140` viewBox so `renderBouquetGreenery` draws at its natural scale.
+  const offsets = greeneryOffsets(accents.length);
+  const greeneryGroups = accents
+    .map((kind, i) => {
+      const inner = renderToStaticMarkup(
+        renderBouquetGreenery({ kind, seed: 1000 + i * 31 + kind.length }),
+      );
+      const cx = tie.x + (offsets[i] ?? 0) * size - flowerSize / 2;
+      const cy = tie.y - flowerSize;
+      return (
+        `<svg data-greenery="1" x="${cx.toFixed(2)}" y="${cy.toFixed(2)}" ` +
+        `width="${flowerSize.toFixed(2)}" height="${flowerSize.toFixed(2)}" ` +
+        `viewBox="0 0 100 140" preserveAspectRatio="xMidYMax meet" overflow="visible">${inner}</svg>`
+      );
+    })
+    .join('');
+
   // Paper wrap cone behind the stems.
   const coneTopY = tie.y - size * 0.26;
   const coneHalf = size * 0.16;
@@ -183,6 +212,7 @@ export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): 
     `</linearGradient></defs>` +
     `<rect width="${W}" height="${H}" rx="${(size * 0.04).toFixed(1)}" fill="url(#bloomBg)" />` +
     cone +
+    greeneryGroups +
     flowerGroups +
     tails +
     knot +
@@ -207,6 +237,7 @@ export async function downloadBouquetPng(
     to: payload.to,
     from: payload.from,
     note: payload.note,
+    greenery: payload.greenery,
   });
 
   const match = svg.match(/viewBox="0 0 (\d+) (\d+)"/);
@@ -234,7 +265,7 @@ export async function downloadBouquetPng(
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `bloom-bouquet-${payload.id}.png`;
+  a.download = bouquetFilename(payload, 'png');
   a.click();
   URL.revokeObjectURL(url);
 }

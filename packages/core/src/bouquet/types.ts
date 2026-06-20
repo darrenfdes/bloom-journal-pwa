@@ -13,6 +13,13 @@ export interface BouquetFlower {
   content?: string | null;
 }
 
+/**
+ * Non-flower accents the sender chose to frame the tie point. Three reuse the rendered
+ * foliage styles (reeds, sprigs, fern); two are bouquet-only (baby's breath, wheat). Stored on the
+ * payload so kept/shared bouquets keep their accents. Optional for backwards compatibility.
+ */
+export type BouquetGreenery = 'reeds' | 'sprigs' | 'fern' | 'babys-breath' | 'wheat';
+
 /** The serialized, shareable bouquet — identical shape for both link and file delivery. */
 export interface BouquetPayload {
   kind: typeof BOUQUET_KIND;
@@ -25,4 +32,6 @@ export interface BouquetPayload {
   from?: string | null;
   note?: string | null;
   flowers: BouquetFlower[];
+  /** Non-flower accents the sender chose to frame the tie, or `null` when none were picked. */
+  greenery?: BouquetGreenery[] | null;
 }

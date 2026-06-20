@@ -7,8 +7,9 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { buildBouquet, MAX_BOUQUET_FLOWERS, type EntryRecord } from '@bloom/core';
+import { buildBouquet, MAX_BOUQUET_FLOWERS, type BouquetGreenery, type EntryRecord } from '@bloom/core';
 
+import { BOUQUET_GREENERY, MAX_BOUQUET_GREENERY } from '@/lib/constants/bouquetGreenery';
 import { downloadBouquetFile } from '@/lib/bouquet/file';
 import { downloadBouquetPng } from '@/lib/bouquet/image';
 import { shuffleOrder } from '@/lib/bouquet/layout';
@@ -34,6 +35,7 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
   const [to, setTo] = useState('');
   const [from, setFrom] = useState('');
   const [note, setNote] = useState('');
+  const [greenery, setGreenery] = useState<BouquetGreenery[]>([]);
   const [sharing, setSharing] = useState(false);
 
   // Keep a display order alongside the picker's selection: preserve existing positions, append newly
@@ -67,9 +69,19 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
   const hasSelection = selectedEntries.length > 0;
   const canReshuffle = selectedEntries.length > 1;
 
+  const toggleGreenery = (kind: BouquetGreenery) => {
+    setGreenery((prev) =>
+      prev.includes(kind)
+        ? prev.filter((g) => g !== kind)
+        : prev.length >= MAX_BOUQUET_GREENERY
+          ? prev
+          : [...prev, kind],
+    );
+  };
+
   const previewFlowers = useMemo(
-    () => (hasSelection ? buildBouquet(selectedEntries, { includeTextFor }).flowers : []),
-    [hasSelection, selectedEntries, includeTextFor],
+    () => (hasSelection ? buildBouquet(selectedEntries, { includeTextFor, greenery }).flowers : []),
+    [hasSelection, selectedEntries, includeTextFor, greenery],
   );
 
   const makePayload = () =>
@@ -78,6 +90,7 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
       to: to.trim() || null,
       from: from.trim() || null,
       note: note.trim() || null,
+      greenery,
     });
 
   const handleReshuffle = () => setOrder((prev) => shuffleOrder(prev));
@@ -121,6 +134,35 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
         ) : (
           <p className="text-sm text-ink-muted">Plant a few memories first, then come back.</p>
         )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-display text-lg text-ink">Frame it</h2>
+        <p className="text-sm text-ink-muted">
+          Add up to {MAX_BOUQUET_GREENERY} touches of greenery and shoots around the tie.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {BOUQUET_GREENERY.map((g) => {
+            const selected = greenery.includes(g.id);
+            const disabled = !selected && greenery.length >= MAX_BOUQUET_GREENERY;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                disabled={disabled}
+                onClick={() => toggleGreenery(g.id)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 ${
+                  selected
+                    ? 'border-sage bg-sage text-cream shadow-[0_2px_12px_rgba(143,168,138,0.45)]'
+                    : 'border-parchment bg-cream text-ink hover:bg-parchment/60'
+                }`}
+                title={g.description}
+              >
+                {g.label}
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -180,7 +222,7 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
         </div>
         <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-parchment bg-gradient-to-b from-cream to-cream-dark p-4 shadow-inner">
           {hasSelection ? (
-            <BouquetArrangement flowers={previewFlowers} size={280} />
+            <BouquetArrangement flowers={previewFlowers} greenery={greenery} size={280} />
           ) : (
             <p className="text-sm text-ink-muted">Your tied bouquet will appear here.</p>
           )}

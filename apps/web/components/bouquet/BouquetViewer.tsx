@@ -65,7 +65,7 @@ export function BouquetViewer({ state, onKeep, kept = false, keeping = false }: 
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <BouquetArrangement flowers={payload.flowers} size={320} />
+      <BouquetArrangement flowers={payload.flowers} greenery={payload.greenery} size={320} />
 
       {payload.to ? <p className="font-display text-lg text-ink">To {payload.to}</p> : null}
 

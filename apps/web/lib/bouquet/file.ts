@@ -1,5 +1,7 @@
 import { parseBouquet, serializeBouquet, type BouquetPayload } from '@bloom/core';
 
+import { bouquetFilename } from './filename';
+
 /**
  * Download a bouquet as a `.bloom` JSON file. Always available, fully offline — possession of the
  * file is the consent, so the payload is stored as plain JSON (no encryption). Mirrors the download
@@ -10,7 +12,7 @@ export function downloadBouquetFile(payload: BouquetPayload): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `bloom-bouquet-${payload.id}.bloom`;
+  a.download = bouquetFilename(payload, 'bloom');
   a.click();
   URL.revokeObjectURL(url);
 }
