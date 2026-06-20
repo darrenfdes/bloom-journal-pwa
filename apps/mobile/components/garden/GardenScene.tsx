@@ -234,10 +234,10 @@ export function GardenScene({ meta, entries }: Props) {
 
   const handleGardenTap = useCallback(
     (pageX: number, pageY: number) => {
-      const scrollEl = scrollRef.current;
+      const scrollEl = scrollRef.current as any;
       if (!scrollEl) return;
 
-      scrollEl.measureInWindow((x, y) => {
+      scrollEl.measureInWindow((x: number, y: number) => {
         const worldX = pageX - x + visualScrollLeft;
         const worldY = pageY - y;
         const hits = findPlacedFlowersAtPoint(worldX, worldY, sortedLayout);

@@ -135,6 +135,15 @@ describe('bouquetSvgMarkup', () => {
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(doc.querySelectorAll('[data-greenery]')).toHaveLength(3);
   });
+
+  it('keeps every gradient id unique so accents do not collide in one document', () => {
+    const { flowers } = buildBouquet([entry()]);
+    // reeds, fern and wheat all define gradients; their ids must not clash with each other.
+    const svg = bouquetSvgMarkup(flowers, { greenery: ['reeds', 'fern', 'wheat'] });
+    const ids = [...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+    expect(ids.length).toBeGreaterThan(3);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });
 
 describe('wrapText', () => {

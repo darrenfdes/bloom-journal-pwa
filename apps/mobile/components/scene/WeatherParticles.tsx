@@ -87,7 +87,7 @@ function RicklerDropMobile({
 
   if (reducedMotion) return null;
 
-  const horizontal = side === 'left' ? { left: `${drop.horizontalPct}%` } : { right: `${drop.horizontalPct}%` };
+  const horizontal = side === 'left' ? ({ left: `${drop.horizontalPct}%` } as any) : ({ right: `${drop.horizontalPct}%` } as any);
 
   return (
     <Animated.View
