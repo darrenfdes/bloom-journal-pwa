@@ -28,6 +28,8 @@ export type EventType =
   | "planetOpposition"
   | "meteorShower" | "comet"
   | "fridayThe13th" | "leapDay"
+  | "newYear" | "chineseNewYear" | "diwali" | "holi" | "christmas"
+  | "fireworks"
   // runtime-only (never in this file):
   | "birthday" | "appAnniversary";
 
@@ -475,6 +477,84 @@ function generateComets(seed: CometSeed[], startYear: number, endYear: number): 
 }
 
 // ----------------------------------------------------------------------------
+// Festive holidays
+//   - New Year (Jan 1) and Christmas (Dec 25) are fixed Gregorian dates.
+//   - Chinese New Year, Diwali, Holi follow lunisolar calendars with no compact
+//     closed-form, so their dates are curated in holidays.seed.json (refresh
+//     periodically), mirroring comets.seed.json. All pure-calendar (no instant).
+// ----------------------------------------------------------------------------
+
+function generateNewYear(startYear: number, endYear: number): WorldEvent[] {
+  const events: WorldEvent[] = [];
+  for (let y = startYear; y <= endYear; y++) {
+    const d = utc(y, 0, 1);
+    events.push({
+      id: `newYear-${y}`, type: "newYear", date: iso(d),
+      title: "New Year", subtitle: "Festive fireworks", rarity: "epic",
+    });
+  }
+  return events;
+}
+
+function generateChristmas(startYear: number, endYear: number): WorldEvent[] {
+  const events: WorldEvent[] = [];
+  for (let y = startYear; y <= endYear; y++) {
+    const d = utc(y, 11, 25);
+    events.push({
+      id: `christmas-${y}`, type: "christmas", date: iso(d),
+      title: "Christmas", subtitle: "Star of Bethlehem", rarity: "common",
+    });
+  }
+  return events;
+}
+
+interface HolidaySeed {
+  type: "chineseNewYear" | "diwali" | "holi";
+  date: string; // YYYY-MM-DD
+}
+
+const HOLIDAY_TITLE: Record<HolidaySeed["type"], string> = {
+  chineseNewYear: "Chinese New Year",
+  diwali: "Diwali",
+  holi: "Holi",
+};
+const HOLIDAY_RARITY: Record<HolidaySeed["type"], Rarity> = {
+  chineseNewYear: "epic",
+  diwali: "epic",
+  holi: "rare",
+};
+
+function generateLunisolarHolidays(seed: HolidaySeed[], startYear: number, endYear: number): WorldEvent[] {
+  return seed
+    .filter((h) => {
+      const y = +h.date.slice(0, 4);
+      return y >= startYear && y <= endYear;
+    })
+    .map((h) => ({
+      id: `${h.type}-${h.date}`, type: h.type as EventType, date: h.date,
+      title: HOLIDAY_TITLE[h.type], subtitle: "Festive fireworks",
+      rarity: HOLIDAY_RARITY[h.type],
+    }));
+}
+
+interface FireworksOneOffSeed {
+  date: string;   // YYYY-MM-DD — year-scoped so it fires only in that year
+  title: string;
+}
+
+function generateOneOffFireworks(seed: FireworksOneOffSeed[], startYear: number, endYear: number): WorldEvent[] {
+  return seed
+    .filter((f) => {
+      const y = +f.date.slice(0, 4);
+      return y >= startYear && y <= endYear;
+    })
+    .map((f) => ({
+      id: `fireworks-${f.date}`, type: "fireworks" as EventType, date: f.date,
+      title: f.title, subtitle: "Festive fireworks", rarity: "rare",
+    }));
+}
+
+// ----------------------------------------------------------------------------
 // Orchestration
 // ----------------------------------------------------------------------------
 
@@ -484,7 +564,12 @@ interface GeneratorOptions {
   includeSolarTerms?: boolean; // opt-in: 24 terms/year, on-theme but verbose
 }
 
-function generateAll(opts: GeneratorOptions, comets: CometSeed[]): WorldEvent[] {
+function generateAll(
+  opts: GeneratorOptions,
+  comets: CometSeed[],
+  holidays: HolidaySeed[],
+  fireworksOneOffs: FireworksOneOffSeed[],
+): WorldEvent[] {
   const { startYear: s, endYear: e, includeSolarTerms } = opts;
   const out: WorldEvent[] = [
     ...generateMoonEvents(s, e),
@@ -499,6 +584,10 @@ function generateAll(opts: GeneratorOptions, comets: CometSeed[]): WorldEvent[] 
     ...generateFridayThe13ths(s, e),
     ...generateLeapDays(s, e),
     ...generateComets(comets, s, e),
+    ...generateNewYear(s, e),
+    ...generateChristmas(s, e),
+    ...generateLunisolarHolidays(holidays, s, e),
+    ...generateOneOffFireworks(fireworksOneOffs, s, e),
   ];
   if (includeSolarTerms) out.push(...generateSolarTerms(s, e));
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.type.localeCompare(b.type));
@@ -516,10 +605,14 @@ function main() {
 
   const comets: CometSeed[] = JSON.parse(
     readFileSync(new URL("./comets.seed.json", import.meta.url), "utf8"));
+  const holidays: HolidaySeed[] = JSON.parse(
+    readFileSync(new URL("./holidays.seed.json", import.meta.url), "utf8"));
+  const fireworksOneOffs: FireworksOneOffSeed[] = JSON.parse(
+    readFileSync(new URL("./fireworks-oneoffs.seed.json", import.meta.url), "utf8"));
 
   const events = generateAll(
     { startYear: START_YEAR, endYear: END_YEAR, includeSolarTerms: false },
-    comets);
+    comets, holidays, fireworksOneOffs);
 
   writeFileSync(new URL("./events.json", import.meta.url), JSON.stringify({
     generatedAt: new Date().toISOString(),

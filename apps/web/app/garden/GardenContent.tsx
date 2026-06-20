@@ -3,11 +3,12 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 
-import { sceneEffectsForDay, useDayEvents } from '@bloom/core/events';
+import { sceneEffectsForDay, useDayEvents, primaryEvent } from '@bloom/core/events';
 import type { EventsUserContext } from '@bloom/core/events';
 
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
+import { planetForEvent } from '@/lib/garden/bloom/event-catalog';
 import { useGeolocation } from '@/lib/scene/useGeolocation';
 import { useWeather } from '@/lib/scene/useWeather';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -76,6 +77,12 @@ export function GardenContent() {
     [dayEvents],
   );
 
+  // The planet behind a planet-at-opposition today (if any), for the live bright-star look.
+  const livePlanet = useMemo(
+    () => (dayEvents.length ? planetForEvent(primaryEvent(dayEvents) ?? dayEvents[0]!) : null),
+    [dayEvents],
+  );
+
   if (!ready) {
     return (
       <div className="flex min-h-dvh flex-1 items-center justify-center">
@@ -92,6 +99,7 @@ export function GardenContent() {
       latitude={geo.coords.lat}
       specialStar={specialStar}
       liveSceneEffects={liveSceneEffects}
+      livePlanet={livePlanet}
     />
   );
 }

@@ -1,11 +1,21 @@
 {
-  "generatedAt": "2026-06-14T14:36:26.239Z",
+  "generatedAt": "2026-06-20T07:37:58.515Z",
   "range": {
     "startYear": 2024,
     "endYear": 2050
   },
   "scope": "global",
   "byDate": {
+    "2024-01-01": [
+      {
+        "id": "newYear-2024",
+        "type": "newYear",
+        "date": "2024-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2024-01-03": [
       {
         "id": "earthApsis-2024-01-03",
@@ -93,6 +103,16 @@
         "rarity": "common"
       }
     ],
+    "2024-02-10": [
+      {
+        "id": "chineseNewYear-2024-02-10",
+        "type": "chineseNewYear",
+        "date": "2024-02-10",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2024-02-24": [
       {
         "id": "fullMoon-2024-02-24",
@@ -178,6 +198,14 @@
           "name": "Worm Moon",
           "distanceKm": 405383
         }
+      },
+      {
+        "id": "holi-2024-03-25",
+        "type": "holi",
+        "date": "2024-03-25",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "lunarEclipse-2024-03-25",
@@ -673,6 +701,14 @@
     ],
     "2024-11-01": [
       {
+        "id": "diwali-2024-11-01",
+        "type": "diwali",
+        "date": "2024-11-01",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2024-11-01",
         "type": "newMoon",
         "date": "2024-11-01",
@@ -843,6 +879,16 @@
         }
       }
     ],
+    "2024-12-25": [
+      {
+        "id": "christmas-2024",
+        "type": "christmas",
+        "date": "2024-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2024-12-30": [
       {
         "id": "blackMoon-2024-12-30",
@@ -861,6 +907,16 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      }
+    ],
+    "2025-01-01": [
+      {
+        "id": "newYear-2025",
+        "type": "newYear",
+        "date": "2025-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2025-01-03": [
@@ -927,6 +983,14 @@
       }
     ],
     "2025-01-29": [
+      {
+        "id": "chineseNewYear-2025-01-29",
+        "type": "chineseNewYear",
+        "date": "2025-01-29",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2025-01-29",
         "type": "newMoon",
@@ -1007,6 +1071,14 @@
           "name": "Worm Moon",
           "distanceKm": 401489
         }
+      },
+      {
+        "id": "holi-2025-03-14",
+        "type": "holi",
+        "date": "2025-03-14",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "lunarEclipse-2025-03-14",
@@ -1474,6 +1546,14 @@
     ],
     "2025-10-21": [
       {
+        "id": "diwali-2025-10-21",
+        "type": "diwali",
+        "date": "2025-10-21",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "meteor-ORI-2025",
         "type": "meteorShower",
         "date": "2025-10-21",
@@ -1678,6 +1758,26 @@
         }
       }
     ],
+    "2025-12-25": [
+      {
+        "id": "christmas-2025",
+        "type": "christmas",
+        "date": "2025-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2026-01-01": [
+      {
+        "id": "newYear-2026",
+        "type": "newYear",
+        "date": "2026-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2026-01-03": [
       {
         "id": "earthApsis-2026-01-03",
@@ -1790,6 +1890,14 @@
     ],
     "2026-02-17": [
       {
+        "id": "chineseNewYear-2026-02-17",
+        "type": "chineseNewYear",
+        "date": "2026-02-17",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "comet-C-2024-E1-Wierzchos-",
         "type": "comet",
         "date": "2026-02-17",
@@ -1870,6 +1978,16 @@
           "kind": "total",
           "obscuration": 1
         }
+      }
+    ],
+    "2026-03-04": [
+      {
+        "id": "holi-2026-03-04",
+        "type": "holi",
+        "date": "2026-03-04",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2026-03-13": [
@@ -2096,6 +2214,16 @@
         "instantUTC": "2026-06-21T08:25:00.316Z",
         "title": "June Solstice",
         "rarity": "uncommon"
+      }
+    ],
+    "2026-06-24": [
+      {
+        "id": "fireworks-2026-06-24",
+        "type": "fireworks",
+        "date": "2026-06-24",
+        "title": "Fireworks Test",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2026-06-29": [
@@ -2433,6 +2561,16 @@
         }
       }
     ],
+    "2026-11-08": [
+      {
+        "id": "diwali-2026-11-08",
+        "type": "diwali",
+        "date": "2026-11-08",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2026-11-09": [
       {
         "id": "newMoon-2026-11-09",
@@ -2591,6 +2729,26 @@
         }
       }
     ],
+    "2026-12-25": [
+      {
+        "id": "christmas-2026",
+        "type": "christmas",
+        "date": "2026-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2027-01-01": [
+      {
+        "id": "newYear-2027",
+        "type": "newYear",
+        "date": "2027-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2027-01-03": [
       {
         "id": "earthApsis-2027-01-03",
@@ -2678,6 +2836,14 @@
       }
     ],
     "2027-02-06": [
+      {
+        "id": "chineseNewYear-2027-02-06",
+        "type": "chineseNewYear",
+        "date": "2027-02-06",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2027-02-06",
         "type": "newMoon",
@@ -2825,6 +2991,14 @@
           "name": "Worm Moon",
           "distanceKm": 372518
         }
+      },
+      {
+        "id": "holi-2027-03-22",
+        "type": "holi",
+        "date": "2027-03-22",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2027-04-06": [
@@ -3303,6 +3477,14 @@
     ],
     "2027-10-29": [
       {
+        "id": "diwali-2027-10-29",
+        "type": "diwali",
+        "date": "2027-10-29",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2027-10-29",
         "type": "newMoon",
         "date": "2027-10-29",
@@ -3452,6 +3634,16 @@
         "rarity": "uncommon"
       }
     ],
+    "2027-12-25": [
+      {
+        "id": "christmas-2027",
+        "type": "christmas",
+        "date": "2027-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2027-12-27": [
       {
         "id": "newMoon-2027-12-27",
@@ -3461,6 +3653,16 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      }
+    ],
+    "2028-01-01": [
+      {
+        "id": "newYear-2028",
+        "type": "newYear",
+        "date": "2028-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2028-01-04": [
@@ -3526,6 +3728,14 @@
       }
     ],
     "2028-01-26": [
+      {
+        "id": "chineseNewYear-2028-01-26",
+        "type": "chineseNewYear",
+        "date": "2028-01-26",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2028-01-26",
         "type": "newMoon",
@@ -3643,6 +3853,14 @@
           "name": "Worm Moon",
           "distanceKm": 358061
         }
+      },
+      {
+        "id": "holi-2028-03-11",
+        "type": "holi",
+        "date": "2028-03-11",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "supermoon-2028-03-11",
@@ -4101,6 +4319,16 @@
         "rarity": "uncommon"
       }
     ],
+    "2028-10-17": [
+      {
+        "id": "diwali-2028-10-17",
+        "type": "diwali",
+        "date": "2028-10-17",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2028-10-18": [
       {
         "id": "newMoon-2028-10-18",
@@ -4299,6 +4527,16 @@
         }
       }
     ],
+    "2028-12-25": [
+      {
+        "id": "christmas-2028",
+        "type": "christmas",
+        "date": "2028-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2028-12-31": [
       {
         "id": "blueMoon-2028-12-31",
@@ -4334,6 +4572,16 @@
           "kind": "total",
           "obscuration": 1
         }
+      }
+    ],
+    "2029-01-01": [
+      {
+        "id": "newYear-2029",
+        "type": "newYear",
+        "date": "2029-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2029-01-02": [
@@ -4427,6 +4675,14 @@
     ],
     "2029-02-13": [
       {
+        "id": "chineseNewYear-2029-02-13",
+        "type": "chineseNewYear",
+        "date": "2029-02-13",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2029-02-13",
         "type": "newMoon",
         "date": "2029-02-13",
@@ -4464,6 +4720,14 @@
       }
     ],
     "2029-03-01": [
+      {
+        "id": "holi-2029-03-01",
+        "type": "holi",
+        "date": "2029-03-01",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
+      },
       {
         "id": "seasonTransition-Spring-2029",
         "type": "seasonTransition",
@@ -5007,6 +5271,16 @@
         }
       }
     ],
+    "2029-11-05": [
+      {
+        "id": "diwali-2029-11-05",
+        "type": "diwali",
+        "date": "2029-11-05",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2029-11-06": [
       {
         "id": "newMoon-2029-11-06",
@@ -5200,6 +5474,26 @@
         }
       }
     ],
+    "2029-12-25": [
+      {
+        "id": "christmas-2029",
+        "type": "christmas",
+        "date": "2029-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2030-01-01": [
+      {
+        "id": "newYear-2030",
+        "type": "newYear",
+        "date": "2030-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2030-01-03": [
       {
         "id": "earthApsis-2030-01-03",
@@ -5270,6 +5564,14 @@
       }
     ],
     "2030-02-03": [
+      {
+        "id": "chineseNewYear-2030-02-03",
+        "type": "chineseNewYear",
+        "date": "2030-02-03",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "crossQuarter-Imbolc-2030",
         "type": "crossQuarter",
@@ -5349,6 +5651,14 @@
         "instantUTC": "2030-03-20T13:51:42.425Z",
         "title": "March Equinox",
         "rarity": "uncommon"
+      },
+      {
+        "id": "holi-2030-03-20",
+        "type": "holi",
+        "date": "2030-03-20",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2030-04-02": [
@@ -5822,6 +6132,14 @@
     ],
     "2030-10-26": [
       {
+        "id": "diwali-2030-10-26",
+        "type": "diwali",
+        "date": "2030-10-26",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2030-10-26",
         "type": "newMoon",
         "date": "2030-10-26",
@@ -6048,6 +6366,26 @@
         "rarity": "common"
       }
     ],
+    "2030-12-25": [
+      {
+        "id": "christmas-2030",
+        "type": "christmas",
+        "date": "2030-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2031-01-01": [
+      {
+        "id": "newYear-2031",
+        "type": "newYear",
+        "date": "2031-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2031-01-03": [
       {
         "id": "meteor-QUA-2031",
@@ -6098,6 +6436,14 @@
       }
     ],
     "2031-01-23": [
+      {
+        "id": "chineseNewYear-2031-01-23",
+        "type": "chineseNewYear",
+        "date": "2031-01-23",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2031-01-23",
         "type": "newMoon",
@@ -6178,6 +6524,14 @@
           "name": "Worm Moon",
           "distanceKm": 387013
         }
+      },
+      {
+        "id": "holi-2031-03-09",
+        "type": "holi",
+        "date": "2031-03-09",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2031-03-20": [
@@ -6747,6 +7101,14 @@
     ],
     "2031-11-14": [
       {
+        "id": "diwali-2031-11-14",
+        "type": "diwali",
+        "date": "2031-11-14",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2031-11-14",
         "type": "newMoon",
         "date": "2031-11-14",
@@ -6893,6 +7255,16 @@
         "rarity": "uncommon"
       }
     ],
+    "2031-12-25": [
+      {
+        "id": "christmas-2031",
+        "type": "christmas",
+        "date": "2031-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2031-12-28": [
       {
         "id": "fullMoon-2031-12-28",
@@ -6906,6 +7278,16 @@
           "name": "Cold Moon",
           "distanceKm": 403366
         }
+      }
+    ],
+    "2032-01-01": [
+      {
+        "id": "newYear-2032",
+        "type": "newYear",
+        "date": "2032-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2032-01-03": [
@@ -6995,6 +7377,14 @@
       }
     ],
     "2032-02-11": [
+      {
+        "id": "chineseNewYear-2032-02-11",
+        "type": "chineseNewYear",
+        "date": "2032-02-11",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2032-02-11",
         "type": "newMoon",
@@ -7087,6 +7477,14 @@
           "name": "Worm Moon",
           "distanceKm": 396620
         }
+      },
+      {
+        "id": "holi-2032-03-27",
+        "type": "holi",
+        "date": "2032-03-27",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2032-04-10": [
@@ -7566,6 +7964,16 @@
         }
       }
     ],
+    "2032-11-02": [
+      {
+        "id": "diwali-2032-11-02",
+        "type": "diwali",
+        "date": "2032-11-02",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2032-11-03": [
       {
         "id": "newMoon-2032-11-03",
@@ -7744,6 +8152,16 @@
         }
       }
     ],
+    "2032-12-25": [
+      {
+        "id": "christmas-2032",
+        "type": "christmas",
+        "date": "2032-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2033-01-01": [
       {
         "id": "newMoon-2033-01-01",
@@ -7753,6 +8171,14 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      },
+      {
+        "id": "newYear-2033",
+        "type": "newYear",
+        "date": "2033-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2033-01-03": [
@@ -7824,6 +8250,16 @@
         "rarity": "common"
       }
     ],
+    "2033-01-31": [
+      {
+        "id": "chineseNewYear-2033-01-31",
+        "type": "chineseNewYear",
+        "date": "2033-01-31",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2033-02-03": [
       {
         "id": "crossQuarter-Imbolc-2033",
@@ -7892,6 +8328,14 @@
           "name": "Worm Moon",
           "distanceKm": 406349
         }
+      },
+      {
+        "id": "holi-2033-03-16",
+        "type": "holi",
+        "date": "2033-03-16",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "micromoon-2033-03-16",
@@ -8417,6 +8861,16 @@
         }
       }
     ],
+    "2033-10-22": [
+      {
+        "id": "diwali-2033-10-22",
+        "type": "diwali",
+        "date": "2033-10-22",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2033-10-23": [
       {
         "id": "newMoon-2033-10-23",
@@ -8591,6 +9045,26 @@
         }
       }
     ],
+    "2033-12-25": [
+      {
+        "id": "christmas-2033",
+        "type": "christmas",
+        "date": "2033-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2034-01-01": [
+      {
+        "id": "newYear-2034",
+        "type": "newYear",
+        "date": "2034-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2034-01-03": [
       {
         "id": "meteor-QUA-2034",
@@ -8712,6 +9186,16 @@
         "rarity": "common"
       }
     ],
+    "2034-02-19": [
+      {
+        "id": "chineseNewYear-2034-02-19",
+        "type": "chineseNewYear",
+        "date": "2034-02-19",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2034-03-01": [
       {
         "id": "seasonTransition-Spring-2034",
@@ -8740,6 +9224,16 @@
           "name": "Worm Moon",
           "distanceKm": 397033
         }
+      }
+    ],
+    "2034-03-14": [
+      {
+        "id": "holi-2034-03-14",
+        "type": "holi",
+        "date": "2034-03-14",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2034-03-20": [
@@ -9282,6 +9776,16 @@
         }
       }
     ],
+    "2034-11-10": [
+      {
+        "id": "diwali-2034-11-10",
+        "type": "diwali",
+        "date": "2034-11-10",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2034-11-11": [
       {
         "id": "newMoon-2034-11-11",
@@ -9418,6 +9922,14 @@
     ],
     "2034-12-25": [
       {
+        "id": "christmas-2034",
+        "type": "christmas",
+        "date": "2034-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      },
+      {
         "id": "fullMoon-2034-12-25",
         "type": "fullMoon",
         "date": "2034-12-25",
@@ -9441,6 +9953,16 @@
         "meta": {
           "distanceKm": 358930
         }
+      }
+    ],
+    "2035-01-01": [
+      {
+        "id": "newYear-2035",
+        "type": "newYear",
+        "date": "2035-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2035-01-03": [
@@ -9533,6 +10055,14 @@
     ],
     "2035-02-08": [
       {
+        "id": "chineseNewYear-2035-02-08",
+        "type": "chineseNewYear",
+        "date": "2035-02-08",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2035-02-08",
         "type": "newMoon",
         "date": "2035-02-08",
@@ -9583,6 +10113,16 @@
           "northern": "Spring",
           "southern": "Autumn"
         }
+      }
+    ],
+    "2035-03-04": [
+      {
+        "id": "holi-2035-03-04",
+        "type": "holi",
+        "date": "2035-03-04",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2035-03-09": [
@@ -10084,6 +10624,16 @@
         }
       }
     ],
+    "2035-10-30": [
+      {
+        "id": "diwali-2035-10-30",
+        "type": "diwali",
+        "date": "2035-10-30",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2035-10-31": [
       {
         "id": "blackMoon-2035-10-31",
@@ -10270,6 +10820,16 @@
         "rarity": "uncommon"
       }
     ],
+    "2035-12-25": [
+      {
+        "id": "christmas-2035",
+        "type": "christmas",
+        "date": "2035-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2035-12-29": [
       {
         "id": "newMoon-2035-12-29",
@@ -10279,6 +10839,16 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      }
+    ],
+    "2036-01-01": [
+      {
+        "id": "newYear-2036",
+        "type": "newYear",
+        "date": "2036-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2036-01-03": [
@@ -10343,6 +10913,14 @@
       }
     ],
     "2036-01-28": [
+      {
+        "id": "chineseNewYear-2036-01-28",
+        "type": "chineseNewYear",
+        "date": "2036-01-28",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2036-01-28",
         "type": "newMoon",
@@ -10494,6 +11072,16 @@
         "instantUTC": "2036-03-20T01:02:34.301Z",
         "title": "March Equinox",
         "rarity": "uncommon"
+      }
+    ],
+    "2036-03-22": [
+      {
+        "id": "holi-2036-03-22",
+        "type": "holi",
+        "date": "2036-03-22",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2036-03-27": [
@@ -10914,6 +11502,16 @@
         }
       }
     ],
+    "2036-10-18": [
+      {
+        "id": "diwali-2036-10-18",
+        "type": "diwali",
+        "date": "2036-10-18",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2036-10-19": [
       {
         "id": "newMoon-2036-10-19",
@@ -11110,6 +11708,26 @@
         "rarity": "uncommon"
       }
     ],
+    "2036-12-25": [
+      {
+        "id": "christmas-2036",
+        "type": "christmas",
+        "date": "2036-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2037-01-01": [
+      {
+        "id": "newYear-2037",
+        "type": "newYear",
+        "date": "2037-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2037-01-02": [
       {
         "id": "fullMoon-2037-01-02",
@@ -11257,6 +11875,14 @@
     ],
     "2037-02-15": [
       {
+        "id": "chineseNewYear-2037-02-15",
+        "type": "chineseNewYear",
+        "date": "2037-02-15",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2037-02-15",
         "type": "newMoon",
         "date": "2037-02-15",
@@ -11320,6 +11946,16 @@
         "meta": {
           "distanceKm": 356740
         }
+      }
+    ],
+    "2037-03-11": [
+      {
+        "id": "holi-2037-03-11",
+        "type": "holi",
+        "date": "2037-03-11",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2037-03-13": [
@@ -11809,6 +12445,14 @@
         }
       },
       {
+        "id": "diwali-2037-11-07",
+        "type": "diwali",
+        "date": "2037-11-07",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2037-11-07",
         "type": "newMoon",
         "date": "2037-11-07",
@@ -11965,6 +12609,26 @@
         }
       }
     ],
+    "2037-12-25": [
+      {
+        "id": "christmas-2037",
+        "type": "christmas",
+        "date": "2037-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2038-01-01": [
+      {
+        "id": "newYear-2038",
+        "type": "newYear",
+        "date": "2038-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2038-01-03": [
       {
         "id": "earthApsis-2038-01-03",
@@ -12084,6 +12748,14 @@
     ],
     "2038-02-04": [
       {
+        "id": "chineseNewYear-2038-02-04",
+        "type": "chineseNewYear",
+        "date": "2038-02-04",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2038-02-04",
         "type": "newMoon",
         "date": "2038-02-04",
@@ -12109,6 +12781,14 @@
       }
     ],
     "2038-03-01": [
+      {
+        "id": "holi-2038-03-01",
+        "type": "holi",
+        "date": "2038-03-01",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
+      },
       {
         "id": "seasonTransition-Spring-2038",
         "type": "seasonTransition",
@@ -12633,6 +13313,16 @@
         }
       }
     ],
+    "2038-10-27": [
+      {
+        "id": "diwali-2038-10-27",
+        "type": "diwali",
+        "date": "2038-10-27",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2038-10-28": [
       {
         "id": "newMoon-2038-10-28",
@@ -12811,6 +13501,16 @@
         }
       }
     ],
+    "2038-12-25": [
+      {
+        "id": "christmas-2038",
+        "type": "christmas",
+        "date": "2038-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2038-12-26": [
       {
         "id": "newMoon-2038-12-26",
@@ -12836,6 +13536,16 @@
             "lon": 163.93916314324602
           }
         }
+      }
+    ],
+    "2039-01-01": [
+      {
+        "id": "newYear-2039",
+        "type": "newYear",
+        "date": "2039-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2039-01-03": [
@@ -12888,6 +13598,14 @@
       }
     ],
     "2039-01-24": [
+      {
+        "id": "chineseNewYear-2039-01-24",
+        "type": "chineseNewYear",
+        "date": "2039-01-24",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2039-01-24",
         "type": "newMoon",
@@ -12996,6 +13714,16 @@
         "meta": {
           "body": "Saturn"
         }
+      }
+    ],
+    "2039-03-19": [
+      {
+        "id": "holi-2039-03-19",
+        "type": "holi",
+        "date": "2039-03-19",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2039-03-20": [
@@ -13497,6 +14225,16 @@
         }
       }
     ],
+    "2039-11-15": [
+      {
+        "id": "diwali-2039-11-15",
+        "type": "diwali",
+        "date": "2039-11-15",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2039-11-16": [
       {
         "id": "newMoon-2039-11-16",
@@ -13646,6 +14384,16 @@
         "rarity": "uncommon"
       }
     ],
+    "2039-12-25": [
+      {
+        "id": "christmas-2039",
+        "type": "christmas",
+        "date": "2039-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2039-12-30": [
       {
         "id": "fullMoon-2039-12-30",
@@ -13671,6 +14419,16 @@
         "meta": {
           "distanceKm": 406119
         }
+      }
+    ],
+    "2040-01-01": [
+      {
+        "id": "newYear-2040",
+        "type": "newYear",
+        "date": "2040-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2040-01-02": [
@@ -13772,6 +14530,14 @@
     ],
     "2040-02-12": [
       {
+        "id": "chineseNewYear-2040-02-12",
+        "type": "chineseNewYear",
+        "date": "2040-02-12",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2040-02-12",
         "type": "newMoon",
         "date": "2040-02-12",
@@ -13818,6 +14584,16 @@
           "northern": "Spring",
           "southern": "Autumn"
         }
+      }
+    ],
+    "2040-03-08": [
+      {
+        "id": "holi-2040-03-08",
+        "type": "holi",
+        "date": "2040-03-08",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2040-03-13": [
@@ -14328,6 +15104,14 @@
     ],
     "2040-11-04": [
       {
+        "id": "diwali-2040-11-04",
+        "type": "diwali",
+        "date": "2040-11-04",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2040-11-04",
         "type": "newMoon",
         "date": "2040-11-04",
@@ -14503,6 +15287,26 @@
         "rarity": "uncommon"
       }
     ],
+    "2040-12-25": [
+      {
+        "id": "christmas-2040",
+        "type": "christmas",
+        "date": "2040-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2041-01-01": [
+      {
+        "id": "newYear-2041",
+        "type": "newYear",
+        "date": "2041-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2041-01-02": [
       {
         "id": "newMoon-2041-01-02",
@@ -14574,6 +15378,14 @@
       }
     ],
     "2041-02-01": [
+      {
+        "id": "chineseNewYear-2041-02-01",
+        "type": "chineseNewYear",
+        "date": "2041-02-01",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2041-02-01",
         "type": "newMoon",
@@ -14666,6 +15478,14 @@
           "name": "Worm Moon",
           "distanceKm": 401190
         }
+      },
+      {
+        "id": "holi-2041-03-17",
+        "type": "holi",
+        "date": "2041-03-17",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2041-03-20": [
@@ -15149,6 +15969,16 @@
         }
       }
     ],
+    "2041-10-24": [
+      {
+        "id": "diwali-2041-10-24",
+        "type": "diwali",
+        "date": "2041-10-24",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2041-10-25": [
       {
         "id": "newMoon-2041-10-25",
@@ -15349,6 +16179,26 @@
         "rarity": "common"
       }
     ],
+    "2041-12-25": [
+      {
+        "id": "christmas-2041",
+        "type": "christmas",
+        "date": "2041-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2042-01-01": [
+      {
+        "id": "newYear-2042",
+        "type": "newYear",
+        "date": "2042-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2042-01-03": [
       {
         "id": "meteor-QUA-2042",
@@ -15407,6 +16257,16 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      }
+    ],
+    "2042-01-22": [
+      {
+        "id": "chineseNewYear-2042-01-22",
+        "type": "chineseNewYear",
+        "date": "2042-01-22",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2042-02-03": [
@@ -15493,6 +16353,14 @@
           "name": "Worm Moon",
           "distanceKm": 405630
         }
+      },
+      {
+        "id": "holi-2042-03-06",
+        "type": "holi",
+        "date": "2042-03-06",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "micromoon-2042-03-06",
@@ -16075,6 +16943,14 @@
     ],
     "2042-11-12": [
       {
+        "id": "diwali-2042-11-12",
+        "type": "diwali",
+        "date": "2042-11-12",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2042-11-12",
         "type": "newMoon",
         "date": "2042-11-12",
@@ -16195,6 +17071,16 @@
         }
       }
     ],
+    "2042-12-25": [
+      {
+        "id": "christmas-2042",
+        "type": "christmas",
+        "date": "2042-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2042-12-26": [
       {
         "id": "fullMoon-2042-12-26",
@@ -16208,6 +17094,16 @@
           "name": "Cold Moon",
           "distanceKm": 369411
         }
+      }
+    ],
+    "2043-01-01": [
+      {
+        "id": "newYear-2043",
+        "type": "newYear",
+        "date": "2043-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2043-01-02": [
@@ -16297,6 +17193,16 @@
         "rarity": "common"
       }
     ],
+    "2043-02-10": [
+      {
+        "id": "chineseNewYear-2043-02-10",
+        "type": "chineseNewYear",
+        "date": "2043-02-10",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2043-02-13": [
       {
         "id": "friday13-2043-02-13",
@@ -16379,6 +17285,14 @@
           "name": "Worm Moon",
           "distanceKm": 400733
         }
+      },
+      {
+        "id": "holi-2043-03-25",
+        "type": "holi",
+        "date": "2043-03-25",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "lunarEclipse-2043-03-25",
@@ -16861,6 +17775,14 @@
     ],
     "2043-11-01": [
       {
+        "id": "diwali-2043-11-01",
+        "type": "diwali",
+        "date": "2043-11-01",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2043-11-01",
         "type": "newMoon",
         "date": "2043-11-01",
@@ -17041,6 +17963,16 @@
         "rarity": "uncommon"
       }
     ],
+    "2043-12-25": [
+      {
+        "id": "christmas-2043",
+        "type": "christmas",
+        "date": "2043-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2043-12-31": [
       {
         "id": "blackMoon-2043-12-31",
@@ -17059,6 +17991,16 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      }
+    ],
+    "2044-01-01": [
+      {
+        "id": "newYear-2044",
+        "type": "newYear",
+        "date": "2044-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2044-01-03": [
@@ -17111,6 +18053,14 @@
       }
     ],
     "2044-01-30": [
+      {
+        "id": "chineseNewYear-2044-01-30",
+        "type": "chineseNewYear",
+        "date": "2044-01-30",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2044-01-30",
         "type": "newMoon",
@@ -17230,6 +18180,14 @@
           "name": "Worm Moon",
           "distanceKm": 381449
         }
+      },
+      {
+        "id": "holi-2044-03-13",
+        "type": "holi",
+        "date": "2044-03-13",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "lunarEclipse-2044-03-13",
@@ -17703,6 +18661,14 @@
     ],
     "2044-10-20": [
       {
+        "id": "diwali-2044-10-20",
+        "type": "diwali",
+        "date": "2044-10-20",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "meteor-ORI-2044",
         "type": "meteorShower",
         "date": "2044-10-20",
@@ -17881,6 +18847,26 @@
         "rarity": "uncommon"
       }
     ],
+    "2044-12-25": [
+      {
+        "id": "christmas-2044",
+        "type": "christmas",
+        "date": "2044-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2045-01-01": [
+      {
+        "id": "newYear-2045",
+        "type": "newYear",
+        "date": "2045-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2045-01-03": [
       {
         "id": "earthApsis-2045-01-03",
@@ -18028,6 +19014,16 @@
         }
       }
     ],
+    "2045-02-17": [
+      {
+        "id": "chineseNewYear-2045-02-17",
+        "type": "chineseNewYear",
+        "date": "2045-02-17",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2045-03-01": [
       {
         "id": "seasonTransition-Spring-2045",
@@ -18090,6 +19086,16 @@
         "instantUTC": "2045-03-20T05:07:10.941Z",
         "title": "March Equinox",
         "rarity": "uncommon"
+      }
+    ],
+    "2045-03-28": [
+      {
+        "id": "holi-2045-03-28",
+        "type": "holi",
+        "date": "2045-03-28",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2045-04-01": [
@@ -18598,6 +19604,14 @@
     ],
     "2045-11-08": [
       {
+        "id": "diwali-2045-11-08",
+        "type": "diwali",
+        "date": "2045-11-08",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2045-11-08",
         "type": "newMoon",
         "date": "2045-11-08",
@@ -18733,6 +19747,26 @@
         }
       }
     ],
+    "2045-12-25": [
+      {
+        "id": "christmas-2045",
+        "type": "christmas",
+        "date": "2045-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2046-01-01": [
+      {
+        "id": "newYear-2046",
+        "type": "newYear",
+        "date": "2046-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2046-01-03": [
       {
         "id": "earthApsis-2046-01-03",
@@ -18847,6 +19881,16 @@
         }
       }
     ],
+    "2046-02-06": [
+      {
+        "id": "chineseNewYear-2046-02-06",
+        "type": "chineseNewYear",
+        "date": "2046-02-06",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2046-02-20": [
       {
         "id": "fullMoon-2046-02-20",
@@ -18923,6 +19967,14 @@
           "name": "Worm Moon",
           "distanceKm": 357746
         }
+      },
+      {
+        "id": "holi-2046-03-22",
+        "type": "holi",
+        "date": "2046-03-22",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       },
       {
         "id": "supermoon-2046-03-22",
@@ -19437,6 +20489,14 @@
     ],
     "2046-10-29": [
       {
+        "id": "diwali-2046-10-29",
+        "type": "diwali",
+        "date": "2046-10-29",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2046-10-29",
         "type": "newMoon",
         "date": "2046-10-29",
@@ -19588,6 +20648,16 @@
         }
       }
     ],
+    "2046-12-25": [
+      {
+        "id": "christmas-2046",
+        "type": "christmas",
+        "date": "2046-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2046-12-27": [
       {
         "id": "newMoon-2046-12-27",
@@ -19597,6 +20667,16 @@
         "title": "New Moon",
         "subtitle": "Darkest skies",
         "rarity": "common"
+      }
+    ],
+    "2047-01-01": [
+      {
+        "id": "newYear-2047",
+        "type": "newYear",
+        "date": "2047-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2047-01-03": [
@@ -19662,6 +20742,14 @@
       }
     ],
     "2047-01-26": [
+      {
+        "id": "chineseNewYear-2047-01-26",
+        "type": "chineseNewYear",
+        "date": "2047-01-26",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2047-01-26",
         "type": "newMoon",
@@ -19755,6 +20843,14 @@
           "name": "Worm Moon",
           "distanceKm": 360262
         }
+      },
+      {
+        "id": "holi-2047-03-12",
+        "type": "holi",
+        "date": "2047-03-12",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2047-03-20": [
@@ -20213,6 +21309,14 @@
     ],
     "2047-10-19": [
       {
+        "id": "diwali-2047-10-19",
+        "type": "diwali",
+        "date": "2047-10-19",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2047-10-19",
         "type": "newMoon",
         "date": "2047-10-19",
@@ -20453,6 +21557,16 @@
         }
       }
     ],
+    "2047-12-25": [
+      {
+        "id": "christmas-2047",
+        "type": "christmas",
+        "date": "2047-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
     "2048-01-01": [
       {
         "id": "fullMoon-2048-01-01",
@@ -20479,6 +21593,14 @@
           "kind": "total",
           "obscuration": 1
         }
+      },
+      {
+        "id": "newYear-2048",
+        "type": "newYear",
+        "date": "2048-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
       }
     ],
     "2048-01-03": [
@@ -20566,6 +21688,14 @@
     ],
     "2048-02-14": [
       {
+        "id": "chineseNewYear-2048-02-14",
+        "type": "chineseNewYear",
+        "date": "2048-02-14",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2048-02-14",
         "type": "newMoon",
         "date": "2048-02-14",
@@ -20598,6 +21728,14 @@
       }
     ],
     "2048-03-01": [
+      {
+        "id": "holi-2048-03-01",
+        "type": "holi",
+        "date": "2048-03-01",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
+      },
       {
         "id": "seasonTransition-Spring-2048",
         "type": "seasonTransition",
@@ -21130,6 +22268,14 @@
         }
       },
       {
+        "id": "diwali-2048-11-06",
+        "type": "diwali",
+        "date": "2048-11-06",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2048-11-06",
         "type": "newMoon",
         "date": "2048-11-06",
@@ -21327,6 +22473,26 @@
         "rarity": "uncommon"
       }
     ],
+    "2048-12-25": [
+      {
+        "id": "christmas-2048",
+        "type": "christmas",
+        "date": "2048-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2049-01-01": [
+      {
+        "id": "newYear-2049",
+        "type": "newYear",
+        "date": "2049-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2049-01-03": [
       {
         "id": "earthApsis-2049-01-03",
@@ -21386,6 +22552,14 @@
       }
     ],
     "2049-02-02": [
+      {
+        "id": "chineseNewYear-2049-02-02",
+        "type": "chineseNewYear",
+        "date": "2049-02-02",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2049-02-02",
         "type": "newMoon",
@@ -21476,6 +22650,14 @@
         "instantUTC": "2049-03-20T04:28:38.824Z",
         "title": "March Equinox",
         "rarity": "uncommon"
+      },
+      {
+        "id": "holi-2049-03-20",
+        "type": "holi",
+        "date": "2049-03-20",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2049-04-02": [
@@ -21950,6 +23132,14 @@
     ],
     "2049-10-26": [
       {
+        "id": "diwali-2049-10-26",
+        "type": "diwali",
+        "date": "2049-10-26",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2049-10-26",
         "type": "newMoon",
         "date": "2049-10-26",
@@ -22141,6 +23331,26 @@
         "rarity": "common"
       }
     ],
+    "2049-12-25": [
+      {
+        "id": "christmas-2049",
+        "type": "christmas",
+        "date": "2049-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
+      }
+    ],
+    "2050-01-01": [
+      {
+        "id": "newYear-2050",
+        "type": "newYear",
+        "date": "2050-01-01",
+        "title": "New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      }
+    ],
     "2050-01-03": [
       {
         "id": "meteor-QUA-2050",
@@ -22205,6 +23415,14 @@
       }
     ],
     "2050-01-23": [
+      {
+        "id": "chineseNewYear-2050-01-23",
+        "type": "chineseNewYear",
+        "date": "2050-01-23",
+        "title": "Chinese New Year",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
       {
         "id": "newMoon-2050-01-23",
         "type": "newMoon",
@@ -22297,6 +23515,16 @@
           "name": "Worm Moon",
           "distanceKm": 404488
         }
+      }
+    ],
+    "2050-03-09": [
+      {
+        "id": "holi-2050-03-09",
+        "type": "holi",
+        "date": "2050-03-09",
+        "title": "Holi",
+        "subtitle": "Festive fireworks",
+        "rarity": "rare"
       }
     ],
     "2050-03-20": [
@@ -22839,6 +24067,14 @@
     ],
     "2050-11-14": [
       {
+        "id": "diwali-2050-11-14",
+        "type": "diwali",
+        "date": "2050-11-14",
+        "title": "Diwali",
+        "subtitle": "Festive fireworks",
+        "rarity": "epic"
+      },
+      {
         "id": "newMoon-2050-11-14",
         "type": "newMoon",
         "date": "2050-11-14",
@@ -22968,6 +24204,16 @@
           "zhr": 10,
           "lambdaSun": 270.7
         }
+      }
+    ],
+    "2050-12-25": [
+      {
+        "id": "christmas-2050",
+        "type": "christmas",
+        "date": "2050-12-25",
+        "title": "Christmas",
+        "subtitle": "Star of Bethlehem",
+        "rarity": "common"
       }
     ],
     "2050-12-28": [

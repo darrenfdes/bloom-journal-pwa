@@ -74,6 +74,7 @@ import {
   planetForEvent,
   sunScaleForEvent,
   type EventGroup,
+  type Planet,
 } from '@/lib/garden/bloom/event-catalog';
 import { EventEffectsLayer } from '@/components/garden/bloom/EventEffectsLayer';
 import { EventStepper } from '@/components/garden/bloom/EventStepper';
@@ -173,6 +174,7 @@ export function BloomMeadow({
   latitude = 0,
   specialStar = false,
   liveSceneEffects = [],
+  livePlanet = null,
 }: {
   entries: EntryRecord[];
   preview?: boolean;
@@ -188,6 +190,8 @@ export function BloomMeadow({
   specialStar?: boolean;
   /** Scene effects for today's world events (live /garden only). */
   liveSceneEffects?: SceneEffect[];
+  /** Which planet (if any) is at opposition today, for the live bright-star look. */
+  livePlanet?: Planet | null;
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
@@ -285,6 +289,15 @@ export function BloomMeadow({
     () => (eventMode && selectedEvent ? effectsForEvent(selectedEvent) : []),
     [eventMode, selectedEvent],
   );
+  // Live garden: render today's effects, but only the night-sky ones (fireworks, Christmas
+  // star, planet) when the app is actually at dusk/night — those visuals read only after dark.
+  // Moon/sun/etc. tokens stay preview-only to keep their tuning unchanged in live mode.
+  const liveRenderedEffects = useMemo(() => {
+    if (!live) return [];
+    const atNight = phaseKey === 'night' || phaseKey === 'dusk';
+    const NIGHT_ONLY: SceneEffect[] = ['fireworks', 'christmasStar', 'brightStar'];
+    return liveSceneEffects.filter((e) => (NIGHT_ONLY.includes(e) ? atNight : false));
+  }, [live, liveSceneEffects, phaseKey]);
   const showComet =
     (eventsBrowser && eventMode && eventEffects.includes('cometArc')) ||
     (live && liveSceneEffects.includes('cometArc'));
@@ -903,6 +916,16 @@ export function BloomMeadow({
             planet={evPlanet}
             apsis={evApsis}
             moonTint={evMoonTint}
+          />
+        )}
+
+        {/* world-event visuals (live garden) — night-sky effects only, gated to dusk/night */}
+        {live && liveRenderedEffects.length > 0 && (
+          <EventEffectsLayer
+            effects={liveRenderedEffects}
+            moonPos={moonPos}
+            sunPos={sunPos}
+            planet={livePlanet}
           />
         )}
 

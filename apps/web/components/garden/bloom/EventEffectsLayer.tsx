@@ -15,6 +15,7 @@ import type { SceneEffect } from '@bloom/core/events';
 import type { MoonTint, Planet } from '@/lib/garden/bloom/event-catalog';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 import { ShootingStar, SHOOTING_STAR_KEYFRAMES, SHOOTING_STAR_ANGLE } from '@/components/garden/bloom/shooting-star-visual';
+import { FireworksCanvas } from '@/components/garden/bloom/FireworksCanvas';
 
 type Pos = { x: number; y: number };
 type SunPos = Pos & { size: number };
@@ -38,6 +39,14 @@ const MOON_GLOW: Record<string, { size: number; rgb: string; alpha: number }> = 
   moonGlowStrong: { size: 540, rgb: '255,250,225', alpha: 0.66 },
   moonGlowFaint: { size: 240, rgb: '240,238,210', alpha: 0.32 },
   moonGlowBlue: { size: 440, rgb: '172,202,255', alpha: 0.6 },
+};
+
+// Each planet at opposition sits in roughly the same patch of sky, slightly offset so a
+// viewer scanning the meadow reads them as distinct bodies rather than one fixed point.
+const PLANET_POS: Record<Planet, Pos> = {
+  Saturn: { x: 27, y: 44 },
+  Jupiter: { x: 33, y: 38 },
+  Mars: { x: 23, y: 49 },
 };
 
 export function EventEffectsLayer({
@@ -219,7 +228,7 @@ export function EventEffectsLayer({
 
       {/* ---- planet opposition (a distinct "brightest" planet per body) ---- */}
       {has('brightStar') && (
-        <div style={{ position: 'absolute', left: '27%', top: '44%', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', left: `${(planet ? PLANET_POS[planet] : { x: 27, y: 44 }).x}%`, top: `${(planet ? PLANET_POS[planet] : { x: 27, y: 44 }).y}%`, pointerEvents: 'none' }}>
           {planet === 'Saturn' ? (
             <>
               {/* pale-gold disc + a tilted ring — instantly "Saturn" */}
@@ -314,6 +323,45 @@ export function EventEffectsLayer({
             ✦
           </div>
         ))}
+
+      {/* ---- fireworks (realistic gravity/drag/trails on a full-sky canvas) ---- */}
+      {has('fireworks') && (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          <FireworksCanvas />
+        </div>
+      )}
+
+      {/* ---- Christmas star: a very bright core with subtle cross-shaped rays ---- */}
+      {has('christmasStar') && (
+        <div style={{ position: 'absolute', left: '52%', top: '17%', pointerEvents: 'none' }}>
+          {/* bright core + halo */}
+          <div
+            style={{
+              position: 'absolute', left: '50%', top: '50%', width: 16, height: 16,
+              transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#fffefb',
+              boxShadow: '0 0 24px 8px rgba(255,250,235,.98), 0 0 70px 28px rgba(255,240,205,.55), 0 0 140px 60px rgba(255,230,180,.22)',
+              animation: 'ev-glow 5s ease-in-out infinite',
+            }}
+          />
+          {/* cross rays — two crossed gradient bars, kept soft/subtle */}
+          <div
+            style={{
+              position: 'absolute', left: '50%', top: '50%', width: 190, height: 2.5,
+              transform: 'translate(-50%,-50%)',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,250,235,.55) 50%, transparent 100%)',
+              filter: 'blur(1px)', animation: 'ev-twinkle 4s ease-in-out infinite',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute', left: '50%', top: '50%', width: 2.5, height: 150,
+              transform: 'translate(-50%,-50%)',
+              background: 'linear-gradient(180deg, transparent 0%, rgba(255,250,235,.55) 50%, transparent 100%)',
+              filter: 'blur(1px)', animation: 'ev-twinkle 4s ease-in-out infinite',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
