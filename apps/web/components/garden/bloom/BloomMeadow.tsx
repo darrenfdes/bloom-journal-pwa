@@ -78,7 +78,7 @@ import {
 } from '@/lib/garden/bloom/event-catalog';
 import { EventEffectsLayer } from '@/components/garden/bloom/EventEffectsLayer';
 import { EventStepper } from '@/components/garden/bloom/EventStepper';
-import type { Rarity, SceneEffect } from '@bloom/core/events';
+import type { Rarity, SceneEffect, WorldEvent } from '@bloom/core/events';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
 
@@ -90,6 +90,14 @@ const glass: React.CSSProperties = {
   WebkitBackdropFilter: 'blur(10px)',
   border: '1px solid rgba(247,241,227,.16)',
   color: '#f7f1e3',
+};
+
+/** Glow-dot colour for the live event label, by rarity (mirrors EventStepper's fg tones). */
+const RARITY_DOT: Record<Rarity, string> = {
+  common: '#e7e4d6',
+  uncommon: '#bfe6b0',
+  rare: '#bcd2ff',
+  epic: '#ffd98a',
 };
 
 /** "2026-08-12" → "12 Aug" (year-less, timezone-safe — no Date parsing). */
@@ -175,6 +183,7 @@ export function BloomMeadow({
   specialStar = false,
   liveSceneEffects = [],
   livePlanet = null,
+  liveEvent = null,
 }: {
   entries: EntryRecord[];
   preview?: boolean;
@@ -192,6 +201,8 @@ export function BloomMeadow({
   liveSceneEffects?: SceneEffect[];
   /** Which planet (if any) is at opposition today, for the live bright-star look. */
   livePlanet?: Planet | null;
+  /** Today's headline world event (live /garden only), surfaced as a subtle named label. */
+  liveEvent?: WorldEvent | null;
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
@@ -214,6 +225,7 @@ export function BloomMeadow({
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
   const [grabbing, setGrabbing] = useState(false);
+  const [eventDetail, setEventDetail] = useState(false); // live event label: reveal its subtitle on tap
 
   /* ambient creatures (preview playground only) */
   const [bflies, setBflies] = useState<FlockState | null>(null);
@@ -1157,12 +1169,52 @@ export function BloomMeadow({
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {/* Live garden: a subtle, non-interactive hint of the next world event's date.
-              No name, no link — just the date, balancing the title on the left. Dropped
-              below the fixed SyncBadge (top-right, ~38px tall) so the two don't collide. */}
-          {live && nextEvent && (
-            <div style={{ pointerEvents: 'none', textAlign: 'right', fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)', marginTop: 'calc(var(--safe-top) + 26px)' }}>
-              Next · {fmtEventDate(nextEvent.date)}
+          {/* Live garden: name today's headline event (if any) above a subtle hint of the
+              next event's date — balancing the title on the left. The column owns the top
+              offset that drops it below the fixed SyncBadge (top-right, ~38px) so they
+              don't collide. The event name reveals its subtitle on tap when one exists. */}
+          {live && (liveEvent || nextEvent) && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, marginTop: 'calc(var(--safe-top) + 26px)' }}>
+              {liveEvent &&
+                (() => {
+                  const dot = RARITY_DOT[liveEvent.rarity];
+                  const tappable = Boolean(liveEvent.subtitle);
+                  const Name = (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 999, background: dot, boxShadow: `0 0 8px ${dot}`, flexShrink: 0 }} />
+                      <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 15, color: '#faf6e9', textShadow: '0 1px 10px rgba(15,25,35,.5)', lineHeight: 1.1 }}>
+                        {liveEvent.title}
+                      </span>
+                    </span>
+                  );
+                  return (
+                    <div style={{ textAlign: 'right' }}>
+                      {tappable ? (
+                        <button
+                          type="button"
+                          onClick={() => setEventDetail((v) => !v)}
+                          aria-expanded={eventDetail}
+                          aria-label={`${liveEvent.title} — ${liveEvent.subtitle}`}
+                          style={{ pointerEvents: 'auto', display: 'block', marginLeft: 'auto', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          {Name}
+                        </button>
+                      ) : (
+                        <div style={{ pointerEvents: 'none' }}>{Name}</div>
+                      )}
+                      {tappable && eventDetail && (
+                        <div style={{ pointerEvents: 'none', fontFamily: sans, fontSize: 10, color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)', marginTop: 3 }}>
+                          {liveEvent.subtitle}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              {nextEvent && (
+                <div style={{ pointerEvents: 'none', textAlign: 'right', fontFamily: sans, fontSize: 10.5, fontWeight: 700, letterSpacing: 2.6, textTransform: 'uppercase', color: 'rgba(250,246,233,.7)', textShadow: '0 1px 10px rgba(15,25,35,.5)' }}>
+                  Next · {fmtEventDate(nextEvent.date)}
+                </div>
+              )}
             </div>
           )}
           {/* Manual sky + weather controls (preview playground only; the live garden is

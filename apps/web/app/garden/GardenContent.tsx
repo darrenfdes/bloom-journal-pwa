@@ -83,6 +83,12 @@ export function GardenContent() {
     [dayEvents],
   );
 
+  // Today's headline event (if any), so the meadow can name what's happening.
+  const liveEvent = useMemo(
+    () => (dayEvents.length ? (primaryEvent(dayEvents) ?? null) : null),
+    [dayEvents],
+  );
+
   if (!ready) {
     return (
       <div className="flex min-h-dvh flex-1 items-center justify-center">
@@ -100,6 +106,7 @@ export function GardenContent() {
       specialStar={specialStar}
       liveSceneEffects={liveSceneEffects}
       livePlanet={livePlanet}
+      liveEvent={liveEvent}
     />
   );
 }
