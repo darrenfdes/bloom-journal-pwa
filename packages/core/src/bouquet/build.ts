@@ -6,6 +6,7 @@ import {
   BOUQUET_VERSION,
   MAX_BOUQUET_FLOWERS,
   type BouquetFlower,
+  type BouquetGreenery,
   type BouquetPayload,
 } from './types';
 
@@ -17,6 +18,8 @@ export interface BuildBouquetOptions {
   /** Sender name. */
   from?: string | null;
   note?: string | null;
+  /** Non-flower accents the sender chose to frame the tie. */
+  greenery?: BouquetGreenery[];
 }
 
 /** A null mood still needs a renderable bloom; pick the calmest default. */
@@ -57,6 +60,7 @@ export function buildBouquet(
     to: options.to ?? null,
     from: options.from ?? null,
     note: options.note ?? null,
+    greenery: options.greenery?.length ? [...options.greenery] : null,
     flowers,
   };
 }

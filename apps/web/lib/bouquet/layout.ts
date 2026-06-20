@@ -23,6 +23,21 @@ export function tiePoint(size: number): { x: number; y: number } {
 }
 
 /**
+ * Horizontal offsets for `n` greenery accents, spread symmetrically around the tie point so they
+ * frame the gather without crowding the centre stem. Returned as fractions of `size`; the caller
+ * multiplies by `size`. Shared by the live preview and the PNG builder so the two never drift.
+ */
+export function greeneryOffsets(n: number): number[] {
+  if (n <= 0) return [];
+  // Spread accents left/right of centre; the gap widens with count but stays within the cone span.
+  const SPREAD = 0.07;
+  return Array.from({ length: n }, (_, i) => {
+    const t = n === 1 ? 0 : (i - (n - 1) / 2) / Math.max(1, (n - 1) / 2);
+    return t * SPREAD;
+  });
+}
+
+/**
  * Fisher–Yates shuffle of flower ids. For two-or-more ids it guarantees a different order than the
  * input (rotates once if the shuffle happened to land on the identity), so a "reshuffle" tap always
  * visibly moves the flowers.

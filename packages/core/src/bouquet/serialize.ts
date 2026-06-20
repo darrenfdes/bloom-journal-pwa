@@ -2,10 +2,19 @@ import {
   BOUQUET_KIND,
   BOUQUET_VERSION,
   MAX_BOUQUET_FLOWERS,
+  type BouquetGreenery,
   type BouquetPayload,
 } from './types';
 
 const REJECT = 'That doesn’t look like a Bloom bouquet.';
+
+const GREENERY_KINDS: readonly BouquetGreenery[] = [
+  'reeds',
+  'sprigs',
+  'fern',
+  'babys-breath',
+  'wheat',
+];
 
 export function serializeBouquet(bouquet: BouquetPayload): string {
   return JSON.stringify(bouquet);
@@ -45,6 +54,14 @@ export function validateBouquet(raw: unknown): BouquetPayload {
       typeof g.wordCount !== 'number'
     ) {
       throw new Error(REJECT);
+    }
+  }
+  if (raw.greenery !== undefined && raw.greenery !== null) {
+    if (!Array.isArray(raw.greenery)) throw new Error(REJECT);
+    for (const g of raw.greenery) {
+      if (typeof g !== 'string' || !GREENERY_KINDS.includes(g as BouquetGreenery)) {
+        throw new Error(REJECT);
+      }
     }
   }
   return raw as unknown as BouquetPayload;

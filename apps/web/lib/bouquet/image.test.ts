@@ -33,6 +33,10 @@ function countFlowers(svg: string): number {
   return (svg.match(/data-flower/g) ?? []).length;
 }
 
+function countGreenery(svg: string): number {
+  return (svg.match(/data-greenery/g) ?? []).length;
+}
+
 describe('bouquetSvgMarkup', () => {
   it('produces a standalone svg the requested width', () => {
     const { flowers } = buildBouquet([entry()]);
@@ -97,6 +101,39 @@ describe('bouquetSvgMarkup', () => {
   it('omits the note text block when there is no note', () => {
     const { flowers } = buildBouquet([entry()]);
     expect(bouquetSvgMarkup(flowers, {})).not.toContain('</text>');
+  });
+
+  it('embeds one greenery accent per chosen kind', () => {
+    const { flowers } = buildBouquet([entry()]);
+    const svg = bouquetSvgMarkup(flowers, { greenery: ['reeds', 'wheat'] });
+    expect(countGreenery(svg)).toBe(2);
+  });
+
+  it('caps greenery at three accents to keep the tie balanced', () => {
+    const { flowers } = buildBouquet([entry()]);
+    const svg = bouquetSvgMarkup(flowers, {
+      greenery: ['reeds', 'wheat', 'fern', 'sprigs', 'babys-breath'],
+    });
+    expect(countGreenery(svg)).toBe(3);
+  });
+
+  it('layers greenery behind the flowers', () => {
+    const { flowers } = buildBouquet([entry()]);
+    const svg = bouquetSvgMarkup(flowers, { greenery: ['reeds'] });
+    expect(svg.indexOf('data-greenery')).toBeLessThan(svg.indexOf('data-flower'));
+  });
+
+  it('renders no greenery layer when none are chosen', () => {
+    const { flowers } = buildBouquet([entry()]);
+    expect(bouquetSvgMarkup(flowers, {})).not.toContain('data-greenery');
+  });
+
+  it('stays well-formed XML with greenery accents (the image rasterises as strict XML)', () => {
+    const { flowers } = buildBouquet([entry()]);
+    const svg = bouquetSvgMarkup(flowers, { greenery: ['reeds', 'babys-breath', 'wheat'] });
+    const doc = new DOMParser().parseFromString(svg, 'application/xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    expect(doc.querySelectorAll('[data-greenery]')).toHaveLength(3);
   });
 });
 

@@ -93,6 +93,21 @@ describe('buildBouquet', () => {
     expect(bouquet.from).toBeNull();
     expect(bouquet.note).toBeNull();
   });
+
+  it('carries chosen greenery accents through', () => {
+    const bouquet = buildBouquet([entry()], { greenery: ['reeds', 'wheat'] });
+    expect(bouquet.greenery).toEqual(['reeds', 'wheat']);
+  });
+
+  it('defaults greenery to null when none are chosen', () => {
+    const bouquet = buildBouquet([entry()]);
+    expect(bouquet.greenery).toBeNull();
+  });
+
+  it('drops an empty greenery list to null', () => {
+    const bouquet = buildBouquet([entry()], { greenery: [] });
+    expect(bouquet.greenery).toBeNull();
+  });
 });
 
 describe('serializeBouquet / parseBouquet', () => {
@@ -125,6 +140,33 @@ describe('serializeBouquet / parseBouquet', () => {
   it('rejects more than 5 flowers', () => {
     const one = buildBouquet([entry()]);
     const bad = JSON.stringify({ ...one, flowers: Array(6).fill(one.flowers[0]) });
+    expect(() => parseBouquet(bad)).toThrow(/bouquet/i);
+  });
+
+  it('round-trips greenery accents', () => {
+    const original = buildBouquet([entry()], { greenery: ['fern', 'babys-breath'] });
+    const restored = parseBouquet(serializeBouquet(original));
+    expect(restored.greenery).toEqual(['fern', 'babys-breath']);
+  });
+
+  it('accepts a payload without greenery (backwards compatible)', () => {
+    const one = buildBouquet([entry()]);
+    const { greenery, ...withoutGreenery } = one;
+    void greenery;
+    const restored = parseBouquet(JSON.stringify(withoutGreenery));
+    expect(restored.flowers).toHaveLength(1);
+    expect(restored.greenery).toBeUndefined();
+  });
+
+  it('rejects an unknown greenery kind', () => {
+    const one = buildBouquet([entry()]);
+    const bad = JSON.stringify({ ...one, greenery: ['kudzu'] });
+    expect(() => parseBouquet(bad)).toThrow(/bouquet/i);
+  });
+
+  it('rejects greenery that is not an array', () => {
+    const one = buildBouquet([entry()]);
+    const bad = JSON.stringify({ ...one, greenery: 'reeds' });
     expect(() => parseBouquet(bad)).toThrow(/bouquet/i);
   });
 
