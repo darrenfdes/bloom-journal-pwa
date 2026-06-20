@@ -84,38 +84,43 @@ function ribbonTail(tx: number, ty: number, size: number, dir: 1 | -1): string {
   ].join(' ');
 }
 
-type SvgOpts = { size?: number; from?: string | null; note?: string | null };
+type SvgOpts = { size?: number; to?: string | null; from?: string | null; note?: string | null };
 
 /**
  * Build a fully self-contained SVG of a tied bouquet: warm background, paper wrap, the flowers
  * (rendered straight from their genomes via {@link Flower}, so the image matches the live preview),
- * a ribbon, and an optional footer with as much of the note as fits plus a sender caption. No
- * external CSS — safe to rasterise to PNG or save as-is.
+ * a ribbon, and an optional footer that reads like a gift card — "To …", as much of the note as
+ * fits, then "— from …". No external CSS — safe to rasterise to PNG or save as-is.
  */
 export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): string {
   const size = opts.size ?? 600;
+  const to = opts.to?.trim() || null;
   const from = opts.from?.trim() || null;
   const note = opts.note?.trim() || null;
   const tie = tiePoint(size);
   const flowerSize = size * FLOWER_SIZE_RATIO;
   const W = size;
 
-  // Footer beneath the bouquet: note lines (word-wrapped) then the sender caption. Roughly two
-  // characters fit per `noteFont`'s width, hence the `/ (noteFont * 0.5)` estimate.
+  // Footer rows beneath the bouquet, top→bottom: recipient greeting, the word-wrapped note, then
+  // the sender. Roughly two characters fit per `noteFont`'s width — hence `/ (noteFont * 0.5)`.
+  const toFont = size * 0.052;
   const noteFont = size * 0.045;
-  const noteLeading = noteFont * 1.34;
   const fromFont = size * 0.044;
   const maxChars = Math.max(10, Math.floor((W * 0.84) / (noteFont * 0.5)));
   const noteLines = note ? wrapText(note, maxChars, MAX_NOTE_LINES) : [];
-  const hasNote = noteLines.length > 0;
-  const hasFooter = hasNote || Boolean(from);
 
+  const rows: Array<{ text: string; font: number; color: string }> = [];
+  if (to) rows.push({ text: `To ${to},`, font: toFont, color: COLOR.note });
+  for (const line of noteLines) rows.push({ text: line, font: noteFont, color: COLOR.note });
+  if (from) rows.push({ text: `— from ${from}`, font: fromFont, color: COLOR.caption });
+
+  const hasFooter = rows.length > 0;
+  const LINE_LEADING = 1.5;
   const bouquetBottom = tie.y + size * TAIL_DROP + size * 0.03;
-  const topPad = size * 0.055;
-  const noteBlock = hasNote ? noteLines.length * noteLeading : 0;
-  const gap = hasNote && from ? size * 0.025 : 0;
-  const fromBlock = from ? fromFont * 1.25 : 0;
-  const footerH = hasFooter ? topPad + noteBlock + gap + fromBlock + size * 0.05 : 0;
+  const topPad = size * 0.06;
+  const footerH = hasFooter
+    ? topPad + rows.reduce((acc, r) => acc + r.font * LINE_LEADING, 0) + size * 0.03
+    : 0;
   const H = Math.round(bouquetBottom + footerH);
 
   const angles = flowerAngles(flowers.length);
@@ -158,26 +163,18 @@ export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): 
     `<path d="${ribbonTail(tie.x, tie.y, size, 1)}" fill="${COLOR.ribbonDark}" />`;
   const knot = `<ellipse cx="${tie.x}" cy="${tie.y.toFixed(1)}" rx="${(size * 0.05).toFixed(1)}" ry="${(size * 0.035).toFixed(1)}" fill="${COLOR.ribbon}" />`;
 
-  const footerParts: string[] = [];
-  if (hasNote) {
-    noteLines.forEach((line, i) => {
-      const y = bouquetBottom + topPad + noteFont + i * noteLeading;
-      footerParts.push(
+  let cursor = bouquetBottom + topPad;
+  const footer = rows
+    .map((r) => {
+      const y = cursor + r.font;
+      cursor += r.font * LINE_LEADING;
+      return (
         `<text x="${W / 2}" y="${y.toFixed(1)}" text-anchor="middle" ` +
-          `font-family="Georgia, 'Times New Roman', serif" font-size="${noteFont.toFixed(1)}" ` +
-          `font-style="italic" fill="${COLOR.note}">${escapeXml(line)}</text>`,
+        `font-family="Georgia, 'Times New Roman', serif" font-size="${r.font.toFixed(1)}" ` +
+        `font-style="italic" fill="${r.color}">${escapeXml(r.text)}</text>`
       );
-    });
-  }
-  if (from) {
-    const y = bouquetBottom + topPad + noteBlock + gap + fromFont;
-    footerParts.push(
-      `<text x="${W / 2}" y="${y.toFixed(1)}" text-anchor="middle" ` +
-        `font-family="Georgia, 'Times New Roman', serif" font-size="${fromFont.toFixed(1)}" ` +
-        `font-style="italic" fill="${COLOR.caption}">— from ${escapeXml(from)}</text>`,
-    );
-  }
-  const footer = footerParts.join('');
+    })
+    .join('');
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
@@ -205,7 +202,12 @@ export async function downloadBouquetPng(
 ): Promise<void> {
   const size = opts.size ?? 600;
   const scale = opts.scale ?? 2;
-  const svg = bouquetSvgMarkup(payload.flowers, { size, from: payload.from, note: payload.note });
+  const svg = bouquetSvgMarkup(payload.flowers, {
+    size,
+    to: payload.to,
+    from: payload.from,
+    note: payload.note,
+  });
 
   const match = svg.match(/viewBox="0 0 (\d+) (\d+)"/);
   const W = match ? Number(match[1]) : size;

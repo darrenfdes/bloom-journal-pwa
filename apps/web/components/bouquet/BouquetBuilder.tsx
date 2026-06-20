@@ -31,6 +31,7 @@ type Props = {
 export function BouquetBuilder({ entries, canShareLink }: Props) {
   const [selection, setSelection] = useState<SelectedFlower[]>([]);
   const [order, setOrder] = useState<string[]>([]);
+  const [to, setTo] = useState('');
   const [from, setFrom] = useState('');
   const [note, setNote] = useState('');
   const [sharing, setSharing] = useState(false);
@@ -74,6 +75,7 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
   const makePayload = () =>
     buildBouquet(selectedEntries, {
       includeTextFor,
+      to: to.trim() || null,
       from: from.trim() || null,
       note: note.trim() || null,
     });
@@ -122,6 +124,18 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
       </section>
 
       <section className="space-y-3">
+        <div className="space-y-1">
+          <label htmlFor="bouquet-to" className="text-sm text-ink-soft">
+            To (optional)
+          </label>
+          <Input
+            id="bouquet-to"
+            value={to}
+            maxLength={60}
+            onChange={(e) => setTo(e.target.value)}
+            placeholder="who it’s for…"
+          />
+        </div>
         <div className="space-y-1">
           <label htmlFor="bouquet-from" className="text-sm text-ink-soft">
             Your name (optional)

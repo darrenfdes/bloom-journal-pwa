@@ -12,6 +12,9 @@ import {
 export interface BuildBouquetOptions {
   /** Entry ids whose words the sender chose to include; others stay visual-only. */
   includeTextFor?: Iterable<string>;
+  /** Recipient name. */
+  to?: string | null;
+  /** Sender name. */
   from?: string | null;
   note?: string | null;
 }
@@ -51,6 +54,7 @@ export function buildBouquet(
     version: BOUQUET_VERSION,
     id: createId(),
     createdAt: new Date().toISOString(),
+    to: options.to ?? null,
     from: options.from ?? null,
     note: options.note ?? null,
     flowers,

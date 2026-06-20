@@ -19,6 +19,9 @@ export interface BouquetPayload {
   version: typeof BOUQUET_VERSION;
   id: string;
   createdAt: string;
+  /** Who the bouquet is for (recipient). */
+  to?: string | null;
+  /** Who sent it (sender). */
   from?: string | null;
   note?: string | null;
   flowers: BouquetFlower[];

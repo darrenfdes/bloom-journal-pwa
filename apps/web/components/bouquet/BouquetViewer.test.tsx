@@ -42,11 +42,12 @@ describe('BouquetViewer', () => {
     expect(screen.getByText(/couldn’t find|could not be found|not be found/i)).toBeInTheDocument();
   });
 
-  it('renders the arrangement, note, and from name when ready', () => {
-    const payload = buildBouquet([entry()], { from: 'Mara', note: 'thinking of you' });
+  it('renders the arrangement, recipient, note, and from name when ready', () => {
+    const payload = buildBouquet([entry()], { to: 'Sarah', from: 'Mara', note: 'thinking of you' });
     render(<BouquetViewer state={{ status: 'ready', payload }} />);
 
     expect(screen.getByRole('img')).toBeInTheDocument();
+    expect(screen.getByText(/To Sarah/)).toBeInTheDocument();
     expect(screen.getByText('thinking of you')).toBeInTheDocument();
     expect(screen.getByText(/Mara/)).toBeInTheDocument();
   });

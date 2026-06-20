@@ -45,6 +45,12 @@ describe('BouquetBuilder', () => {
     expect(image).toBeEnabled();
   });
 
+  it('offers a recipient field alongside the sender name', () => {
+    render(<BouquetBuilder entries={[entry({ id: 'a' })]} canShareLink={false} />);
+    expect(screen.getByLabelText(/^to/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
+  });
+
   it('enables reshuffle only once two or more flowers are gathered', async () => {
     const user = userEvent.setup();
     render(

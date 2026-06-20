@@ -80,18 +80,27 @@ describe('buildBouquet', () => {
     expect(typeof bouquet.flowers[0].genome.bloomMood).toBe('string');
   });
 
-  it('carries an optional note and from name', () => {
-    const bouquet = buildBouquet([entry()], { from: 'Mara', note: 'thinking of you' });
+  it('carries optional to/from names and a note', () => {
+    const bouquet = buildBouquet([entry()], { to: 'Sarah', from: 'Mara', note: 'thinking of you' });
+    expect(bouquet.to).toBe('Sarah');
     expect(bouquet.from).toBe('Mara');
     expect(bouquet.note).toBe('thinking of you');
+  });
+
+  it('defaults to/from/note to null when omitted', () => {
+    const bouquet = buildBouquet([entry()]);
+    expect(bouquet.to).toBeNull();
+    expect(bouquet.from).toBeNull();
+    expect(bouquet.note).toBeNull();
   });
 });
 
 describe('serializeBouquet / parseBouquet', () => {
   it('round-trips a built bouquet', () => {
-    const original = buildBouquet([entry()], { from: 'Mara', note: 'hi' });
+    const original = buildBouquet([entry()], { to: 'Sarah', from: 'Mara', note: 'hi' });
     const restored = parseBouquet(serializeBouquet(original));
     expect(restored).toEqual(original);
+    expect(restored.to).toBe('Sarah');
   });
 
   it('rejects non-JSON', () => {
