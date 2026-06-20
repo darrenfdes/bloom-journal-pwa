@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { BackLink } from '@/components/layout/BackLink';
 import { useIsAdmin } from '@/lib/auth/useIsAdmin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -124,6 +125,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
+      <BackLink href="/garden" label="Garden" />
       <header>
         <h1 className="font-display text-3xl font-semibold text-ink">Settings</h1>
         <p className="mt-2 text-sm text-ink-muted">
@@ -197,6 +199,21 @@ export default function SettingsPage() {
           />
           <Button variant="outline" onClick={() => void handleSearch()}>
             Go
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-parchment p-4">
+        <h2 className="font-display text-lg font-medium text-ink">Bouquets</h2>
+        <p className="text-sm text-ink-soft">
+          Gather a handful of your flowers into a bouquet to share, or open one a friend sent you.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/bouquet/new">Make a bouquet</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/bouquets">My bouquets</Link>
           </Button>
         </div>
       </section>
