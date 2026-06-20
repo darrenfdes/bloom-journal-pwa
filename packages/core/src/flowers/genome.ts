@@ -4,6 +4,7 @@ import { MOOD_COLORS } from '../constants/moods';
 import { foliageDensityForWordCount, pickFoliageVariant } from '../flowers/foliage';
 import { appMoodToBloomMood } from '../flowers/moodBloom';
 import { SeededRNG, hashString } from '../flowers/seeded-rng';
+import { matchesAny } from '../sentiment/text';
 import type {
   EntryRecord,
   FlowerGenome,
@@ -33,8 +34,7 @@ const TRIPLE_BANG = /!{3,}/;
 
 function matchesEcstaticContent(content: string): boolean {
   if (TRIPLE_BANG.test(content)) return true;
-  const lower = content.toLowerCase();
-  return ECSTATIC_KEYWORDS.some((kw) => lower.includes(kw));
+  return matchesAny(content, ECSTATIC_KEYWORDS);
 }
 
 /**
