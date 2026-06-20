@@ -210,8 +210,9 @@ function Reeds({ ns, seed, cx, baseY }: Sub) {
     );
   }
 
+  const scale = `translate(${f1(cx)} ${f1(baseY)}) scale(1.6 1.2) translate(${f1(-cx)} ${f1(-baseY)})`;
   return (
-    <g>
+    <g transform={scale}>
       <defs>
         <linearGradient id={blade} gradientUnits="userSpaceOnUse" x1={cx} y1={baseY} x2={cx} y2={30}>
           <stop offset="0%" stopColor={FOLIAGE.deep} />
@@ -309,8 +310,9 @@ function Sprigs({ ns, seed, cx, baseY }: Sub) {
     );
   });
 
+  const scale = `translate(${f1(cx)} ${f1(baseY)}) scale(1.6 1.2) translate(${f1(-cx)} ${f1(-baseY)})`;
   return (
-    <g>
+    <g transform={scale}>
       <defs>
         <linearGradient id={leaf} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor={EUCALYPTUS.light} />
@@ -373,8 +375,9 @@ function Fern({ ns, seed, cx, baseY }: Sub) {
     }
   });
 
+  const scale = `translate(${f1(cx)} ${f1(baseY)}) scale(1.6 1.2) translate(${f1(-cx)} ${f1(-baseY)})`;
   return (
-    <g>
+    <g transform={scale}>
       <defs>
         <linearGradient id={frond} gradientUnits="userSpaceOnUse" x1={cx} y1={baseY} x2={cx} y2={28}>
           <stop offset="0%" stopColor={FOLIAGE.deep} />
@@ -464,7 +467,8 @@ function BabysBreath({ seed, cx, baseY }: Omit<Sub, 'ns'>) {
     });
   }
 
-  return <g>{els}</g>;
+  const scale = `translate(${f1(cx)} ${f1(baseY)}) scale(1.6 1.2) translate(${f1(-cx)} ${f1(-baseY)})`;
+  return <g transform={scale}>{els}</g>;
 }
 
 /* ------------------------------ Wheat ------------------------------ */
@@ -559,8 +563,9 @@ function Wheat({ ns, seed, cx, baseY }: Sub) {
     }
   });
 
+  const scale = `translate(${f1(cx)} ${f1(baseY)}) scale(1.6 1.2) translate(${f1(-cx)} ${f1(-baseY)})`;
   return (
-    <g>
+    <g transform={scale}>
       <defs>
         <linearGradient id={grain} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor={WHEAT.light} />
