@@ -10,6 +10,10 @@ export type EventType =
   | "earthApsis" | "planetOpposition"
   | "meteorShower" | "comet"
   | "fridayThe13th" | "leapDay"
+  // festive holidays (lunisolar dates curated in holidays.seed.json):
+  | "newYear" | "chineseNewYear" | "diwali" | "holi" | "christmas"
+  // curated one-off fireworks (fireworks-oneoffs.seed.json):
+  | "fireworks"
   // runtime-only (never in events.json):
   | "birthday" | "appAnniversary";
 

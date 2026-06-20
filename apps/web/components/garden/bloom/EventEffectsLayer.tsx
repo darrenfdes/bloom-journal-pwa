@@ -15,6 +15,7 @@ import type { SceneEffect } from '@bloom/core/events';
 import type { MoonTint, Planet } from '@/lib/garden/bloom/event-catalog';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 import { ShootingStar, SHOOTING_STAR_KEYFRAMES, SHOOTING_STAR_ANGLE } from '@/components/garden/bloom/shooting-star-visual';
+import { FireworksCanvas } from '@/components/garden/bloom/FireworksCanvas';
 
 type Pos = { x: number; y: number };
 type SunPos = Pos & { size: number };
@@ -38,6 +39,14 @@ const MOON_GLOW: Record<string, { size: number; rgb: string; alpha: number }> = 
   moonGlowStrong: { size: 540, rgb: '255,250,225', alpha: 0.66 },
   moonGlowFaint: { size: 240, rgb: '240,238,210', alpha: 0.32 },
   moonGlowBlue: { size: 440, rgb: '172,202,255', alpha: 0.6 },
+};
+
+// Each planet at opposition sits in roughly the same patch of sky, slightly offset so a
+// viewer scanning the meadow reads them as distinct bodies rather than one fixed point.
+const PLANET_POS: Record<Planet, Pos> = {
+  Saturn: { x: 27, y: 44 },
+  Jupiter: { x: 33, y: 38 },
+  Mars: { x: 23, y: 49 },
 };
 
 export function EventEffectsLayer({
@@ -219,7 +228,7 @@ export function EventEffectsLayer({
 
       {/* ---- planet opposition (a distinct "brightest" planet per body) ---- */}
       {has('brightStar') && (
-        <div style={{ position: 'absolute', left: '27%', top: '44%', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', left: `${(planet ? PLANET_POS[planet] : { x: 27, y: 44 }).x}%`, top: `${(planet ? PLANET_POS[planet] : { x: 27, y: 44 }).y}%`, pointerEvents: 'none' }}>
           {planet === 'Saturn' ? (
             <>
               {/* pale-gold disc + a tilted ring — instantly "Saturn" */}
@@ -235,7 +244,6 @@ export function EventEffectsLayer({
                   position: 'absolute', left: '50%', top: '50%', width: 8, height: 8,
                   transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#ecd9a6',
                   boxShadow: '0 0 12px 4px rgba(232,214,158,.9), 0 0 30px 10px rgba(220,196,120,.35)',
-                  animation: 'ev-twinkle 3s ease-in-out infinite',
                 }}
               />
             </>
@@ -249,7 +257,6 @@ export function EventEffectsLayer({
                   position: 'absolute', left: '50%', top: '50%', width: 11, height: 11,
                   transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#fff6e0',
                   boxShadow: '0 0 18px 6px rgba(255,248,224,.98), 0 0 52px 20px rgba(240,228,190,.5)',
-                  animation: 'ev-twinkle 2.4s ease-in-out infinite',
                 }}
               />
             </>
@@ -259,7 +266,6 @@ export function EventEffectsLayer({
                 position: 'absolute', left: '50%', top: '50%', width: 7, height: 7,
                 transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#ff8a5c',
                 boxShadow: '0 0 13px 4px rgba(255,120,80,.92), 0 0 34px 12px rgba(220,90,60,.4)',
-                animation: 'ev-twinkle 2.8s ease-in-out infinite',
               }}
             />
           ) : (
@@ -268,7 +274,6 @@ export function EventEffectsLayer({
                 position: 'absolute', left: '50%', top: '50%', width: 8, height: 8,
                 transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#fffdf2',
                 boxShadow: '0 0 14px 5px rgba(255,250,220,.95), 0 0 44px 16px rgba(200,220,255,.4)',
-                animation: 'ev-twinkle 2.6s ease-in-out infinite',
               }}
             />
           )}
@@ -314,6 +319,51 @@ export function EventEffectsLayer({
             ✦
           </div>
         ))}
+
+      {/* ---- fireworks (realistic gravity/drag/trails on a full-sky canvas) ---- */}
+      {has('fireworks') && (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          <FireworksCanvas />
+        </div>
+      )}
+
+      {/* ---- Christmas star: a very bright core with subtle cross-shaped rays ---- */}
+      {has('christmasStar') && (
+        <div
+          style={{
+            // Sized box so the core and both rays share one true center point. The core's
+            // ev-glow animation scales via transform, which would fight a translate-based
+            // center; anchoring everything in a fixed box keeps them concentric at all times.
+            position: 'absolute', left: 'calc(52% - 95px)', top: 'calc(17% - 75px)',
+            width: 190, height: 150, pointerEvents: 'none',
+          }}
+        >
+          {/* cross rays — two crossed gradient bars, kept soft/subtle, centered in the box */}
+          <div
+            style={{
+              position: 'absolute', left: 0, top: 'calc(50% - 1.25px)', width: 190, height: 2.5,
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,250,235,.55) 50%, transparent 100%)',
+              filter: 'blur(1px)', animation: 'ev-twinkle 4s ease-in-out infinite',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute', top: 0, left: 'calc(50% - 1.25px)', width: 2.5, height: 150,
+              background: 'linear-gradient(180deg, transparent 0%, rgba(255,250,235,.55) 50%, transparent 100%)',
+              filter: 'blur(1px)', animation: 'ev-twinkle 4s ease-in-out infinite',
+            }}
+          />
+          {/* bright core + halo — centered, pulses gently via ev-glow (scale only) */}
+          <div
+            style={{
+              position: 'absolute', left: 'calc(50% - 8px)', top: 'calc(50% - 8px)', width: 16, height: 16,
+              borderRadius: '50%', background: '#fffefb',
+              boxShadow: '0 0 24px 8px rgba(255,250,235,.98), 0 0 70px 28px rgba(255,240,205,.55), 0 0 140px 60px rgba(255,230,180,.22)',
+              animation: 'ev-glow 5s ease-in-out infinite',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
