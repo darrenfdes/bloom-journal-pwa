@@ -32,6 +32,7 @@ export const EVENT_GROUPS = {
   Seasons: ['solstice', 'equinox', 'seasonTransition', 'crossQuarter', 'solarTerm'],
   Planets: ['planetOpposition', 'earthApsis'],
   Calendar: ['fridayThe13th', 'leapDay'],
+  Festivities: ['newYear', 'chineseNewYear', 'diwali', 'holi', 'christmas', 'fireworks'],
 } as const satisfies Record<string, readonly EventType[]>;
 
 export type EventGroup = keyof typeof EVENT_GROUPS;
@@ -79,6 +80,12 @@ const TYPE_LABELS: Record<EventType, string> = {
   comet: 'Comet',
   fridayThe13th: 'Friday the 13th',
   leapDay: 'Leap day',
+  newYear: 'New Year',
+  chineseNewYear: 'Chinese New Year',
+  diwali: 'Diwali',
+  holi: 'Holi',
+  christmas: 'Christmas',
+  fireworks: 'Fireworks',
   birthday: 'Birthday',
   appAnniversary: 'Anniversary',
 };
