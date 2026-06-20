@@ -8,7 +8,7 @@ export type BouquetGreeneryMeta = {
 
 /**
  * Non-flower accents the sender can add to frame a bouquet's tie. Three reuse the rendered foliage
- * styles; two (baby's breath, wheat) are bouquet-only. Shown as multi-select chips in the builder.
+ * styles; two (baby's breath, wheat) are bouquet-only. Shown as single-select chips in the builder.
  */
 export const BOUQUET_GREENERY: BouquetGreeneryMeta[] = [
   { id: 'reeds', label: 'Reeds', description: 'Tall slender blades' },
@@ -17,6 +17,3 @@ export const BOUQUET_GREENERY: BouquetGreeneryMeta[] = [
   { id: 'babys-breath', label: "Baby's breath", description: 'Clusters of tiny white blossoms' },
   { id: 'wheat', label: 'Wheat', description: 'Golden grain stalks' },
 ];
-
-/** Max accents per bouquet so the tie stays balanced, not crowded. */
-export const MAX_BOUQUET_GREENERY = 3;

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { buildBouquet, MAX_BOUQUET_FLOWERS, type BouquetGreenery, type EntryRecord } from '@bloom/core';
 
-import { BOUQUET_GREENERY, MAX_BOUQUET_GREENERY } from '@/lib/constants/bouquetGreenery';
+import { BOUQUET_GREENERY } from '@/lib/constants/bouquetGreenery';
 import { downloadBouquetFile } from '@/lib/bouquet/file';
 import { downloadBouquetPng } from '@/lib/bouquet/image';
 import { shuffleOrder } from '@/lib/bouquet/layout';
@@ -69,14 +69,9 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
   const hasSelection = selectedEntries.length > 0;
   const canReshuffle = selectedEntries.length > 1;
 
-  const toggleGreenery = (kind: BouquetGreenery) => {
-    setGreenery((prev) =>
-      prev.includes(kind)
-        ? prev.filter((g) => g !== kind)
-        : prev.length >= MAX_BOUQUET_GREENERY
-          ? prev
-          : [...prev, kind],
-    );
+  // One accent at a time: tapping the selected chip clears it, tapping another replaces it.
+  const selectGreenery = (kind: BouquetGreenery) => {
+    setGreenery((prev) => (prev[0] === kind ? [] : [kind]));
   };
 
   const previewFlowers = useMemo(
@@ -139,19 +134,17 @@ export function BouquetBuilder({ entries, canShareLink }: Props) {
       <section className="space-y-2">
         <h2 className="font-display text-lg text-ink">Frame it</h2>
         <p className="text-sm text-ink-muted">
-          Add up to {MAX_BOUQUET_GREENERY} touches of greenery and shoots around the tie.
+          Add a single touch of greenery and shoots around the tie.
         </p>
         <div className="flex flex-wrap gap-2">
           {BOUQUET_GREENERY.map((g) => {
-            const selected = greenery.includes(g.id);
-            const disabled = !selected && greenery.length >= MAX_BOUQUET_GREENERY;
+            const selected = greenery[0] === g.id;
             return (
               <button
                 key={g.id}
                 type="button"
-                disabled={disabled}
-                onClick={() => toggleGreenery(g.id)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 ${
+                onClick={() => selectGreenery(g.id)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] ${
                   selected
                     ? 'border-sage bg-sage text-cream shadow-[0_2px_12px_rgba(143,168,138,0.45)]'
                     : 'border-parchment bg-cream text-ink hover:bg-parchment/60'
