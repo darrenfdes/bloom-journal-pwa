@@ -70,6 +70,14 @@ describe('bouquetSvgMarkup', () => {
     expect(bouquetSvgMarkup(flowers, { from: null })).not.toContain('</text>');
   });
 
+  it('addresses the card to a recipient when given', () => {
+    const { flowers } = buildBouquet([entry()]);
+    const svg = bouquetSvgMarkup(flowers, { to: 'Sarah' });
+    expect(svg).toContain('To Sarah');
+    expect(svg).toContain('</text>');
+    expect(bouquetSvgMarkup(flowers, { to: null })).not.toContain('</text>');
+  });
+
   it('prints as much of the note as fits', () => {
     const { flowers } = buildBouquet([entry()]);
     const svg = bouquetSvgMarkup(flowers, { note: 'Thinking of you today' });

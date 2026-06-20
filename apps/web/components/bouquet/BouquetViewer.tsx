@@ -67,6 +67,8 @@ export function BouquetViewer({ state, onKeep, kept = false, keeping = false }: 
     <div className="flex flex-col items-center gap-6">
       <BouquetArrangement flowers={payload.flowers} size={320} />
 
+      {payload.to ? <p className="font-display text-lg text-ink">To {payload.to}</p> : null}
+
       {payload.from ? <p className="text-sm text-ink-soft">from {payload.from}</p> : null}
 
       {payload.note ? (
