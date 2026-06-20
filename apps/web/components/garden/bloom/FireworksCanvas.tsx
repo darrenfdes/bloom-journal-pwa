@@ -142,12 +142,10 @@ export function FireworksCanvas() {
     let last = performance.now();
 
     function drawFrame(staticFrame = false) {
-      // Motion-blur fade: ERASE a little alpha each frame so old sparks streak and decay,
-      // WITHOUT painting an opaque backdrop. This keeps the canvas transparent so the real
-      // sky gradient (and the meadow/hills above this layer) stay visible behind the sparks.
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0,0,0,0.22)';
-      ctx.fillRect(0, 0, W, H);
+      // Fully clear each frame so sparks render crisp with no trailing streaks. clearRect
+      // keeps the canvas transparent, so the real sky and meadow show through behind them.
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, W, H);
 
       // Lighter blend makes overlapping sparks glow additively, like real fireworks.
       ctx.globalCompositeOperation = 'lighter';
