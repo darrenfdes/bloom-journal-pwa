@@ -1,6 +1,7 @@
 export * from './types';
 export * from './sync';
 export * from './id';
+export * from './bouquet';
 export * from './constants/moods';
 export * from './constants/prompts';
 export * from './flowers/foliage';
