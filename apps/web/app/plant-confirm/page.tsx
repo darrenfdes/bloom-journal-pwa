@@ -70,6 +70,16 @@ export default function PlantConfirmPage() {
   const moodLabel = previewEntry ? getMood(previewEntry.mood)?.label ?? previewEntry.mood : null;
   const genome = previewEntry ? buildFlowerGenome({ ...previewEntry, mood: previewEntry.mood! }) : null;
 
+  // Return to the editor without losing what was typed: restore the pending
+  // draft into the shared /write draft, then navigate there. Works whether the
+  // entry came from /write or the QuickWrite modal (which clears its own draft
+  // on plant) — `pendingPlant` is the source of truth either way.
+  const keepEditing = () => {
+    if (pending) resetDraft(pending);
+    setPendingPlant(null);
+    router.replace('/write');
+  };
+
   const confirmPlant = async () => {
     if (planting || !pending) return;
     setPlanting(true);
@@ -160,7 +170,7 @@ export default function PlantConfirmPage() {
         <Button size="lg" disabled={planting} onClick={() => void confirmPlant()}>
           {planting ? 'Planting…' : 'Plant this memory'}
         </Button>
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={keepEditing}>
           Keep editing
         </Button>
       </div>

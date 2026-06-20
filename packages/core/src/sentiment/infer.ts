@@ -1,8 +1,40 @@
 import type { Mood, Sentiment } from '../types';
-import { countMatches } from './text';
+import { countMatches, matchesAny } from './text';
 
 /** Moods that text can be inferred into (the eight pickable moods). */
 type InferableMood = Exclude<Mood, 'ecstatic'>;
+
+/**
+ * Phrases that escalate an entry into the `ecstatic` mood — the hidden,
+ * easter-egg-only mood that powers the pumpkin (see `resolvePumpkinTrigger`).
+ * Matched whole-word/phrase and negation-aware via {@link matchesAny}. `!!!`
+ * is intentionally NOT in this list: it only counts toward the pumpkin once a
+ * keyword already made the entry read happy (so "so stressed!!!" stays anxious).
+ */
+export const ECSTATIC_KEYWORDS = [
+  'extremely happy',
+  'really happy',
+  'so excited',
+  'so happy',
+  'ecstatic',
+  'thrilled',
+  'elated',
+  'overjoyed',
+  'over the moon',
+  'on cloud nine',
+];
+
+const TRIPLE_BANG = /!{3,}/;
+
+/** Keyword-only ecstatic detection (negation-aware), excluding bare `!!!`. */
+export function matchesEcstaticKeywords(content: string): boolean {
+  return matchesAny(content, ECSTATIC_KEYWORDS);
+}
+
+/** Ecstatic by keyword OR `!!!`. Used by the pumpkin trigger. */
+export function matchesEcstaticContent(content: string): boolean {
+  return TRIPLE_BANG.test(content) || matchesEcstaticKeywords(content);
+}
 
 /**
  * Per-mood keyword lexicon. Matched whole-word (and whole-phrase) and
@@ -89,10 +121,12 @@ function moodToSentiment(mood: Mood, hadSignal: boolean): Sentiment {
 
 /** Infer the most fitting mood from entry text. Falls back to `peaceful`. */
 export function inferMood(text: string): Mood {
+  if (matchesEcstaticKeywords(text)) return 'ecstatic';
   return topMood(text).mood;
 }
 
 export function inferSentiment(text: string): Sentiment {
+  if (matchesEcstaticKeywords(text)) return 'positive';
   const { mood, score } = topMood(text);
   return moodToSentiment(mood, score > 0);
 }
@@ -114,6 +148,9 @@ export function resolveMood(
 ): { mood: Mood; inferredSentiment: Sentiment | null } {
   if (explicitMood) {
     return { mood: explicitMood, inferredSentiment: null };
+  }
+  if (matchesEcstaticKeywords(content)) {
+    return { mood: 'ecstatic', inferredSentiment: 'positive' };
   }
   const { mood, score } = topMood(content);
   return { mood, inferredSentiment: moodToSentiment(mood, score > 0) };

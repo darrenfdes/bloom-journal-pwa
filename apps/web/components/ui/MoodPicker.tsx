@@ -12,22 +12,27 @@ type Props = {
 export function MoodPicker({ value, onChange }: Props) {
   return (
     <div className="flex flex-wrap gap-2">
-      {MOODS.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          onClick={() => onChange(value === m.id ? null : m.id)}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] ${
-            value === m.id
-              ? 'border-sage bg-sage text-cream shadow-[0_2px_12px_rgba(143,168,138,0.45)]'
-              : 'border-parchment bg-cream text-ink hover:bg-parchment/60'
-          }`}
-          title={m.description}
-        >
-          <MoodIcon mood={m.id} className="size-3.5" />
-          {m.label}
-        </button>
-      ))}
+      {MOODS.map((m) => {
+        const selected = value === m.id;
+        return (
+          <button
+            key={m.id}
+            type="button"
+            aria-pressed={selected}
+            aria-label={`${m.label} — ${m.description}`}
+            onClick={() => onChange(selected ? null : m.id)}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-all active:scale-95 hover:scale-[1.02] ${
+              selected
+                ? 'border-sage bg-sage text-cream shadow-[0_2px_12px_rgba(143,168,138,0.45)]'
+                : 'border-parchment bg-cream text-ink hover:bg-parchment/60'
+            }`}
+            title={m.description}
+          >
+            <MoodIcon mood={m.id} className="size-3.5" />
+            {m.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
