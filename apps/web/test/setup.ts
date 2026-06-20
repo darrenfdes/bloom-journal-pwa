@@ -34,3 +34,16 @@ window.requestAnimationFrame = (cb: FrameRequestCallback) => {
   cb(0);
   return 0;
 };
+
+// jsdom 26 ships Blob/File without `.text()`; browsers have it. Polyfill via FileReader so file
+// reads (backup import, `.bloom` bouquet open) behave the same under test as in the app.
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
+  Blob.prototype.text = function text(this: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
