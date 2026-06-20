@@ -12,7 +12,9 @@ export type SceneEffect =
   | "moonGlow" | "moonGlowStrong" | "moonGlowFaint" | "moonGlowBlue"
   | "starfield" | "shootingStars" | "dimDaylight" | "bloodMoon" | "cometArc"
   | "seasonShift" | "brightStar" | "subtleSunShift"
-  | "birthdayBloom" | "anniversaryBloom" | "spookyTint" | "rareSparkle";
+  | "birthdayBloom" | "anniversaryBloom" | "spookyTint" | "rareSparkle"
+  // festive sky:
+  | "fireworks" | "christmasStar";
 
 export const SCENE_EFFECT: Partial<Record<EventType, SceneEffect>> = {
   fullMoon: "moonGlow",
@@ -35,6 +37,13 @@ export const SCENE_EFFECT: Partial<Record<EventType, SceneEffect>> = {
   appAnniversary: "anniversaryBloom",
   fridayThe13th: "spookyTint",
   leapDay: "rareSparkle",
+  // festive holidays — fireworks & the Christmas star:
+  newYear: "fireworks",
+  chineseNewYear: "fireworks",
+  diwali: "fireworks",
+  holi: "fireworks",
+  fireworks: "fireworks",
+  christmas: "christmasStar",
 };
 
 const RARITY_WEIGHT: Record<Rarity, number> = {
