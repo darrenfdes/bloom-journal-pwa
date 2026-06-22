@@ -8,7 +8,6 @@ export default function DevSeedPage() {
       </main>
     );
   }
-
   return (
     <main>
       <DevSeedImporter />
