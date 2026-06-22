@@ -3,8 +3,13 @@
  * standalone SVG/PNG builder so the two never drift. Flowers fan out from a single low tie point.
  */
 
+import { xorshiftRand } from '@bloom/core/flowers/prng';
+
 /** Degrees between adjacent stems in the fan; the whole fan is centred on the tie point. */
 export const FAN_SPREAD_DEG = 15;
+
+/** Shortest flower as a fraction of the tallest; the rest stagger between this and 1. */
+export const MIN_HEIGHT_SCALE = 0.85; // subtle ~15% stagger
 
 /** Each flower's box is this fraction of the arrangement's square size. */
 export const FLOWER_SIZE_RATIO = 0.74;
@@ -15,6 +20,17 @@ export const TIE_BOTTOM_RATIO = 0.13;
 /** Fan angles (degrees) for `n` flowers, symmetric around an upright centre stem. */
 export function flowerAngles(n: number): number[] {
   return Array.from({ length: n }, (_, i) => (i - (n - 1) / 2) * FAN_SPREAD_DEG);
+}
+
+/**
+ * Per-flower height scale (0 < s ≤ 1) keyed to each flower's seed, so heads sit at staggered heights
+ * while bases stay gathered at the tie. Scale-down only, so the tallest equals today's size and
+ * nothing clips. A lone flower (or none) stays full size — staggering needs at least two. Shared by
+ * the live preview and the PNG builder so the two never drift.
+ */
+export function flowerHeightScales(seeds: number[]): number[] {
+  if (seeds.length < 2) return seeds.map(() => 1);
+  return seeds.map((seed) => MIN_HEIGHT_SCALE + xorshiftRand(seed ^ 0x4f1b) * (1 - MIN_HEIGHT_SCALE));
 }
 
 /** The point where every stem gathers — bottom centre of the square. */

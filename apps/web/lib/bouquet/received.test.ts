@@ -5,6 +5,7 @@ import { buildBouquet } from '@bloom/core';
 import type { EntryRecord } from '@bloom/core';
 
 import { getDb } from '@/lib/db/client';
+import { setActiveSyncUser } from '@/lib/sync/engine';
 
 import { getKeptBouquet, keepBouquet, listKeptBouquets } from './received';
 
@@ -35,6 +36,7 @@ function entry(overrides: Partial<EntryRecord> = {}): EntryRecord {
 beforeEach(async () => {
   const db = getDb();
   await Promise.all([db.bouquets.clear(), db.entries.clear(), db.garden_meta.clear()]);
+  setActiveSyncUser(null);
 });
 
 describe('keepBouquet', () => {
@@ -48,6 +50,32 @@ describe('keepBouquet', () => {
     expect(kept[0].source).toBe('link');
     expect(kept[0].payload).toEqual(payload);
     expect(typeof kept[0].receivedAt).toBe('string');
+  });
+
+  it('stamps the local owner and queues a push when signed out', async () => {
+    const row = await keepBouquet(buildBouquet([entry()]), 'link');
+    expect(row.userId).toBe('local');
+    expect(row.pendingPush).toBe(true);
+  });
+
+  it('stamps the signed-in user and scopes the shelf to that user', async () => {
+    setActiveSyncUser(null);
+    await keepBouquet(buildBouquet([entry({ id: 'a' })]), 'link');
+
+    setActiveSyncUser('user-1');
+    const mine = await keepBouquet(buildBouquet([entry({ id: 'b' })]), 'file');
+    expect(mine.userId).toBe('user-1');
+
+    // Only the signed-in user's keepsake shows on their shelf...
+    const signedInShelf = await listKeptBouquets();
+    expect(signedInShelf).toHaveLength(1);
+    expect(signedInShelf[0].userId).toBe('user-1');
+
+    // ...and the local-only keepsake shows again when signed out.
+    setActiveSyncUser(null);
+    const localShelf = await listKeptBouquets();
+    expect(localShelf).toHaveLength(1);
+    expect(localShelf[0].userId).toBe('local');
   });
 
   it('dedupes by bouquet id — keeping the same bouquet twice stays one row', async () => {

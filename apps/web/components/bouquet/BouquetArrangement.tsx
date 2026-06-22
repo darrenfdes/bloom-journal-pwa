@@ -2,7 +2,7 @@
 
 import { Flower } from '@/components/flower/Flower';
 import { renderBouquetGreenery } from '@/components/bouquet/BouquetGreenery';
-import { FLOWER_SIZE_RATIO, TIE_BOTTOM_RATIO, flowerAngles, greeneryOffsets } from '@/lib/bouquet/layout';
+import { FLOWER_SIZE_RATIO, TIE_BOTTOM_RATIO, flowerAngles, flowerHeightScales, greeneryOffsets } from '@/lib/bouquet/layout';
 import type { BouquetFlower, BouquetGreenery as BouquetGreeneryKind } from '@bloom/core';
 
 type Props = {
@@ -24,6 +24,7 @@ export function BouquetArrangement({ flowers, greenery, size = 320 }: Props) {
   const n = flowers.length;
   const flowerSize = size * FLOWER_SIZE_RATIO;
   const angles = flowerAngles(n);
+  const scales = flowerHeightScales(flowers.map((f) => f.genome.seed));
   const accents = greenery?.length ? greenery.slice(0, 3) : [];
   const offsets = greeneryOffsets(accents.length);
 
@@ -95,7 +96,7 @@ export function BouquetArrangement({ flowers, greenery, size = 320 }: Props) {
             <Flower
               mood={genome.bloomMood}
               seed={genome.seed}
-              size={flowerSize}
+              size={flowerSize * (scales[i] ?? 1)}
               wordCount={genome.wordCount}
               foliageVariant={genome.foliageVariant}
               pumpkinStage={genome.specialBloom === 'pumpkin' ? genome.pumpkinStage : undefined}

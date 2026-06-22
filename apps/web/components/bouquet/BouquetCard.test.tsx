@@ -35,7 +35,13 @@ function entry(overrides: Partial<EntryRecord> = {}): EntryRecord {
 
 function kept(): KeptBouquetRow {
   const payload = buildBouquet([entry()], { from: 'Mara', note: 'thinking of you' });
-  return { id: payload.id, payload, receivedAt: '2026-06-01T09:00:00.000Z', source: 'link' };
+  return {
+    id: payload.id,
+    payload,
+    receivedAt: '2026-06-01T09:00:00.000Z',
+    source: 'link',
+    userId: 'local',
+  };
 }
 
 describe('BouquetCard', () => {

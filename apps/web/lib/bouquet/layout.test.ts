@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { FAN_SPREAD_DEG, flowerAngles, greeneryOffsets, shuffleOrder, tiePoint } from './layout';
+import {
+  FAN_SPREAD_DEG,
+  MIN_HEIGHT_SCALE,
+  flowerAngles,
+  flowerHeightScales,
+  greeneryOffsets,
+  shuffleOrder,
+  tiePoint,
+} from './layout';
 
 describe('flowerAngles', () => {
   it('centres a single flower upright', () => {
@@ -36,6 +44,31 @@ describe('greeneryOffsets', () => {
     // The outer accents must fan clearly past the central blooms.
     expect(Math.abs(greeneryOffsets(2)[0]!)).toBeGreaterThanOrEqual(0.15);
     expect(Math.abs(greeneryOffsets(3)[0]!)).toBeGreaterThanOrEqual(0.15);
+  });
+});
+
+describe('flowerHeightScales', () => {
+  it('keeps a lone flower (or none) at full size — staggering needs two', () => {
+    expect(flowerHeightScales([])).toEqual([]);
+    expect(flowerHeightScales([42])).toEqual([1]);
+  });
+
+  it('returns one scale per seed, each within [MIN_HEIGHT_SCALE, 1]', () => {
+    const scales = flowerHeightScales([1, 2, 3, 4, 5]);
+    expect(scales).toHaveLength(5);
+    for (const s of scales) {
+      expect(s).toBeGreaterThanOrEqual(MIN_HEIGHT_SCALE);
+      expect(s).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('is deterministic — same seeds give identical scales', () => {
+    expect(flowerHeightScales([7, 11, 13])).toEqual(flowerHeightScales([7, 11, 13]));
+  });
+
+  it('staggers distinct seeds to distinct heights', () => {
+    const scales = flowerHeightScales([1, 2, 3, 4, 5]);
+    expect(new Set(scales).size).toBe(scales.length);
   });
 });
 

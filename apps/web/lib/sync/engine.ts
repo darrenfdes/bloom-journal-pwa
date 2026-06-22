@@ -7,9 +7,12 @@ import {
   remoteToSyncableAppSettings,
   shouldApplyRemote,
   type RemoteEntryRow,
+  type RemoteKeptBouquetRow,
 } from '@bloom/core';
 import { toast } from 'sonner';
 
+import { decryptKeptBouquet, encryptKeptBouquet } from '@/lib/crypto/bouquet-keepsake-cipher';
+import { ENC_VERSION } from '@/lib/crypto/entry-cipher';
 import { getDek } from '@/lib/crypto/key-session';
 import { decryptRemoteRow, encryptRemoteRow } from '@/lib/crypto/remote-row-cipher';
 import { getDb, type LocalEntryRecord } from '@/lib/db/client';
@@ -57,8 +60,9 @@ function reportSyncError(err: unknown) {
 
 async function countPending(): Promise<number> {
   const db = getDb();
-  const pending = await db.entries.filter((e) => e.pendingPush === true).count();
-  return pending;
+  const entries = await db.entries.filter((e) => e.pendingPush === true).count();
+  const bouquets = await db.bouquets.filter((b) => b.pendingPush === true).count();
+  return entries + bouquets;
 }
 
 export async function pullForUser(userId: string): Promise<void> {
@@ -154,6 +158,41 @@ export async function pullForUser(userId: string): Promise<void> {
       });
     }
 
+    const { data: remoteBouquets } = await client
+      .from('kept_bouquets')
+      .select('*')
+      .eq('user_id', userId);
+
+    const bouquetRows = (remoteBouquets ?? []) as RemoteKeptBouquetRow[];
+    if (bouquetRows.length > 0) {
+      // Keepsakes are immutable, so only the key matters here (no conflict resolution). A briefly
+      // unavailable key just means encrypted keepsakes are skipped this pull, like entries above.
+      let bouquetDek: CryptoKey | null = null;
+      try {
+        bouquetDek = await getDek();
+      } catch {
+        bouquetDek = null;
+      }
+      for (const row of bouquetRows) {
+        try {
+          if (await db.bouquets.get(row.id)) continue; // insert-only: never overwrite a local keepsake
+          if (!bouquetDek) throw new Error('Encryption key required to decrypt kept bouquet');
+          const { payload, source } = await decryptKeptBouquet(row.enc_blob, bouquetDek);
+          await db.bouquets.put({
+            id: row.id,
+            payload,
+            source,
+            receivedAt: row.received_at,
+            userId,
+            syncedAt: new Date().toISOString(),
+            pendingPush: false,
+          });
+        } catch {
+          // A single undecryptable/corrupt keepsake must not block the rest of the pull.
+        }
+      }
+    }
+
     const pending = await countPending();
     setSyncStatus({
       lastSyncedAt: new Date().toISOString(),
@@ -187,11 +226,16 @@ export async function pushPending(userId: string): Promise<void> {
         (e) => e.userId === userId && e.userId !== PREVIEW_USER_ID && e.pendingPush === true
       )
       .toArray();
+    const bouquetsForPush = await db.bouquets
+      .filter((b) => b.userId === userId && b.pendingPush === true)
+      .toArray();
 
-    if (entriesForPush.length > 0) {
-      // Encrypt sensitive fields before they leave the device. If the key is unavailable this
-      // throws and the catch below leaves entries pendingPush — we never push plaintext.
-      const dek = await getDek();
+    // Encrypt sensitive data before it leaves the device. Fetch the key once for whatever needs it;
+    // if it's unavailable this throws and the catch below leaves rows pendingPush — never plaintext.
+    const needsKey = entriesForPush.length > 0 || bouquetsForPush.length > 0;
+    const dek = needsKey ? await getDek() : null;
+
+    if (entriesForPush.length > 0 && dek) {
       const payload = await Promise.all(
         entriesForPush.map((e) => encryptRemoteRow(entryToRemote(stripSyncMeta(e), userId), dek)),
       );
@@ -201,6 +245,25 @@ export async function pushPending(userId: string): Promise<void> {
       const now = new Date().toISOString();
       for (const entry of entriesForPush) {
         await db.entries.update(entry.id, { syncedAt: now, pendingPush: false });
+      }
+    }
+
+    if (bouquetsForPush.length > 0 && dek) {
+      const rows: RemoteKeptBouquetRow[] = await Promise.all(
+        bouquetsForPush.map(async (b) => ({
+          id: b.id,
+          user_id: userId,
+          enc_blob: await encryptKeptBouquet({ payload: b.payload, source: b.source }, dek),
+          enc_version: ENC_VERSION,
+          received_at: b.receivedAt,
+        })),
+      );
+      const { error } = await client.from('kept_bouquets').upsert(rows);
+      if (error) throw error;
+
+      const now = new Date().toISOString();
+      for (const b of bouquetsForPush) {
+        await db.bouquets.update(b.id, { syncedAt: now, pendingPush: false });
       }
     }
 
@@ -271,7 +334,13 @@ export async function reparentLocalEntries(userId: string): Promise<number> {
     await db.garden_meta.update(meta.id, { userId });
   }
 
-  if (locals.length > 0) await refreshPendingCount();
+  // Adopt any local-only keepsakes too, so the shelf merges into the account on sign-in.
+  const localBouquets = await db.bouquets.filter((b) => b.userId === 'local').toArray();
+  for (const bouquet of localBouquets) {
+    await db.bouquets.update(bouquet.id, { userId, pendingPush: true });
+  }
+
+  if (locals.length > 0 || localBouquets.length > 0) await refreshPendingCount();
   return locals.length;
 }
 
