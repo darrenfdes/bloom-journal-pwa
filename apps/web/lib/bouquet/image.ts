@@ -6,7 +6,7 @@ import { renderBouquetGreenery } from '@/components/bouquet/BouquetGreenery';
 import type { BouquetFlower, BouquetGreenery as BouquetGreeneryKind, BouquetPayload } from '@bloom/core';
 
 import { bouquetFilename } from './filename';
-import { FLOWER_SIZE_RATIO, flowerAngles, greeneryOffsets, tiePoint } from './layout';
+import { FLOWER_SIZE_RATIO, flowerAngles, flowerHeightScales, greeneryOffsets, tiePoint } from './layout';
 
 /** Warm card palette for the standalone image (no Tailwind available in a serialized SVG). */
 const COLOR = {
@@ -133,17 +133,19 @@ export function bouquetSvgMarkup(flowers: BouquetFlower[], opts: SvgOpts = {}): 
   const H = Math.round(bouquetBottom + footerH);
 
   const angles = flowerAngles(flowers.length);
-  const boxLeft = tie.x - flowerSize / 2;
-  const boxTop = tie.y - flowerSize;
+  const scales = flowerHeightScales(flowers.map((f) => f.genome.seed));
 
   const flowerGroups = flowers
     .map((flower, i) => {
       const { genome } = flower;
+      const fs = flowerSize * (scales[i] ?? 1);
+      const boxLeft = tie.x - fs / 2;
+      const boxTop = tie.y - fs;
       const inner = renderToStaticMarkup(
         createElement(Flower, {
           mood: genome.bloomMood,
           seed: genome.seed,
-          size: flowerSize,
+          size: fs,
           wordCount: genome.wordCount,
           foliageVariant: genome.foliageVariant,
           pumpkinStage: genome.specialBloom === 'pumpkin' ? genome.pumpkinStage : undefined,

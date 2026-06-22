@@ -47,3 +47,17 @@ export interface RemoteAppSettingsRow {
   reminder_minute: number;
   updated_at: string;
 }
+
+/**
+ * Postgres `kept_bouquets` row — a recipient's keepsake shelf. The whole bouquet payload is
+ * AES-GCM encrypted under the user's DEK and stored in enc_blob; only the keepsake metadata
+ * (received_at) stays plaintext, for ordering. Composite PK (user_id, id) — the same bouquet id can
+ * be kept by multiple users.
+ */
+export interface RemoteKeptBouquetRow {
+  id: string;
+  user_id: string;
+  enc_blob: string;
+  enc_version: number;
+  received_at: string;
+}
