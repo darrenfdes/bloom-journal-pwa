@@ -43,12 +43,12 @@ describe('Christmas → bright star', () => {
 
 describe('one-off fireworks (config)', () => {
   it('fires on 24 Jun 2026 only', () => {
-    expect(titlesOn('2026-06-24')).toContain('Fireworks Test');
+    expect(titlesOn('2026-06-24')).toContain('All the Best');
     expect(effectsOn('2026-06-24')).toContain('fireworks');
   });
 
   it('does not fire on 24 Jun in other years', () => {
-    expect(titlesOn('2025-06-24')).not.toContain('Fireworks Test');
-    expect(titlesOn('2027-06-24')).not.toContain('Fireworks Test');
+    expect(titlesOn('2025-06-24')).not.toContain('All the Best');
+    expect(titlesOn('2027-06-24')).not.toContain('All the Best');
   });
 });
