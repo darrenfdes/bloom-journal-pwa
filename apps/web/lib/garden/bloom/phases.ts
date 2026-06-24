@@ -19,6 +19,7 @@ export interface PhasePalette {
   filter: string;
   fire: number;
   pollen: number;
+  sheep: number;
 }
 
 export const PHASE_ORDER: PhaseKey[] = ['dawn', 'day', 'golden', 'dusk', 'night'];
@@ -38,6 +39,7 @@ export const PHASES: Record<PhaseKey, PhasePalette> = {
     filter: 'brightness(.97) saturate(.96)',
     fire: 0,
     pollen: 0.35,
+    sheep: 1,
   },
   day: {
     label: 'Day',
@@ -53,6 +55,7 @@ export const PHASES: Record<PhaseKey, PhasePalette> = {
     filter: 'none',
     fire: 0,
     pollen: 1,
+    sheep: 1,
   },
   golden: {
     label: 'Golden',
@@ -68,6 +71,7 @@ export const PHASES: Record<PhaseKey, PhasePalette> = {
     filter: 'sepia(.1) saturate(1.05) brightness(1.02)',
     fire: 0.2,
     pollen: 1,
+    sheep: 1,
   },
   dusk: {
     label: 'Dusk',
@@ -83,6 +87,7 @@ export const PHASES: Record<PhaseKey, PhasePalette> = {
     filter: 'brightness(.88) saturate(.92)',
     fire: 0.6,
     pollen: 0.2,
+    sheep: 0,
   },
   night: {
     label: 'Night',
@@ -98,6 +103,7 @@ export const PHASES: Record<PhaseKey, PhasePalette> = {
     filter: 'brightness(.74) saturate(.8)',
     fire: 1,
     pollen: 0,
+    sheep: 0,
   },
 };
 
