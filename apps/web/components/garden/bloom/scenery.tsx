@@ -91,6 +91,36 @@ export const Sheep = ({
   </g>
 );
 
+/**
+ * A lone black ram — the `sebastian-ram.png` cutout, facing the viewer. Rendered as an SVG <image>
+ * so it scrolls with the hill parallax. The PNG (1024×1536) has asymmetric transparent padding, so
+ * we position by the silhouette's measured content box: horizontal centre at 59.2% of the width,
+ * feet at 71.6% down, and the silhouette spans 51.4% of the image height. Given the ground point
+ * (x, y) and the desired on-screen ram height `h`, this seats the feet at y and centres it on x.
+ * A faint moonlit drop-shadow keeps the black silhouette readable against the dark night hill.
+ */
+const RAM_SRC = '/sebastian-ram.png';
+const RAM_AR = 1024 / 1536; // natural width / height
+const RAM_CENTER_X = 0.592; // silhouette centre-x as a fraction of image width
+const RAM_FEET_Y = 0.716; // silhouette bottom as a fraction of image height
+const RAM_CONTENT_H = 0.514; // silhouette height as a fraction of image height
+
+export const Ram = ({ x, y, h }: { x: number; y: number; h: number }) => {
+  const imgH = h / RAM_CONTENT_H;
+  const imgW = imgH * RAM_AR;
+  return (
+    <image
+      href={RAM_SRC}
+      x={x - RAM_CENTER_X * imgW}
+      y={y - RAM_FEET_Y * imgH}
+      width={imgW}
+      height={imgH}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ filter: 'drop-shadow(0 0 1px rgba(150,170,205,0.38))' }}
+    />
+  );
+};
+
 export const GrassTuft = ({
   left,
   bottom,
