@@ -32,7 +32,7 @@ import {
 } from '@bloom/core/scene';
 
 import { Flower } from '@/components/flower/Flower';
-import { GrassTuft, makeHill, Sheep, Tree } from '@/components/garden/bloom/scenery';
+import { GrassTuft, makeHill, Ram, Sheep, Tree } from '@/components/garden/bloom/scenery';
 import {
   Butterfly,
   CREATURE_KEYFRAMES,
@@ -437,6 +437,29 @@ export function BloomMeadow({
       return { ...h, Wl, d: built.d, yAt: built.yAt, trees, sheep };
     });
   }, [layout.W, vw]);
+
+  /* a lone black ram. At night he's always out when it rains, otherwise a 50% chance (re-rolled each
+     nightfall). During the day he stays hidden unless the most recent entry is sad/anxious. */
+  const isNight = phaseKey === 'night';
+  const [ramRoll, setRamRoll] = useState(false);
+  useEffect(() => {
+    setRamRoll(isNight ? Math.random() < 0.5 : false);
+  }, [isNight]);
+  const gloomyEntry = useMemo(() => {
+    const latest = layout.entries.reduce<(typeof layout.entries)[number] | null>(
+      (a, e) => (!a || e.createdAt > a.createdAt ? e : a),
+      null,
+    );
+    return latest?.mood === 'melancholy' || latest?.mood === 'anxious';
+  }, [layout]);
+  const ramVisible = isNight ? precip || ramRoll : gloomyEntry;
+  const ram = useMemo(() => {
+    const near = hills[2];
+    if (!near) return null;
+    const r = mulberry32(near.seed * 91 + 7);
+    const x = 220 + r() * (near.Wl - 440);
+    return { x, y: near.yAt(x) + 1, h: 24 };
+  }, [hills]);
 
   const syncScroll = useCallback(() => {
     const el = scrollerRef.current;
@@ -921,6 +944,12 @@ export function BloomMeadow({
                 />
               ))}
             </g>
+            {/* a lone black ram, near hill only — comes out at night, sometimes */}
+            {i === 2 && ram && (
+              <g style={{ opacity: ramVisible ? 0.8 : 0, transition: 'opacity 1.6s ease' }}>
+                <Ram x={ram.x} y={ram.y} h={ram.h} />
+              </g>
+            )}
             {creatures && i === 1 && fox && (
               <g key={fox.run} style={{ ...fox.vars, animation: `bj-fox ${fox.dur}s linear both` }}>
                 <g style={{ animation: `bj-foxlife ${fox.dur}s linear both` }}>
