@@ -32,7 +32,7 @@ import {
 } from '@bloom/core/scene';
 
 import { Flower } from '@/components/flower/Flower';
-import { GrassTuft, makeHill, Tree } from '@/components/garden/bloom/scenery';
+import { GrassTuft, makeHill, Sheep, Tree } from '@/components/garden/bloom/scenery';
 import {
   Butterfly,
   CREATURE_KEYFRAMES,
@@ -418,7 +418,23 @@ export function BloomMeadow({
               return { id: i, x, y: built.yAt(x) + 4, sc: h.f > 0.4 ? 0.85 + tr() * 0.5 : 0.5 + tr() * 0.3 };
             })
           : [];
-      return { ...h, Wl, d: built.d, yAt: built.yAt, trees };
+      const sh = mulberry32(h.seed * 13 + 1);
+      const sheep =
+        h.f > 0.2
+          ? [...Array(h.f > 0.4 ? 4 : 3)].map((_, i) => {
+              const x = 160 + sh() * (Wl - 320);
+              return {
+                id: i,
+                x,
+                y: built.yAt(x) + 2,
+                sc: h.f > 0.4 ? 0.55 + sh() * 0.25 : 0.4 + sh() * 0.16,
+                dur: 4.8 + sh() * 3.4,
+                delay: -sh() * 7,
+                flip: sh() < 0.5,
+              };
+            })
+          : [];
+      return { ...h, Wl, d: built.d, yAt: built.yAt, trees, sheep };
     });
   }, [layout.W, vw]);
 
@@ -760,6 +776,7 @@ export function BloomMeadow({
         .bj-scroll::-webkit-scrollbar{display:none}
         @keyframes bj-sway{0%{transform:rotate(-1.7deg)}100%{transform:rotate(1.9deg)}}
         @keyframes bj-grass{0%{transform:rotate(-3deg)}100%{transform:rotate(3deg)}}
+        @keyframes bj-nod{0%,22%{transform:translateY(0) rotate(0deg)}48%,72%{transform:translateY(2.2px) rotate(15deg)}92%,100%{transform:translateY(0) rotate(0deg)}}
         @keyframes bj-bloom{0%{transform:scale(0);opacity:0}62%{transform:scale(1.07)}100%{transform:scale(1);opacity:1}}
         @keyframes bj-drift{from{transform:translateX(-360px)}to{transform:translateX(calc(100vw + 360px))}}
         @keyframes bj-twinkle{0%,100%{opacity:.12}50%{opacity:.95}}
@@ -888,6 +905,22 @@ export function BloomMeadow({
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
+            <g style={{ opacity: phase.sheep, transition: 'opacity 1.6s ease' }}>
+              {h.sheep.map((s) => (
+                <Sheep
+                  key={s.id}
+                  x={s.x}
+                  y={s.y}
+                  sc={s.sc}
+                  dur={s.dur}
+                  delay={s.delay}
+                  flip={s.flip}
+                  wool="#f4f0e8"
+                  shade="#dcd5c6"
+                  dark="#43444b"
+                />
+              ))}
+            </g>
             {creatures && i === 1 && fox && (
               <g key={fox.run} style={{ ...fox.vars, animation: `bj-fox ${fox.dur}s linear both` }}>
                 <g style={{ animation: `bj-foxlife ${fox.dur}s linear both` }}>
