@@ -42,6 +42,55 @@ export const Tree = ({ x, y, sc, fill }: { x: number; y: number; sc: number; fil
   </g>
 );
 
+export const Sheep = ({
+  x,
+  y,
+  sc,
+  dur,
+  delay,
+  flip,
+  wool,
+  shade,
+  dark,
+}: {
+  x: number;
+  y: number;
+  sc: number;
+  dur: number;
+  delay: number;
+  flip: boolean;
+  wool: string;
+  shade: string;
+  dark: string;
+}) => (
+  <g transform={`translate(${x} ${y}) scale(${flip ? -sc : sc} ${sc})`}>
+    {/* legs */}
+    <rect x="-5" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
+    <rect x="-2.4" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
+    <rect x="3" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
+    <rect x="5.4" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
+    {/* belly shadow */}
+    <ellipse cx="0" cy="-4.2" rx="8" ry="3" fill={shade} opacity="0.55" />
+    {/* fleece body (bumpy wool silhouette) */}
+    <ellipse cx="0" cy="-6" rx="9" ry="5.6" fill={wool} />
+    <circle cx="-7" cy="-7.6" r="3.4" fill={wool} />
+    <circle cx="-3.4" cy="-9.6" r="3.7" fill={wool} />
+    <circle cx="0.4" cy="-10.2" r="3.7" fill={wool} />
+    <circle cx="4" cy="-9.2" r="3.4" fill={wool} />
+    <circle cx="6.8" cy="-7.4" r="3" fill={wool} />
+    {/* tail */}
+    <circle cx="-8.8" cy="-6.2" r="2" fill={wool} />
+    {/* head — dips down to graze and lifts back up at intervals (body stays still) */}
+    <g style={{ animation: `bj-nod ${dur}s ${delay}s ease-in-out infinite` }}>
+      <ellipse cx="8.8" cy="-7.6" rx="2.9" ry="3.5" fill={dark} />
+      <ellipse cx="10.4" cy="-6" rx="1.7" ry="1.5" fill={dark} />
+      <ellipse cx="6.6" cy="-10" rx="1.9" ry="1" fill={dark} transform="rotate(-28 6.6 -10)" />
+      <ellipse cx="10.8" cy="-9.6" rx="1.7" ry="0.9" fill={dark} transform="rotate(24 10.8 -9.6)" />
+      <circle cx="9.4" cy="-8" r="0.8" fill={wool} />
+    </g>
+  </g>
+);
+
 export const GrassTuft = ({
   left,
   bottom,
