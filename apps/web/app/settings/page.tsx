@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { BackLink } from '@/components/layout/BackLink';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -184,6 +185,8 @@ export default function SettingsPage() {
           </Button>
         ) : null}
       </SettingsCard>
+
+      <NotificationSettings />
 
       <SettingsCard title="Search memories">
         <div className="flex gap-2">
