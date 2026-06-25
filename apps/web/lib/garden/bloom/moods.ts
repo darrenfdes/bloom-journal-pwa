@@ -23,6 +23,22 @@ export const MOODS: Record<Mood, MoodMeta> = {
   energized: { label: 'Energized', chip: '#dd7440', bloom: 'dahlia' },
   anxious: { label: 'Anxious', chip: '#b56f9f', bloom: 'dahlia' },
   grateful: { label: 'Grateful', chip: '#c98a40', bloom: 'tulip' },
+  // Positive & up
+  hopeful: { label: 'Hopeful', chip: '#8aa86a', bloom: 'tulip' },
+  excited: { label: 'Excited', chip: '#e8632e', bloom: 'dahlia' },
+  // Calm
+  content: { label: 'Content', chip: '#8fae8a', bloom: 'lavender' },
+  // Low / apathetic (muted greys)
+  apathetic: { label: 'Apathetic', chip: '#9a9c90', bloom: 'bluebell' },
+  numb: { label: 'Numb', chip: '#9aa0a4', bloom: 'bluebell' },
+  indifferent: { label: 'Indifferent', chip: '#a09e94', bloom: 'bluebell' },
+  drained: { label: 'Drained', chip: '#8497a2', bloom: 'bluebell' },
+  unmotivated: { label: 'Unmotivated', chip: '#909a9e', bloom: 'bluebell' },
+  // Difficult
+  irritated: { label: 'Irritated', chip: '#d9663e', bloom: 'dahlia' },
+  overwhelmed: { label: 'Overwhelmed', chip: '#8a7c9c', bloom: 'dahlia' },
+  lonely: { label: 'Lonely', chip: '#6f8aae', bloom: 'bluebell' },
+  guilty: { label: 'Guilty', chip: '#62768e', bloom: 'bluebell' },
 };
 
 export const FALLBACK_BLOOM: Exclude<BloomKind, 'pumpkin'> = 'lavender';

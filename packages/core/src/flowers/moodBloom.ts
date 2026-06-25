@@ -25,6 +25,9 @@ export const BLOOM_FOR_MOOD: Record<BloomMood, BloomSpecies> = {
   anxious: 'aster',
   energized: 'poppy',
   ecstatic: 'sunflower',
+  // Muted blooms reuse existing species' geometry with a desaturated palette.
+  apathetic: 'aster',
+  drained: 'bluebell',
 };
 
 export const BLOOM_MOODS: BloomMood[] = [
@@ -38,6 +41,8 @@ export const BLOOM_MOODS: BloomMood[] = [
   'anxious',
   'energized',
   'ecstatic',
+  'apathetic',
+  'drained',
 ];
 
 export const BLOOM_MOOD_LABEL: Record<BloomMood, string> = {
@@ -51,13 +56,16 @@ export const BLOOM_MOOD_LABEL: Record<BloomMood, string> = {
   anxious: 'Anxious',
   energized: 'Energized',
   ecstatic: 'Ecstatic',
+  apathetic: 'Apathetic',
+  drained: 'Drained',
 };
 
 /**
- * Map the nine app moods onto the visual blooms. Each app mood now has its
- * own distinct bloom except joyful (joy/daisy) and peaceful (calm/lavender).
- * The legacy `restless`/dahlia bloom is no longer mapped to a mood (energized
- * → poppy, anxious → aster) but is kept for the flower gallery.
+ * Map the app moods onto the visual blooms. Several feelings deliberately share
+ * a bloom "family" look: the low/apathetic moods collapse onto the two muted
+ * blooms, and a few additions reuse an existing flower (excited→energized,
+ * content→calm, overwhelmed→anxious, lonely/guilty→wistful). `irritated`
+ * finally puts the otherwise-unmapped `restless`/dahlia bloom to use.
  */
 export function appMoodToBloomMood(mood: Mood | null | undefined): BloomMood {
   switch (mood) {
@@ -79,6 +87,30 @@ export function appMoodToBloomMood(mood: Mood | null | undefined): BloomMood {
       return 'anxious';
     case 'grateful':
       return 'hopeful';
+    // Positive & up
+    case 'hopeful':
+      return 'hopeful';
+    case 'excited':
+      return 'energized';
+    // Calm
+    case 'content':
+      return 'calm';
+    // Low / apathetic
+    case 'apathetic':
+    case 'numb':
+    case 'indifferent':
+      return 'apathetic';
+    case 'drained':
+    case 'unmotivated':
+      return 'drained';
+    // Difficult
+    case 'irritated':
+      return 'restless';
+    case 'overwhelmed':
+      return 'anxious';
+    case 'lonely':
+    case 'guilty':
+      return 'wistful';
     default:
       return 'calm';
   }
