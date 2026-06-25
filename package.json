@@ -18,6 +18,7 @@
     "dev:mobile": "npm run start -w bloom-journal",
     "build:web": "npm run build -w @bloom/web",
     "test:web": "npm test -w @bloom/web",
-    "precompute:events": "npm run precompute:events -w @bloom/core"
+    "precompute:events": "npm run precompute:events -w @bloom/core",
+    "sync:events": "cp packages/core/src/events/events.json supabase/functions/_shared/events.json"
   }
 }

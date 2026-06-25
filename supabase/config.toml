@@ -19,3 +19,8 @@ port = 54323
 # Requires the ENTRY_MASTER_KEK secret (see supabase/functions/.env.example).
 [functions.get-encryption-key]
 verify_jwt = true
+
+# Hourly web-push fan-out for world events & memories. Called server-to-server by pg_cron with a
+# shared bearer (NOTIFY_CRON_SECRET), so no per-user JWT. Requires VAPID_* + NOTIFY_CRON_SECRET secrets.
+[functions.send-notifications]
+verify_jwt = false
