@@ -2,6 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
+    // The notification tests import the Deno edge-function `_shared` modules, which use explicit
+    // `.ts` import specifiers (required by Deno). Allowed here because the project is noEmit.
+    "allowImportingTsExtensions": true,
     "target": "ES2017",
     "lib": [
       "dom",
