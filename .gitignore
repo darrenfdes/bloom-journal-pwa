@@ -38,3 +38,4 @@ coverage/
 .vercel
 
 .playwright-mcp/
+.superpowers/
