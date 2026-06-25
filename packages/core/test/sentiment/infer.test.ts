@@ -39,6 +39,38 @@ describe('inferMood — detects all 8 moods', () => {
   });
 });
 
+describe('inferMood — new feelings', () => {
+  it('apathetic', () => {
+    expect(inferMood("Honestly I just don't care, whatever, it's all meh.")).toBe('apathetic');
+  });
+
+  it('drained', () => {
+    expect(inferMood('Completely drained and exhausted, running on empty.')).toBe('drained');
+  });
+
+  it('unmotivated', () => {
+    expect(inferMood("I'm so unmotivated and sluggish, just procrastinating.")).toBe('unmotivated');
+  });
+
+  it('irritated', () => {
+    expect(inferMood('So annoyed and frustrated, totally fed up and on edge.')).toBe('irritated');
+  });
+
+  it('overwhelmed beats anxious when it dominates', () => {
+    expect(inferMood("There's just too much, I'm swamped and can't cope.")).toBe('overwhelmed');
+  });
+
+  it('hopeful', () => {
+    expect(inferMood('Feeling hopeful and optimistic, looking forward to better days.')).toBe(
+      'hopeful'
+    );
+  });
+
+  it('guilty', () => {
+    expect(inferMood('I feel so guilty and ashamed, it was my fault.')).toBe('guilty');
+  });
+});
+
 describe('inferMood — negation', () => {
   it('"not happy" does not read as joyful', () => {
     expect(inferMood('I am not happy today.')).not.toBe('joyful');

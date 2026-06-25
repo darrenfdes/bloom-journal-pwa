@@ -34,6 +34,10 @@ const BLOOM_COMPONENTS: Record<BloomMood, (props: BloomProps) => React.ReactElem
   anxious: AsterBloom,
   energized: PoppyBloom,
   ecstatic: SunflowerBloom,
+  // Muted blooms reuse existing geometry; their desaturated palette comes from
+  // BLOOM_PALETTES (keyed by BloomMood), so the same component reads "drained".
+  apathetic: AsterBloom,
+  drained: WistfulBluebells,
 };
 
 export interface FlowerProps {

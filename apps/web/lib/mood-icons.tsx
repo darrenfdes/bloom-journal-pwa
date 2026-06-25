@@ -1,14 +1,26 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Angry,
+  BatteryLow,
+  BatteryWarning,
+  CircleDashed,
+  CircleOff,
   Cloud,
   CloudFog,
+  CloudLightning,
+  CloudMoon,
   CloudRain,
+  Coffee,
   Flame,
+  Frown,
   HandHeart,
   Heart,
   Leaf,
+  Meh,
   Sparkles,
+  Sprout,
   Sun,
+  Zap,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -24,6 +36,22 @@ const MOOD_ICONS: Record<Mood, LucideIcon> = {
   grateful: HandHeart,
   anxious: CloudFog,
   ecstatic: Sparkles,
+  // Positive & up
+  hopeful: Sprout,
+  excited: Zap,
+  // Calm
+  content: Coffee,
+  // Low / apathetic
+  apathetic: Meh,
+  numb: CircleOff,
+  indifferent: CircleDashed,
+  drained: BatteryLow,
+  unmotivated: BatteryWarning,
+  // Difficult
+  irritated: Angry,
+  overwhelmed: CloudLightning,
+  lonely: CloudMoon,
+  guilty: Frown,
 };
 
 type MoodIconProps = {

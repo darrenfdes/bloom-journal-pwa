@@ -14,7 +14,10 @@ export type BloomMood =
   | 'dreamy'
   | 'anxious'
   | 'energized'
-  | 'ecstatic';
+  | 'ecstatic'
+  // Muted looks for the low/apathetic family (reuse existing geometry, new palette).
+  | 'apathetic'
+  | 'drained';
 
 export interface BloomPalette {
   petalHighlight: string;
@@ -175,5 +178,30 @@ export const BLOOM_PALETTES: Record<BloomMood, BloomPalette> = {
     pollen: '#FFD86B',
     stem: '#6B8A4E',
     leaf: '#8FB068',
+  },
+  // Apathetic — reuses the aster's fine-petalled geometry, drained of color into
+  // an ashen grey-green with a dull (non-glowing) center.
+  apathetic: {
+    petalHighlight: '#D8DAD0',
+    petalMid: '#A6A89C',
+    petalWash: '#C2C4B8',
+    petalDark: '#7E8076',
+    petalDeepest: '#5A5C52',
+    center: '#6E7064',
+    pollen: '#9A9C88',
+    stem: '#6B7264',
+    leaf: '#8A917E',
+  },
+  // Drained — reuses the bluebell geometry in a cool, dusty blue-grey.
+  drained: {
+    petalHighlight: '#DCE4EA',
+    petalMid: '#9AAAB6',
+    petalWash: '#BECAD2',
+    petalDark: '#6E7E8A',
+    petalDeepest: '#4A5862',
+    center: '#3F4E58',
+    pollen: '#AEBCC4',
+    stem: '#5E6A70',
+    leaf: '#82909A',
   },
 };
