@@ -81,24 +81,95 @@ const MOOD_LEXICON: Record<InferableMood, string[]> = {
     'stress', 'stressful', 'overwhelmed', 'overwhelming', 'afraid', 'fear', 'fearful', 'scared',
     'panic', 'panicked', 'uneasy', 'tense', 'dread', 'dreading', 'restless', 'apprehensive',
   ],
+  hopeful: [
+    'hopeful', 'hope', 'hoping', 'optimistic', 'optimism', 'looking forward', 'better days',
+    'things will',
+  ],
+  excited: [
+    'excited', 'excitement', "can't wait", 'cannot wait', 'looking forward to', 'stoked',
+  ],
+  content: [
+    'content', 'contented', 'satisfied', 'satisfying', 'fulfilled', 'at peace with',
+  ],
+  apathetic: [
+    'apathetic', 'apathy', "don't care", "can't be bothered", 'whatever', 'meh', 'no interest',
+  ],
+  numb: [
+    'numb', 'numbness', 'blank', 'hollow', 'detached', 'feel nothing', 'nothing matters',
+    'going through the motions',
+  ],
+  indifferent: [
+    'indifferent', 'indifference', 'no preference', 'either way', 'take it or leave it', 'unmoved',
+  ],
+  drained: [
+    'drained', 'exhausted', 'exhaustion', 'no energy', 'low energy', 'depleted', 'worn out',
+    'worn down', 'spent', 'fatigued', 'fatigue', 'burnt out', 'burned out', 'running on empty',
+  ],
+  unmotivated: [
+    'unmotivated', 'no motivation', 'listless', 'sluggish', 'lethargic', 'lethargy',
+    "can't get started", 'procrastinating', 'no drive',
+  ],
+  irritated: [
+    'irritated', 'irritable', 'irritating', 'annoyed', 'annoying', 'frustrated', 'frustrating',
+    'frustration', 'angry', 'anger', 'mad', 'grumpy', 'agitated', 'fed up', 'on edge',
+  ],
+  overwhelmed: [
+    'overwhelmed', 'overwhelming', 'too much', 'swamped', 'buried', 'drowning', 'spread thin',
+    "can't cope", "can't keep up",
+  ],
+  lonely: [
+    'lonely', 'loneliness', 'alone', 'isolated', 'isolation', 'left out', 'on my own',
+  ],
+  guilty: [
+    'guilty', 'guilt', 'ashamed', 'shame', 'regret', 'regretful', 'remorse', 'remorseful',
+    'my fault', 'blame myself',
+  ],
 };
 
 /**
- * Tie-break order when two moods score equally. More specific moods win over
- * the broad joyful/peaceful defaults; peaceful is also the no-signal fallback.
+ * Tie-break order when two moods score equally, and the full set of moods text
+ * can be inferred into — a mood absent here is never inferred. More specific
+ * moods win over the broad joyful/peaceful defaults; peaceful is also the
+ * no-signal fallback. Must list every {@link InferableMood}.
  */
 const MOOD_PRIORITY: InferableMood[] = [
+  'guilty',
+  'irritated',
+  'overwhelmed',
+  'lonely',
+  'drained',
+  'unmotivated',
+  'apathetic',
+  'numb',
+  'indifferent',
   'anxious',
   'melancholy',
   'loved',
   'grateful',
+  'hopeful',
+  'excited',
+  'content',
   'energized',
   'dreamy',
   'joyful',
   'peaceful',
 ];
 
-const NEGATIVE_MOODS = new Set<Mood>(['melancholy', 'anxious']);
+const NEGATIVE_MOODS = new Set<Mood>([
+  'melancholy',
+  'anxious',
+  'irritated',
+  'overwhelmed',
+  'lonely',
+  'guilty',
+  'drained',
+  'unmotivated',
+  // Flat/low moods read closer to negative than positive in the coarse
+  // positive/negative/neutral model (a matched mood can't resolve to neutral).
+  'apathetic',
+  'numb',
+  'indifferent',
+]);
 
 /** Highest-scoring mood and its score; ties resolved by {@link MOOD_PRIORITY}. */
 function topMood(text: string): { mood: InferableMood; score: number } {

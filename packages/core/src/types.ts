@@ -7,7 +7,23 @@ export type Mood =
   | 'melancholy'
   | 'energized'
   | 'grateful'
-  | 'anxious';
+  | 'anxious'
+  // Positive & up
+  | 'hopeful'
+  | 'excited'
+  // Calm
+  | 'content'
+  // Low / apathetic
+  | 'apathetic'
+  | 'numb'
+  | 'indifferent'
+  | 'drained'
+  | 'unmotivated'
+  // Difficult
+  | 'irritated'
+  | 'overwhelmed'
+  | 'lonely'
+  | 'guilty';
 
 export type Sentiment = 'positive' | 'negative' | 'neutral';
 

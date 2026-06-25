@@ -155,10 +155,24 @@ function moodOpennessModifier(mood: Mood): number {
     case 'joyful':
     case 'energized':
     case 'grateful':
+    case 'excited':
       return 0.12;
+    case 'hopeful':
+    case 'content':
+      return 0.08;
     case 'melancholy':
     case 'anxious':
+    case 'irritated':
+    case 'overwhelmed':
+    case 'lonely':
+    case 'guilty':
       return -0.1;
+    case 'apathetic':
+    case 'numb':
+    case 'indifferent':
+    case 'drained':
+    case 'unmotivated':
+      return -0.12;
     case 'dreamy':
       return 0.05;
     default:
