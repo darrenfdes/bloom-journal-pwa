@@ -1,24 +1,40 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CURRENT_RELEASE_VERSION, RELEASE_NOTES } from '@/lib/release-notes/notes';
+import type { ReleaseNote } from '@/lib/release-notes/notes';
 import { getLastSeenReleaseVersion, setLastSeenReleaseVersion } from '@/lib/release-notes/seen';
+
+const notes: ReleaseNote[] = [
+  { version: '0.2.0', date: '2026-06-26', title: "What's new", items: ['Newest thing'] },
+  { version: '0.1.0', date: '2026-06-26', title: "What's new in Bloom", items: ['Older thing'] },
+];
+const latest = notes[0];
+const CURRENT = latest.version;
+
+const { loadReleaseNotesMock } = vi.hoisted(() => ({ loadReleaseNotesMock: vi.fn() }));
+
+vi.mock('@/lib/release-notes/source', () => ({
+  loadReleaseNotes: loadReleaseNotesMock,
+}));
 
 import { ReleaseNotesDialog } from './ReleaseNotesDialog';
 
-const latest = RELEASE_NOTES[0];
+beforeEach(() => {
+  loadReleaseNotesMock.mockResolvedValue(notes);
+});
 
 afterEach(() => {
   window.localStorage.clear();
+  vi.clearAllMocks();
 });
 
 describe('ReleaseNotesDialog', () => {
   it('on first run shows nothing and seeds the last-seen version to current', async () => {
     render(<ReleaseNotesDialog />);
 
-    await waitFor(() => expect(getLastSeenReleaseVersion()).toBe(CURRENT_RELEASE_VERSION));
-    expect(screen.queryByText(latest.title)).not.toBeInTheDocument();
+    await waitFor(() => expect(getLastSeenReleaseVersion()).toBe(CURRENT));
+    expect(screen.queryByText(latest.items[0])).not.toBeInTheDocument();
   });
 
   it('shows unseen notes to a returning user on an older version', async () => {
@@ -30,12 +46,11 @@ describe('ReleaseNotesDialog', () => {
   });
 
   it('shows nothing when the user is already on the current version', async () => {
-    setLastSeenReleaseVersion(CURRENT_RELEASE_VERSION!);
+    setLastSeenReleaseVersion(CURRENT);
     render(<ReleaseNotesDialog />);
 
-    // give the mount effect a chance to (not) open the dialog
-    await Promise.resolve();
-    expect(screen.queryByText(latest.title)).not.toBeInTheDocument();
+    await waitFor(() => expect(loadReleaseNotesMock).toHaveBeenCalled());
+    expect(screen.queryByText(latest.items[0])).not.toBeInTheDocument();
   });
 
   it('marks the current version seen and closes when dismissed', async () => {
@@ -46,6 +61,6 @@ describe('ReleaseNotesDialog', () => {
     await userEvent.click(dismiss);
 
     await waitFor(() => expect(screen.queryByText(latest.title)).not.toBeInTheDocument());
-    expect(getLastSeenReleaseVersion()).toBe(CURRENT_RELEASE_VERSION);
+    expect(getLastSeenReleaseVersion()).toBe(CURRENT);
   });
 });
