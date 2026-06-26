@@ -18,6 +18,15 @@ export interface ReleaseNote {
 // Newest-first. Add a new entry at the top for each release.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.2.0',
+    date: '2026-06-26',
+    title: "What's new",
+    items: [
+      'Sebastian: the black ram now wanders into the meadow when you log a difficult feeling, sometimes ventures out in the rain, and only rarely appears on clear nights — a gentle presence for the harder days.',
+      'Easier mood picking: while writing an entry, moods are now grouped into scannable sections (Positive, Calm, Low, and Difficult) so it is quicker to find how you feel.',
+    ],
+  },
+  {
     version: '0.1.0',
     date: '2026-06-26',
     title: "What's new in Bloom",
