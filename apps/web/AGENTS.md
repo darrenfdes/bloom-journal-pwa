@@ -56,22 +56,23 @@ where email = 'someone@example.com';
 When you ship a user-facing feature, announce it by adding a release-notes entry. Returning users
 see a dismissible "What's new" modal on their next app open; brand-new users don't.
 
-**To add notes for a release**, prepend one entry (newest-first) to `RELEASE_NOTES` in
-[`apps/web/lib/release-notes/notes.ts`](lib/release-notes/notes.ts):
+Notes live in the **`release_notes` Supabase table** (public-read), not in code — so you can publish
+them without a deploy. **To add notes for a release**, insert a row via the Supabase SQL editor or
+MCP `execute_sql`:
 
-```ts
-export const RELEASE_NOTES: ReleaseNote[] = [
-  {
-    version: '0.2.0',          // bump in step with apps/web/package.json
-    date: '2026-07-01',        // ISO YYYY-MM-DD
-    title: "What's new",       // short headline shown as the dialog title
-    items: [                   // short, user-facing bullets (no internal jargon)
-      'Describe the change in one friendly line.',
-    ],
-  },
-  // ...older releases below
-];
+```sql
+insert into public.release_notes (version, date, title, items) values (
+  '0.3.0',                    -- bump in step with apps/web/package.json
+  '2026-07-01',               -- ISO YYYY-MM-DD
+  'What''s new',              -- short headline shown as the dialog title
+  '["Describe the change in one friendly line."]'::jsonb  -- short, user-facing bullets (no jargon)
+);
 ```
+
+The newest `version` (by `compareVersions`) is treated as the current release. The table is
+anon-readable with no write policy, so notes can only be authored under the dashboard/service role —
+users can't edit them. Mirror the `insert` in a `supabase/migrations/` file if you want it
+reproducible on a fresh database.
 
 **How it behaves:**
 
@@ -85,7 +86,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
 - The modal is suppressed on the onboarding/immersive-entry routes (`/welcome`, `/plant-confirm`,
   `/preview`).
 
-**Where the pieces live:** content in `lib/release-notes/notes.ts`; the "which are unseen" gating in
+**Where the pieces live:** content in the `release_notes` Supabase table, loaded at runtime by
+`lib/release-notes/source.ts` (which caches the last fetch in localStorage for offline); the
+`ReleaseNote` type in `lib/release-notes/notes.ts`; the "which are unseen" gating in
 `lib/release-notes/select.ts`; the per-device last-seen flag (localStorage) in
 `lib/release-notes/seen.ts`; the UI in `components/release-notes/` (mounted in
 `components/layout/AppShell.tsx`). The logic is unit-tested — run `npm run test` after editing.
