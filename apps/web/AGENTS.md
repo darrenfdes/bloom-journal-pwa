@@ -50,3 +50,42 @@ where email = 'someone@example.com';
 > live only in memory, and are never written to Dexie or pushed to Supabase.
 
 **Deprecated:** the old fixed-scenery pages (`/preview/{dawn,day,golden-hour,heavy-rain,night-storm,full-moon,flowers}`) still load but are no longer linked. Their renderer is `apps/web/components/scene/DeprecatedWeatherPreviewScene.tsx` with presets in `apps/web/lib/scene/preview-scenes.deprecated.ts` — both marked `@deprecated`. Don't build new previews on them.
+
+## Release notes ("What's new")
+
+When you ship a user-facing feature, announce it by adding a release-notes entry. Returning users
+see a dismissible "What's new" modal on their next app open; brand-new users don't.
+
+**To add notes for a release**, prepend one entry (newest-first) to `RELEASE_NOTES` in
+[`apps/web/lib/release-notes/notes.ts`](lib/release-notes/notes.ts):
+
+```ts
+export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: '0.2.0',          // bump in step with apps/web/package.json
+    date: '2026-07-01',        // ISO YYYY-MM-DD
+    title: "What's new",       // short headline shown as the dialog title
+    items: [                   // short, user-facing bullets (no internal jargon)
+      'Describe the change in one friendly line.',
+    ],
+  },
+  // ...older releases below
+];
+```
+
+**How it behaves:**
+
+- On open, a returning user is shown the releases **newer than the version they last saw** —
+  one release per page, with a **Prev / Next picker** to cycle through them (newest first).
+- Dismissing (the **Got it** button, the ✕, Escape, or clicking outside) marks the current
+  version as seen, so the modal won't reappear until the next release.
+- The **first time** the app ever runs on a device we silently record the current version and show
+  nothing — so first-time users (and existing users on the release that introduced this) don't get a
+  backlog dump.
+- The modal is suppressed on the onboarding/immersive-entry routes (`/welcome`, `/plant-confirm`,
+  `/preview`).
+
+**Where the pieces live:** content in `lib/release-notes/notes.ts`; the "which are unseen" gating in
+`lib/release-notes/select.ts`; the per-device last-seen flag (localStorage) in
+`lib/release-notes/seen.ts`; the UI in `components/release-notes/` (mounted in
+`components/layout/AppShell.tsx`). The logic is unit-tested — run `npm run test` after editing.
