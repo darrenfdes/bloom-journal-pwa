@@ -797,7 +797,7 @@ export function BloomMeadow({
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: sans, background: '#0a0f2a', userSelect: grabbing ? 'none' : 'auto' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', overflow: 'hidden', fontFamily: sans, background: '#0a0f2a', userSelect: grabbing ? 'none' : 'auto' }}>
       <style>{`
         .bj-scroll::-webkit-scrollbar{display:none}
         @keyframes bj-sway{0%{transform:rotate(-1.7deg)}100%{transform:rotate(1.9deg)}}
