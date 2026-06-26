@@ -33,7 +33,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     items: [
       'A living garden: your meadow now follows the real time of day and local weather.',
       'Gentle nudges: optional notifications for sky events, festivities, and resurfaced memories.',
-      'More ways to feel: an expanded set of moods to capture how an entry felt.',
+      'More ways to feel: a much larger set of moods when writing an entry — from joyful, grateful, and hopeful to numb, drained, lonely, and overwhelmed — so you can capture exactly how a moment felt.',
       'Keepsake bouquets: bouquets you keep now sync across your devices.',
     ],
   },
