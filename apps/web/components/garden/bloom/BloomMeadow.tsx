@@ -220,6 +220,7 @@ export function BloomMeadow({
   const [flash, setFlash] = useState(0); // lightning trigger (re-keys the flash overlay)
   const [active, setActive] = useState<PlacedEntry | null>(null);
   const [activeFav, setActiveFav] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [activeMonth, setActiveMonth] = useState(0);
   const [replay, setReplay] = useState<PlacedEntry | null>(null);
@@ -513,6 +514,7 @@ export function BloomMeadow({
 
   useEffect(() => {
     if (active) setActiveFav(active.isFavourited);
+    setConfirmDelete(false);
   }, [active]);
 
   // Tell the app chrome a memory card is open so the bottom nav steps aside;
@@ -814,6 +816,7 @@ export function BloomMeadow({
         @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+        @keyframes bj-confirm{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         ${creatures || live ? CREATURE_KEYFRAMES : ''}
         ${SHOOTING_STAR_KEYFRAMES}
         ${COMET_KEYFRAMES}
@@ -1487,7 +1490,7 @@ export function BloomMeadow({
             ))}
 
             {/* actions (hidden in the standalone preview, which has no real entries to act on) */}
-            {!preview && (
+            {!preview && !confirmDelete && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
                 <button onClick={() => router.push(`/entry/${active.id}`)} style={pill}>Open full memory</button>
                 <button
@@ -1497,7 +1500,27 @@ export function BloomMeadow({
                   {activeFav ? '♥ Favourited' : '♡ Favourite'}
                 </button>
                 <button onClick={() => router.push(`/revisit/${active.id}`)} style={{ ...pill, background: '#f6f1e4', borderColor: '#e0d3b3', color: '#6f6650' }}>↻ Revisit</button>
-                <button onClick={() => void handleDelete()} style={{ ...pill, background: '#f6e6df', borderColor: '#e3c4b8', color: '#a8553f' }}>Delete</button>
+                <button onClick={() => setConfirmDelete(true)} style={{ ...pill, background: '#f6e6df', borderColor: '#e3c4b8', color: '#a8553f' }}>Delete</button>
+              </div>
+            )}
+            {!preview && confirmDelete && (
+              <div
+                style={{
+                  marginTop: 16,
+                  background: '#f8e9e2',
+                  border: '1px solid #e3c4b8',
+                  borderRadius: 14,
+                  padding: '13px 14px',
+                  animation: 'bj-confirm .28s cubic-bezier(.2,.8,.3,1) both',
+                }}
+              >
+                <div style={{ fontFamily: sans, fontSize: 12.5, fontWeight: 700, color: '#9a4a36', lineHeight: 1.45 }}>
+                  Remove this memory from your garden?
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 11 }}>
+                  <button onClick={() => setConfirmDelete(false)} style={{ ...pill, background: '#fbf3ee', borderColor: '#e3c4b8', color: '#7a5a4f' }}>Keep</button>
+                  <button onClick={() => void handleDelete()} style={{ ...pill, background: '#a8553f', borderColor: '#a8553f', color: '#fbf6ec' }}>Delete</button>
+                </div>
               </div>
             )}
           </div>

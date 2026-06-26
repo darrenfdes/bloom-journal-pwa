@@ -126,6 +126,11 @@ describe('BloomMeadow', () => {
       expect(mockToggleFavourite).toHaveBeenCalledWith('live-entry');
       expect(mockRefreshEntries).toHaveBeenCalled();
 
+      // first Delete click only asks for confirmation, it does not delete yet
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(mockSoftDelete).not.toHaveBeenCalled();
+
+      // confirming actually removes the entry
       await user.click(screen.getByRole('button', { name: 'Delete' }));
       expect(mockSoftDelete).toHaveBeenCalledWith('live-entry');
       expect(mockRefreshEntries).toHaveBeenCalledTimes(2);
