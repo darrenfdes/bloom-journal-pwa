@@ -220,6 +220,7 @@ export function BloomMeadow({
   const [flash, setFlash] = useState(0); // lightning trigger (re-keys the flash overlay)
   const [active, setActive] = useState<PlacedEntry | null>(null);
   const [activeFav, setActiveFav] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [activeMonth, setActiveMonth] = useState(0);
   const [replay, setReplay] = useState<PlacedEntry | null>(null);
@@ -513,6 +514,7 @@ export function BloomMeadow({
 
   useEffect(() => {
     if (active) setActiveFav(active.isFavourited);
+    setConfirmDelete(false);
   }, [active]);
 
   // Tell the app chrome a memory card is open so the bottom nav steps aside;
@@ -1487,7 +1489,7 @@ export function BloomMeadow({
             ))}
 
             {/* actions (hidden in the standalone preview, which has no real entries to act on) */}
-            {!preview && (
+            {!preview && !confirmDelete && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
                 <button onClick={() => router.push(`/entry/${active.id}`)} style={pill}>Open full memory</button>
                 <button
@@ -1497,7 +1499,18 @@ export function BloomMeadow({
                   {activeFav ? '♥ Favourited' : '♡ Favourite'}
                 </button>
                 <button onClick={() => router.push(`/revisit/${active.id}`)} style={{ ...pill, background: '#f6f1e4', borderColor: '#e0d3b3', color: '#6f6650' }}>↻ Revisit</button>
-                <button onClick={() => void handleDelete()} style={{ ...pill, background: '#f6e6df', borderColor: '#e3c4b8', color: '#a8553f' }}>Delete</button>
+                <button onClick={() => setConfirmDelete(true)} style={{ ...pill, background: '#f6e6df', borderColor: '#e3c4b8', color: '#a8553f' }}>Delete</button>
+              </div>
+            )}
+            {!preview && confirmDelete && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+                <div style={{ fontFamily: sans, fontSize: 12.5, fontWeight: 600, color: '#a8553f' }}>
+                  Remove this memory from your garden? You can still recover it from a backup later.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => setConfirmDelete(false)} style={{ ...pill, background: '#f6f1e4', borderColor: '#e0d3b3', color: '#6f6650' }}>Cancel</button>
+                  <button onClick={() => void handleDelete()} style={{ ...pill, background: '#a8553f', borderColor: '#a8553f', color: '#fbf6ec' }}>Delete</button>
+                </div>
               </div>
             )}
           </div>
