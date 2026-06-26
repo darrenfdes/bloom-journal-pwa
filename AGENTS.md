@@ -72,4 +72,4 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Release notes ("What's new")
 
-User-facing features should ship with a release-notes entry so returning users see what changed on their next app open. To add one, prepend an entry to `RELEASE_NOTES` in `apps/web/lib/release-notes/notes.ts` — see [apps/web/AGENTS.md](apps/web/AGENTS.md#release-notes-whats-new) for the format and behavior.
+User-facing features should ship with a release-notes entry so returning users see what changed on their next app open. To add one, insert a row into the public-read `release_notes` Supabase table (via the SQL editor or MCP `execute_sql`) — see [apps/web/AGENTS.md](apps/web/AGENTS.md#release-notes-whats-new) for the SQL and behavior.
