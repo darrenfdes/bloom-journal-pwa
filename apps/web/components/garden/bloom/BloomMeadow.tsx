@@ -59,6 +59,7 @@ import {
   phaseFromHour,
   type PhaseKey,
 } from '@/lib/garden/bloom/phases';
+import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
 import {
@@ -438,21 +439,23 @@ export function BloomMeadow({
     });
   }, [layout.W, vw]);
 
-  /* a lone black ram. At night he's always out when it rains, otherwise a 50% chance (re-rolled each
-     nightfall). During the day he stays hidden unless the most recent entry is sad/anxious. */
+  /* a lone black ram. Highest chance wins: a difficult-mood entry always brings him out; otherwise
+     rain gives a 50% chance (day or night) and a clear night a 1/7 chance. The roll is refreshed
+     whenever the night/rain state changes, so each new spell gets its own shot. */
   const isNight = phaseKey === 'night';
-  const [ramRoll, setRamRoll] = useState(false);
+  const [ramRoll, setRamRoll] = useState(() => Math.random());
   useEffect(() => {
-    setRamRoll(isNight ? Math.random() < 0.5 : false);
-  }, [isNight]);
-  const gloomyEntry = useMemo(() => {
+    setRamRoll(Math.random());
+  }, [isNight, precip]);
+  const difficultEntry = useMemo(() => {
     const latest = layout.entries.reduce<(typeof layout.entries)[number] | null>(
       (a, e) => (!a || e.createdAt > a.createdAt ? e : a),
       null,
     );
-    return latest?.mood === 'melancholy' || latest?.mood === 'anxious';
+    return isDifficultMood(latest?.mood);
   }, [layout]);
-  const ramVisible = isNight ? precip || ramRoll : gloomyEntry;
+  const ramVisible =
+    ramRoll < ramAppearanceChance({ difficult: difficultEntry, raining: precip, night: isNight });
   const ram = useMemo(() => {
     const near = hills[2];
     if (!near) return null;
@@ -944,7 +947,7 @@ export function BloomMeadow({
                 />
               ))}
             </g>
-            {/* a lone black ram, near hill only — comes out at night, sometimes */}
+            {/* a lone black ram, near hill only — out on difficult-mood days, in rain, or some nights */}
             {i === 2 && ram && (
               <g style={{ opacity: ramVisible ? 0.8 : 0, transition: 'opacity 1.6s ease' }}>
                 <Ram x={ram.x} y={ram.y} h={ram.h} />
