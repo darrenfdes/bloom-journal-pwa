@@ -816,6 +816,7 @@ export function BloomMeadow({
         @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+        @keyframes bj-confirm{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         ${creatures || live ? CREATURE_KEYFRAMES : ''}
         ${SHOOTING_STAR_KEYFRAMES}
         ${COMET_KEYFRAMES}
@@ -1503,12 +1504,21 @@ export function BloomMeadow({
               </div>
             )}
             {!preview && confirmDelete && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-                <div style={{ fontFamily: sans, fontSize: 12.5, fontWeight: 600, color: '#a8553f' }}>
-                  Remove this memory from your garden? You can still recover it from a backup later.
+              <div
+                style={{
+                  marginTop: 16,
+                  background: '#f8e9e2',
+                  border: '1px solid #e3c4b8',
+                  borderRadius: 14,
+                  padding: '13px 14px',
+                  animation: 'bj-confirm .28s cubic-bezier(.2,.8,.3,1) both',
+                }}
+              >
+                <div style={{ fontFamily: sans, fontSize: 12.5, fontWeight: 700, color: '#9a4a36', lineHeight: 1.45 }}>
+                  Remove this memory from your garden?
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => setConfirmDelete(false)} style={{ ...pill, background: '#f6f1e4', borderColor: '#e0d3b3', color: '#6f6650' }}>Cancel</button>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 11 }}>
+                  <button onClick={() => setConfirmDelete(false)} style={{ ...pill, background: '#fbf3ee', borderColor: '#e3c4b8', color: '#7a5a4f' }}>Keep</button>
                   <button onClick={() => void handleDelete()} style={{ ...pill, background: '#a8553f', borderColor: '#a8553f', color: '#fbf6ec' }}>Delete</button>
                 </div>
               </div>
