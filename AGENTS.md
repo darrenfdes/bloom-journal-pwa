@@ -69,3 +69,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## Release notes ("What's new")
+
+User-facing features should ship with a release-notes entry so returning users see what changed on their next app open. To add one, prepend an entry to `RELEASE_NOTES` in `apps/web/lib/release-notes/notes.ts` — see [apps/web/AGENTS.md](apps/web/AGENTS.md#release-notes-whats-new) for the format and behavior.

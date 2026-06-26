@@ -6,6 +6,7 @@ import { AuthProvider } from '@/components/auth/AuthProvider';
 import { BloomProvider } from '@/components/BloomProvider';
 import { AppNav } from '@/components/nav/AppNav';
 import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
+import { ReleaseNotesDialog } from '@/components/release-notes/ReleaseNotesDialog';
 import { SyncBadge } from '@/components/sync/SyncBadge';
 import { Toaster } from '@/components/ui/sonner';
 import { QuickWrite } from '@/components/write/QuickWrite';
@@ -49,6 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!hideNav ? <QuickWrite /> : null}
       <PwaLifecycle />
       <Toaster />
+      {!hideNav ? <ReleaseNotesDialog /> : null}
       </BloomProvider>
     </AuthProvider>
   );
