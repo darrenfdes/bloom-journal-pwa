@@ -23,13 +23,13 @@ describe('ramAppearanceChance', () => {
     expect(ramAppearanceChance({ difficult: true, raining: true, night: true })).toBe(1);
   });
 
-  it('shows with 50% chance when raining (day or night), absent a difficult mood', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: true, night: false })).toBe(0.5);
-    expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.5);
+  it('shows with 20% chance when raining (day or night), absent a difficult mood', () => {
+    expect(ramAppearanceChance({ difficult: false, raining: true, night: false })).toBe(0.2);
+    expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.2);
   });
 
-  it('shows with a 1/7 chance on a clear night', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: false, night: true })).toBe(1 / 7);
+  it('shows with a 1/10 chance on a clear night', () => {
+    expect(ramAppearanceChance({ difficult: false, raining: false, night: true })).toBe(0.1);
   });
 
   it('stays hidden on a clear, non-difficult day', () => {
@@ -37,6 +37,6 @@ describe('ramAppearanceChance', () => {
   });
 
   it('ranks rain above night when both apply', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.5);
+    expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.2);
   });
 });

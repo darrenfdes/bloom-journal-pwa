@@ -441,7 +441,7 @@ export function BloomMeadow({
   }, [layout.W, vw]);
 
   /* a lone black ram. Highest chance wins: a difficult-mood entry always brings him out; otherwise
-     rain gives a 50% chance (day or night) and a clear night a 1/7 chance. The roll is refreshed
+     rain gives a 20% chance (day or night) and a clear night a 10% chance. The roll is refreshed
      whenever the night/rain state changes, so each new spell gets its own shot. */
   const isNight = phaseKey === 'night';
   const [ramRoll, setRamRoll] = useState(() => Math.random());
