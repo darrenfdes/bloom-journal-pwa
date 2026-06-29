@@ -11,7 +11,7 @@ export const isDifficultMood = (mood: Mood | null | undefined): boolean =>
 
 /**
  * Probability the lone black ram appears, by priority tier (highest chance wins):
- * a difficult-mood entry → always; else raining → 50%; else night → 1/7; else hidden.
+ * a difficult-mood entry → always; else raining → 20%; else night → 10%; else hidden.
  */
 export const ramAppearanceChance = ({
   difficult,
@@ -21,4 +21,4 @@ export const ramAppearanceChance = ({
   difficult: boolean;
   raining: boolean;
   night: boolean;
-}): number => (difficult ? 1 : raining ? 0.5 : night ? 1 / 7 : 0);
+}): number => (difficult ? 1 : raining ? 0.2 : night ? 0.1 : 0);
