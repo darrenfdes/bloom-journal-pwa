@@ -49,41 +49,36 @@ const PLANET_POS: Record<Planet, Pos> = {
   Mars: { x: 23, y: 49 },
 };
 
-// Eclipses progress on the wall clock (not from when the screen opened), so every viewer
-// sees the same phase and the shadow drifts slowly rather than restarting on each mount.
-const ECLIPSE_PERIOD_MS = 90_000; // one full transit: ingress → totality → egress → loop
+const smoothstep = (x: number) => x * x * (3 - 2 * x);
 
-/** Forward transit position `pos` (+1 off one side → 0 totality → -1 off the other) + coverage. */
-function eclipsePhaseAt(now: number) {
-  const t = (now % ECLIPSE_PERIOD_MS) / ECLIPSE_PERIOD_MS; // 0..1
-  const pos = 1 - 2 * t; // +1 → -1, always moving forward
-  const cover = 1 - Math.abs(pos); // 0 at the transit edges, 1 at totality
-  return { pos, cover };
-}
+// When an eclipse comes into view the shadow eases slowly into place (totality) and then holds —
+// it does not drift on through and loop back around.
+const ECLIPSE_START_POS = 0.6; // begins already partially overlapping the body
+const LUNAR_INGRESS_MS = 16_000; // moon: slow glide into totality
+const SOLAR_INGRESS_MS = 32_000; // sun: settles even more slowly into place
 
-/** Re-renders each frame with the current wall-clock eclipse phase. */
-function useEclipsePhase() {
-  const [phase, setPhase] = useState(() => eclipsePhaseAt(Date.now()));
+/** Eases the shadow from a partial overlap into totality once, then leaves it parked there. */
+function useEclipsePhase(durationMs: number) {
+  const [pos, setPos] = useState(ECLIPSE_START_POS);
   useEffect(() => {
+    const start = performance.now();
     let raf = 0;
-    const tick = () => {
-      setPhase(eclipsePhaseAt(Date.now()));
-      raf = requestAnimationFrame(tick);
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - start) / durationMs);
+      setPos(ECLIPSE_START_POS * (1 - smoothstep(k))); // eases toward 0 = totality, then stops
+      if (k < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
-  return phase;
+  }, [durationMs]);
+  return { pos, cover: 1 - Math.abs(pos) };
 }
-
-const smoothstep = (x: number) => x * x * (3 - 2 * x);
 
 /** Solar eclipse: the moon's shadow sweeps across the sun; daylight + corona track totality. */
 function SolarEclipse({ sunPos }: { sunPos: SunPos }) {
-  const { pos, cover } = useEclipsePhase();
+  const { pos, cover } = useEclipsePhase(SOLAR_INGRESS_MS);
   const ease = smoothstep(cover);
-  const biteOpacity = Math.min(1, cover / 0.12); // fade the disc only at the edges (hides the loop wrap)
-  const offX = pos * sunPos.size * 1.1;
+  const offX = pos * sunPos.size * 1.1; // clears the sun at the transit ends, covers it fully at totality
   const offY = pos * sunPos.size * 0.16;
   return (
     <>
@@ -97,55 +92,54 @@ function SolarEclipse({ sunPos }: { sunPos: SunPos }) {
           opacity: ease, transform: `scale(${1 + ease * 0.06})`,
         }}
       />
-      {/* the moon's shadow, drifting across the sun */}
-      <div
-        style={{
-          position: 'absolute', left: `${sunPos.x}%`, top: `${sunPos.y}%`,
-          width: sunPos.size, height: sunPos.size, borderRadius: '50%', background: '#0b1024',
-          transform: `translate(-50%,-50%) translate(${offX}px, ${offY}px)`,
-          boxShadow: 'inset 0 0 18px 4px rgba(0,0,0,.6)', opacity: biteOpacity, pointerEvents: 'none',
-        }}
-      />
+      {/* the moon's shadow — clipped to the sun's disc so only the silhouette over the sun shows,
+          never a dark circle beside it (the eclipsing moon is itself unlit). */}
+      <div style={{ ...centred(sunPos, sunPos.size), borderRadius: '50%', overflow: 'hidden' }}>
+        <div
+          style={{
+            position: 'absolute', left: '50%', top: '50%',
+            width: sunPos.size, height: sunPos.size, marginLeft: -sunPos.size / 2, marginTop: -sunPos.size / 2,
+            borderRadius: '50%', background: '#0b1024',
+            transform: `translate(${offX}px, ${offY}px)`,
+            boxShadow: 'inset 0 0 18px 4px rgba(0,0,0,.6)',
+          }}
+        />
+      </div>
     </>
   );
 }
 
-/** Lunar eclipse: Earth's umbra sweeps across the moon; the blood-moon glow swells at totality. */
+/** Lunar eclipse: Earth's umbra creeps across the moon's disc; the moon reddens at totality. */
 function LunarEclipse({ moonPos }: { moonPos: Pos }) {
-  const { pos, cover } = useEclipsePhase();
+  const { pos, cover } = useEclipsePhase(LUNAR_INGRESS_MS);
   const ease = smoothstep(cover);
   const MOON = 96; // the meadow's moon disc is 96px (see BloomMeadow)
-  const UMBRA = MOON * 2.4; // Earth's shadow reads larger than the moon
-  const umbraOpacity = Math.min(1, cover / 0.1); // fade the shadow at the transit edges
-  const offX = pos * MOON * 1.6;
-  const offY = pos * MOON * 0.22;
+  const UMBRA = MOON * 2.3; // Earth's shadow dwarfs the moon → a gently curved shadow edge
+  const offX = pos * MOON * 1.7; // clears the disc at the transit ends, covers it fully at totality
+  const offY = pos * MOON * 0.18;
   return (
     <>
-      {/* blood-red ambient glow — swells at totality */}
+      {/* blood-red ambient glow — swells only around totality */}
       <div
         style={{
-          ...centred(moonPos, 380), borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(190,45,32,.55) 0%, rgba(150,30,24,.2) 40%, transparent 70%)',
+          ...centred(moonPos, 360), borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(190,60,38,.5) 0%, rgba(150,36,28,.18) 42%, transparent 70%)',
           filter: 'blur(2px)', opacity: ease,
         }}
       />
-      {/* Earth's umbra, drifting across the moon */}
-      <div
-        style={{
-          position: 'absolute', left: `${moonPos.x}%`, top: `${moonPos.y}%`,
-          width: UMBRA, height: UMBRA, marginLeft: -UMBRA / 2, marginTop: -UMBRA / 2, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(74,26,20,.95) 0%, rgba(28,14,26,.95) 52%, rgba(18,10,22,.85) 100%)',
-          transform: `translate(${offX}px, ${offY}px)`, opacity: umbraOpacity, pointerEvents: 'none',
-        }}
-      />
-      {/* coppery blood-moon disc — lights the moon where it sits deep in the umbra */}
-      <div
-        style={{
-          ...centred(moonPos, MOON), borderRadius: '50%',
-          background: 'radial-gradient(circle at 42% 40%, rgba(196,86,52,.95) 0%, rgba(150,40,28,.95) 60%, rgba(96,24,20,.95) 100%)',
-          mixBlendMode: 'screen', opacity: ease,
-        }}
-      />
+      {/* Earth's umbra — clipped to the moon so only the shadow that falls on the disc is seen,
+          never a dark disc floating in the sky. Its coppery core reddens the moon at totality. */}
+      <div style={{ ...centred(moonPos, MOON), borderRadius: '50%', overflow: 'hidden' }}>
+        <div
+          style={{
+            position: 'absolute', left: '50%', top: '50%',
+            width: UMBRA, height: UMBRA, marginLeft: -UMBRA / 2, marginTop: -UMBRA / 2, borderRadius: '50%',
+            background:
+              'radial-gradient(circle, rgba(170,66,40,.96) 0%, rgba(112,38,28,.96) 40%, rgba(46,18,22,.95) 74%, rgba(28,12,18,.94) 100%)',
+            transform: `translate(${offX}px, ${offY}px)`, filter: 'blur(1.5px)',
+          }}
+        />
+      </div>
     </>
   );
 }
