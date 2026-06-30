@@ -8,7 +8,7 @@
  * sun/moon coordinates so glows/eclipses line up with the real bodies.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import type { SceneEffect } from '@bloom/core/events';
 
@@ -48,6 +48,107 @@ const PLANET_POS: Record<Planet, Pos> = {
   Jupiter: { x: 33, y: 38 },
   Mars: { x: 23, y: 49 },
 };
+
+// Eclipses progress on the wall clock (not from when the screen opened), so every viewer
+// sees the same phase and the shadow drifts slowly rather than restarting on each mount.
+const ECLIPSE_PERIOD_MS = 90_000; // one full transit: ingress → totality → egress → loop
+
+/** Forward transit position `pos` (+1 off one side → 0 totality → -1 off the other) + coverage. */
+function eclipsePhaseAt(now: number) {
+  const t = (now % ECLIPSE_PERIOD_MS) / ECLIPSE_PERIOD_MS; // 0..1
+  const pos = 1 - 2 * t; // +1 → -1, always moving forward
+  const cover = 1 - Math.abs(pos); // 0 at the transit edges, 1 at totality
+  return { pos, cover };
+}
+
+/** Re-renders each frame with the current wall-clock eclipse phase. */
+function useEclipsePhase() {
+  const [phase, setPhase] = useState(() => eclipsePhaseAt(Date.now()));
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      setPhase(eclipsePhaseAt(Date.now()));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return phase;
+}
+
+const smoothstep = (x: number) => x * x * (3 - 2 * x);
+
+/** Solar eclipse: the moon's shadow sweeps across the sun; daylight + corona track totality. */
+function SolarEclipse({ sunPos }: { sunPos: SunPos }) {
+  const { pos, cover } = useEclipsePhase();
+  const ease = smoothstep(cover);
+  const biteOpacity = Math.min(1, cover / 0.12); // fade the disc only at the edges (hides the loop wrap)
+  const offX = pos * sunPos.size * 1.1;
+  const offY = pos * sunPos.size * 0.16;
+  return (
+    <>
+      {/* daylight dims as the moon covers the sun — darkest at totality */}
+      <div style={{ ...fill, background: 'rgb(18,22,44)', mixBlendMode: 'multiply', opacity: 0.08 + ease * 0.55 }} />
+      {/* corona — only emerges around totality */}
+      <div
+        style={{
+          ...centred(sunPos, sunPos.size * 1.7), borderRadius: '50%',
+          background: 'radial-gradient(circle, transparent 44%, rgba(255,240,205,.55) 50%, transparent 64%)',
+          opacity: ease, transform: `scale(${1 + ease * 0.06})`,
+        }}
+      />
+      {/* the moon's shadow, drifting across the sun */}
+      <div
+        style={{
+          position: 'absolute', left: `${sunPos.x}%`, top: `${sunPos.y}%`,
+          width: sunPos.size, height: sunPos.size, borderRadius: '50%', background: '#0b1024',
+          transform: `translate(-50%,-50%) translate(${offX}px, ${offY}px)`,
+          boxShadow: 'inset 0 0 18px 4px rgba(0,0,0,.6)', opacity: biteOpacity, pointerEvents: 'none',
+        }}
+      />
+    </>
+  );
+}
+
+/** Lunar eclipse: Earth's umbra sweeps across the moon; the blood-moon glow swells at totality. */
+function LunarEclipse({ moonPos }: { moonPos: Pos }) {
+  const { pos, cover } = useEclipsePhase();
+  const ease = smoothstep(cover);
+  const MOON = 96; // the meadow's moon disc is 96px (see BloomMeadow)
+  const UMBRA = MOON * 2.4; // Earth's shadow reads larger than the moon
+  const umbraOpacity = Math.min(1, cover / 0.1); // fade the shadow at the transit edges
+  const offX = pos * MOON * 1.6;
+  const offY = pos * MOON * 0.22;
+  return (
+    <>
+      {/* blood-red ambient glow — swells at totality */}
+      <div
+        style={{
+          ...centred(moonPos, 380), borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(190,45,32,.55) 0%, rgba(150,30,24,.2) 40%, transparent 70%)',
+          filter: 'blur(2px)', opacity: ease,
+        }}
+      />
+      {/* Earth's umbra, drifting across the moon */}
+      <div
+        style={{
+          position: 'absolute', left: `${moonPos.x}%`, top: `${moonPos.y}%`,
+          width: UMBRA, height: UMBRA, marginLeft: -UMBRA / 2, marginTop: -UMBRA / 2, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(74,26,20,.95) 0%, rgba(28,14,26,.95) 52%, rgba(18,10,22,.85) 100%)',
+          transform: `translate(${offX}px, ${offY}px)`, opacity: umbraOpacity, pointerEvents: 'none',
+        }}
+      />
+      {/* coppery blood-moon disc — lights the moon where it sits deep in the umbra */}
+      <div
+        style={{
+          ...centred(moonPos, MOON), borderRadius: '50%',
+          background: 'radial-gradient(circle at 42% 40%, rgba(196,86,52,.95) 0%, rgba(150,40,28,.95) 60%, rgba(96,24,20,.95) 100%)',
+          mixBlendMode: 'screen', opacity: ease,
+        }}
+      />
+    </>
+  );
+}
 
 export function EventEffectsLayer({
   effects,
@@ -168,46 +269,11 @@ export function EventEffectsLayer({
           />
         ))}
 
-      {/* ---- solar eclipse (dim daylight + bite + corona) ---- */}
-      {has('dimDaylight') && (
-        <>
-          <div style={{ ...fill, background: 'rgba(18,22,44,.5)', mixBlendMode: 'multiply', animation: 'ev-pulse 7s ease-in-out infinite' }} />
-          <div
-            style={{
-              ...centred(sunPos, sunPos.size * 1.7), borderRadius: '50%',
-              background: 'radial-gradient(circle, transparent 44%, rgba(255,240,205,.5) 50%, transparent 64%)',
-              animation: 'ev-glow 5s ease-in-out infinite',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute', left: `${sunPos.x}%`, top: `${sunPos.y}%`,
-              width: sunPos.size, height: sunPos.size, borderRadius: '50%', background: '#0b1024',
-              transform: `translate(-50%,-50%) translate(${sunPos.size * -0.18}px, ${sunPos.size * -0.12}px)`,
-              boxShadow: 'inset 0 0 18px 4px rgba(0,0,0,.6)', pointerEvents: 'none',
-            }}
-          />
-        </>
-      )}
+      {/* ---- solar eclipse (shadow sweep + dimming daylight + corona) ---- */}
+      {has('dimDaylight') && <SolarEclipse sunPos={sunPos} />}
 
-      {/* ---- lunar eclipse (blood moon) ---- */}
-      {has('bloodMoon') && (
-        <>
-          <div
-            style={{
-              ...centred(moonPos, 380), borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(190,45,32,.55) 0%, rgba(150,30,24,.2) 40%, transparent 70%)',
-              filter: 'blur(2px)', animation: 'ev-glow 6s ease-in-out infinite',
-            }}
-          />
-          <div
-            style={{
-              ...centred(moonPos, 96), borderRadius: '50%',
-              background: 'rgb(188,58,42)', mixBlendMode: 'multiply', filter: 'blur(1px)',
-            }}
-          />
-        </>
-      )}
+      {/* ---- lunar eclipse (Earth's umbra sweep + blood moon) ---- */}
+      {has('bloodMoon') && <LunarEclipse moonPos={moonPos} />}
 
       {/* ---- season shift (warm wash + drifting leaves) ---- */}
       {has('seasonShift') && (
