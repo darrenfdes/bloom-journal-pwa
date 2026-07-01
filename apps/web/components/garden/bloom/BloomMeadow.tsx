@@ -111,6 +111,8 @@ const G = 150; // ground strip height
 // Snow-covered parallax hills (back → front). Hazy blue in the distance,
 // fading to near-white up close, so the back range reads as snowy peaks.
 const SNOW_HILLS: [string, string, string] = ['#b6cde7', '#d3e2f3', '#edf4fc'];
+// Subtle off-white fleece tints so each sheep reads as an individual, not a clone.
+const WOOL_TINTS = ['#f4f0e8', '#efe8d9', '#f7f3ea', '#e9e2d3'];
 // Rendered size of each meadow bloom. The `Flower` SVG is square with the
 // plant bottom-aligned + horizontally centered, so centering it on the 120×170
 // flower button seats the stem at the button's bottom-center (60,170) — the
@@ -217,6 +219,12 @@ export function BloomMeadow({
   const [liveNow, setLiveNow] = useState(() => new Date());
   const [moonPreset, setMoonPreset] = useState('live'); // fixed moon-phase override (preview only)
   const [weatherCat, setWeatherCat] = useState<WeatherCategory>('clear');
+  // Sheep tuning: `arrangement` scatters (default) or forces a flock; `sheepSeed` re-rolls the
+  // random count + positions; `sheepRainHide` toggles the hide-in-precip behaviour. Only the
+  // preview playground surfaces controls for these — the live garden uses the defaults.
+  const [arrangement, setArrangement] = useState<'scattered' | 'flock'>('scattered');
+  const [sheepSeed, setSheepSeed] = useState(() => Math.floor(Math.random() * 1e9));
+  const [sheepRainHide, setSheepRainHide] = useState(true);
   const [flash, setFlash] = useState(0); // lightning trigger (re-keys the flash overlay)
   const [active, setActive] = useState<PlacedEntry | null>(null);
   const [activeFav, setActiveFav] = useState(false);
@@ -266,6 +274,7 @@ export function BloomMeadow({
   const windSpeed = live ? liveWeather?.windSpeed ?? 0 : 0;
   const precip = isPrecipitatingCategory(cat); // drizzle | rain | heavy_rain | thunderstorm
   const isSnow = cat === 'snow';
+  const sheepHidden = precip || isSnow; // the flock shelters out of sight in wet/snowy weather
   const isStormy = shouldShowLightning(cat); // thunderstorm | heavy_rain
   const rainFx = getRainLayerOpacity(cat); // { sheet, drop }
   const rainDur = getRainDropDurationSec(cat, 'near'); // { min, max } seconds
@@ -409,7 +418,13 @@ export function BloomMeadow({
       { f: 0.32, base: 116, amp: 64, seed: 23 },
       { f: 0.55, base: 64, amp: 72, seed: 37 },
     ];
-    return defs.map((h) => {
+    // Flock size (3–7 total) derived from `sheepSeed` so a re-roll changes the count too, split
+    // across the two populated hills (near hill weighted); the far hill (f<=0.2) stays empty.
+    const flockRng = mulberry32(sheepSeed || 1);
+    const flockSize = 3 + Math.floor(flockRng() * 5); // 3..7
+    const frontCount = Math.max(1, Math.round(flockSize * 0.6));
+    const sheepByHill = [0, flockSize - frontCount, frontCount]; // by def index
+    return defs.map((h, idx) => {
       const Wl = layout.W * h.f + vw + 500;
       const built = makeHill(h.seed, Wl, 340, h.base, h.amp);
       const tr = mulberry32(h.seed * 7);
@@ -420,25 +435,37 @@ export function BloomMeadow({
               return { id: i, x, y: built.yAt(x) + 4, sc: h.f > 0.4 ? 0.85 + tr() * 0.5 : 0.5 + tr() * 0.3 };
             })
           : [];
-      const sh = mulberry32(h.seed * 13 + 1);
-      const sheep =
-        h.f > 0.2
-          ? [...Array(h.f > 0.4 ? 4 : 3)].map((_, i) => {
-              const x = 160 + sh() * (Wl - 320);
-              return {
-                id: i,
-                x,
-                y: built.yAt(x) + 2,
-                sc: h.f > 0.4 ? 0.55 + sh() * 0.25 : 0.4 + sh() * 0.16,
-                dur: 4.8 + sh() * 3.4,
-                delay: -sh() * 7,
-                flip: sh() < 0.5,
-              };
-            })
-          : [];
+      const sh = mulberry32(h.seed * 13 + 1 + sheepSeed); // re-roll shifts positions
+      const count = sheepByHill[idx];
+      const anchorX = 160 + sh() * (Wl - 320); // shared anchor, only used in flock mode
+      const xs: number[] = [];
+      const sheep = [...Array(count)].map((_, i) => {
+        const baseSc = h.f > 0.4 ? 0.55 + sh() * 0.25 : 0.4 + sh() * 0.16;
+        const isLamb = i > 0 && sh() < 0.4; // occasional lamb, tucked beside a neighbour
+        const r = sh();
+        // Scattered: each adult picks its own spot; a lamb hugs the previous sheep (a natural
+        // ewe+lamb pair). Flock: everyone clusters around the one anchor.
+        const x =
+          arrangement === 'flock'
+            ? anchorX + (r - 0.5) * 90
+            : isLamb
+              ? xs[i - 1]! + (sh() < 0.5 ? -1 : 1) * (14 + sh() * 10)
+              : 160 + r * (Wl - 320);
+        xs.push(x);
+        return {
+          id: i,
+          x,
+          y: built.yAt(x) + 2,
+          sc: isLamb ? baseSc * 0.6 : baseSc,
+          dur: 4.8 + sh() * 3.4,
+          delay: -sh() * 7,
+          flip: sh() < 0.5, // random left/right facing
+          wool: WOOL_TINTS[Math.floor(sh() * WOOL_TINTS.length)]!,
+        };
+      });
       return { ...h, Wl, d: built.d, yAt: built.yAt, trees, sheep };
     });
-  }, [layout.W, vw]);
+  }, [layout.W, vw, arrangement, sheepSeed]);
 
   /* a lone black ram. Highest chance wins: a difficult-mood entry always brings him out; otherwise
      rain gives a 20% chance (day or night) and a clear night a 10% chance. The roll is refreshed
@@ -934,7 +961,7 @@ export function BloomMeadow({
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
-            <g style={{ opacity: phase.sheep, transition: 'opacity 1.6s ease' }}>
+            <g style={{ opacity: sheepRainHide && sheepHidden ? 0 : phase.sheep, transition: 'opacity 1.6s ease' }}>
               {h.sheep.map((s) => (
                 <Sheep
                   key={s.id}
@@ -944,7 +971,7 @@ export function BloomMeadow({
                   dur={s.dur}
                   delay={s.delay}
                   flip={s.flip}
-                  wool="#f4f0e8"
+                  wool={s.wool}
                   shade="#dcd5c6"
                   dark="#43444b"
                 />
@@ -1318,6 +1345,21 @@ export function BloomMeadow({
                     {p.label}
                   </button>
                 ))}
+              </div>
+              {/* Sheep tuning: scatter vs flock, re-roll the random layout, and toggle hide-in-rain */}
+              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(247,241,227,.5)', padding: '0 6px 0 9px' }}>Sheep</span>
+                {(['scattered', 'flock'] as const).map((a) => (
+                  <button key={a} onClick={() => setArrangement(a)} aria-pressed={arrangement === a} style={{ ...tabBtn, color: arrangement === a ? '#2c3328' : 'rgba(247,241,227,.85)', background: arrangement === a ? '#f3ecd9' : 'transparent', textTransform: 'capitalize' }}>
+                    {a}
+                  </button>
+                ))}
+                <button onClick={() => setSheepSeed(Math.floor(Math.random() * 1e9))} style={{ ...tabBtn, color: 'rgba(247,241,227,.85)', background: 'transparent' }}>
+                  ⟳ Re-roll
+                </button>
+                <button onClick={() => setSheepRainHide((v) => !v)} aria-pressed={sheepRainHide} style={{ ...tabBtn, color: sheepRainHide ? '#2c3328' : 'rgba(247,241,227,.85)', background: sheepRainHide ? '#f3ecd9' : 'transparent' }}>
+                  Hide in rain
+                </button>
               </div>
               {eventsBrowser && (
                 <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2 }}>
