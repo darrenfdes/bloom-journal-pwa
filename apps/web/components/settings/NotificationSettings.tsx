@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Bell } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
-import { SettingsCard } from '@/components/settings/SettingsCard';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { SettingsRow, SettingsSection } from '@/components/settings/SettingsList';
+import { Switch } from '@/components/ui/switch';
 import {
   DEFAULT_GROUPS,
   getStoredGroups,
@@ -83,61 +83,57 @@ export function NotificationSettings() {
     }
   };
 
+  const info = !supported
+    ? 'This browser doesn’t support push notifications. On iPhone, add Bloom Journal to your Home Screen first, then try again.'
+    : !VAPID_CONFIGURED
+      ? 'Notifications aren’t configured for this deployment yet.'
+      : !user
+        ? 'Sign in to enable notifications across your devices.'
+        : permission === 'denied'
+          ? 'Notifications are blocked. Allow them for this site in your browser settings, then reload.'
+          : null;
+
   return (
-    <SettingsCard
-      title="Notifications"
-      description="Gentle nudges for sky events, festivities, and memories — even when the app is closed."
-    >
-      {!supported ? (
-        <p className="text-sm text-ink-soft">
-          This browser doesn’t support push notifications. On iPhone, add Bloom Journal to your Home
-          Screen first, then try again.
-        </p>
-      ) : !VAPID_CONFIGURED ? (
-        <p className="text-sm text-ink-soft">Notifications aren’t configured for this deployment yet.</p>
-      ) : !user ? (
-        <p className="text-sm text-ink-soft">Sign in to enable notifications across your devices.</p>
-      ) : permission === 'denied' ? (
-        <p className="text-sm text-ink-soft">
-          Notifications are blocked. Allow them for this site in your browser settings, then reload.
-        </p>
+    <SettingsSection title="Notifications">
+      {info ? (
+        <p className="px-4 py-3 text-sm text-ink-soft">{info}</p>
       ) : (
         <>
+          <SettingsRow
+            icon={Bell}
+            label="Push notifications"
+            secondary="Gentle nudges for sky events, festivities, and memories — even when the app is closed."
+            trailing={
+              <Switch
+                checked={subscribed}
+                disabled={busy}
+                onCheckedChange={(v) => void (v ? handleEnable() : handleDisable())}
+                aria-label="Push notifications"
+              />
+            }
+          />
           {subscribed ? (
-            <Button variant="outline" disabled={busy} onClick={() => void handleDisable()}>
-              {busy ? 'Saving…' : 'Turn off notifications'}
-            </Button>
-          ) : (
-            <Button disabled={busy} onClick={() => void handleEnable()}>
-              {busy ? 'Enabling…' : 'Enable notifications'}
-            </Button>
-          )}
-
-          {subscribed ? (
-            <div className="mt-2 space-y-3">
-              {GROUP_LABELS.map(({ key, label, hint }) => (
-                <div key={key} className="flex items-start gap-3">
-                  <input
-                    id={`notify-${key}`}
-                    type="checkbox"
-                    className="mt-1"
+            GROUP_LABELS.map(({ key, label, hint }) => (
+              <SettingsRow
+                key={key}
+                label={label}
+                secondary={hint}
+                trailing={
+                  <Switch
                     checked={groups[key]}
-                    onChange={(e) => void toggleGroup(key, e.target.checked)}
+                    onCheckedChange={(v) => void toggleGroup(key, v)}
+                    aria-label={label}
                   />
-                  <div className="space-y-0.5">
-                    <Label htmlFor={`notify-${key}`}>{label}</Label>
-                    <p className="text-xs text-ink-muted">{hint}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                }
+              />
+            ))
           ) : (
-            <p className="text-xs text-ink-muted">
+            <p className="px-4 py-3 text-xs text-ink-muted">
               On iPhone, add Bloom Journal to your Home Screen to receive notifications.
             </p>
           )}
         </>
       )}
-    </SettingsCard>
+    </SettingsSection>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 
 import { MoodPicker } from '@/components/ui/MoodPicker';
 import { TagInput } from '@/components/ui/TagInput';
@@ -28,6 +29,10 @@ type Props = {
   onApplyPrompt?: () => void;
   /** Autosave indicator wired from `useWriteDraft`. */
   saveState?: DraftSaveState;
+  /** Collapse Mood/Tags behind "+ Add" chips for fast capture (quick mode). */
+  extrasCollapsed?: boolean;
+  /** Omit the built-in submit button so a parent can render a pinned CTA. */
+  hideSubmit?: boolean;
 };
 
 function countWords(text: string): number {
@@ -42,6 +47,10 @@ const SAVE_LABEL: Record<DraftSaveState, string> = {
   saved: 'Saved',
   error: 'Could not save draft',
 };
+
+/** Shared styling for the primary "Plant it" pill, reused by pinned CTAs. */
+export const plantButtonClass =
+  'h-12 w-full rounded-full border-0 text-base font-semibold shadow-lg shadow-sage/30 transition-all active:scale-[0.98] active:shadow-md disabled:shadow-none';
 
 /**
  * The single compose form shared by `/write`, `/revisit/[id]`, and `QuickWrite`.
@@ -63,8 +72,18 @@ export function EntryForm({
   prompt,
   onApplyPrompt,
   saveState = 'idle',
+  extrasCollapsed = false,
+  hideSubmit = false,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Progressive disclosure for quick capture: keep Mood/Tags tucked away until
+  // asked for, but reveal them automatically if the (restored) draft already
+  // carries a mood or tags so nothing is hidden.
+  const [showMood, setShowMood] = useState(false);
+  const [showTags, setShowTags] = useState(false);
+  const moodVisible = !extrasCollapsed || showMood || draft.mood !== null;
+  const tagsVisible = !extrasCollapsed || showTags || draft.tags.length > 0;
 
   // Auto-grow the textarea with its content (ported from `JournalPanel`) so
   // long entries expand the page instead of scrolling inside a fixed box.
@@ -132,24 +151,48 @@ export function EntryForm({
         </p>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-medium leading-none text-ink">Mood</legend>
-        <MoodPicker value={draft.mood} onChange={(mood) => setDraft({ mood })} />
-      </fieldset>
+      {moodVisible && (
+        <fieldset className="space-y-2">
+          <legend className="mb-2 text-sm font-medium leading-none text-ink">Mood</legend>
+          <MoodPicker value={draft.mood} onChange={(mood) => setDraft({ mood })} />
+        </fieldset>
+      )}
 
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-tags`}>Tags</Label>
-        <TagInput tags={draft.tags} onChange={(tags) => setDraft({ tags })} />
-      </div>
+      {tagsVisible && (
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-tags`}>Tags</Label>
+          <TagInput tags={draft.tags} onChange={(tags) => setDraft({ tags })} />
+        </div>
+      )}
 
-      <Button
-        size="lg"
-        className="h-12 w-full rounded-full border-0 text-base font-semibold shadow-lg shadow-sage/30 transition-all active:scale-[0.98] active:shadow-md disabled:shadow-none"
-        disabled={!canPlant}
-        onClick={onPlant}
-      >
-        {submitLabel}
-      </Button>
+      {extrasCollapsed && (!moodVisible || !tagsVisible) && (
+        <div className="flex flex-wrap gap-2">
+          {!moodVisible && (
+            <button
+              type="button"
+              onClick={() => setShowMood(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-parchment bg-cream px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-parchment/60"
+            >
+              <Plus className="h-4 w-4" /> Add mood
+            </button>
+          )}
+          {!tagsVisible && (
+            <button
+              type="button"
+              onClick={() => setShowTags(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-parchment bg-cream px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-parchment/60"
+            >
+              <Plus className="h-4 w-4" /> Add tags
+            </button>
+          )}
+        </div>
+      )}
+
+      {!hideSubmit && (
+        <Button size="lg" className={plantButtonClass} disabled={!canPlant} onClick={onPlant}>
+          {submitLabel}
+        </Button>
+      )}
     </div>
   );
 }

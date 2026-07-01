@@ -1,18 +1,34 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import {
+  Cake,
+  Cloud,
+  CloudOff,
+  Download,
+  Flower2,
+  FlaskConical,
+  LogIn,
+  LogOut,
+  Palette,
+  Search,
+  Smartphone,
+  Sparkles,
+  Upload,
+  User,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { BackLink } from '@/components/layout/BackLink';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
-import { SettingsCard } from '@/components/settings/SettingsCard';
+import { SettingsRow, SettingsSection } from '@/components/settings/SettingsList';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { exportBackup, importBackup } from '@/lib/export/backup';
 import { useSettingsField } from '@/lib/hooks/useSettingsField';
 import { useSyncStatus } from '@/lib/hooks/useSyncStatus';
@@ -133,105 +149,163 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <SettingsCard title="Account">
+      <SettingsSection title="Account">
         {authLoading ? (
-          <p className="text-sm text-ink-soft">Loading account…</p>
+          <p className="px-4 py-3 text-sm text-ink-soft">Loading account…</p>
         ) : user ? (
           <>
-            <p className="text-sm text-ink">{user.email}</p>
-            <Button variant="outline" onClick={() => void handleSignOut()}>
-              Sign out
-            </Button>
+            <SettingsRow icon={User} label={user.email ?? 'Signed in'} secondary="Signed in" />
+            <SettingsRow
+              icon={LogOut}
+              label="Sign out"
+              destructive
+              chevron={false}
+              onClick={() => void handleSignOut()}
+            />
           </>
         ) : configured ? (
-          <Button asChild>
-            {/* /login handles both sign-in and sign-up, so a single CTA suffices. */}
-            <Link href="/login">Sign in or create account</Link>
-          </Button>
+          // /login handles both sign-in and sign-up, so a single CTA suffices.
+          <SettingsRow icon={LogIn} label="Sign in or create account" href="/login" />
         ) : (
-          <p className="text-sm text-ink-soft">
+          <p className="px-4 py-3 text-sm text-ink-soft">
             Copy <code className="text-xs">.env.local.example</code> to enable cloud backup.
           </p>
         )}
-      </SettingsCard>
+      </SettingsSection>
 
-      <SettingsCard title="Cloud sync">
-        <p className="text-sm text-ink-soft" aria-live="polite">
-          {syncLabel}
-        </p>
-        {syncStatus.lastError ? (
-          <p className="text-xs text-danger">Last error: {syncStatus.lastError}</p>
-        ) : null}
-        <Badge variant={supabaseConfigured ? 'default' : 'secondary'}>
-          {supabaseConfigured ? (user ? 'Signed in' : 'Ready — not signed in') : 'Local only'}
-        </Badge>
-      </SettingsCard>
-
-      <SettingsCard title="App status">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant={pwaStatus.online ? 'default' : 'secondary'}>
-            {pwaStatus.online ? 'Online' : 'Offline'}
-          </Badge>
-          <Badge variant={pwaStatus.installed ? 'default' : 'outline'}>
-            {pwaStatus.installed ? 'Installed' : 'Browser app'}
-          </Badge>
-        </div>
-        <p className="text-sm text-ink-soft">
-          Offline support is active after the app has loaded once in production.
-        </p>
+      <SettingsSection title="Sync & app">
+        <SettingsRow
+          icon={syncStatus.offline ? CloudOff : Cloud}
+          label="Cloud sync"
+          secondary={
+            <>
+              <span aria-live="polite">{syncLabel}</span>
+              {syncStatus.lastError ? (
+                <span className="block text-danger">Last error: {syncStatus.lastError}</span>
+              ) : null}
+            </>
+          }
+          trailing={
+            <Badge variant={supabaseConfigured ? 'default' : 'secondary'}>
+              {supabaseConfigured ? (user ? 'Signed in' : 'Ready') : 'Local only'}
+            </Badge>
+          }
+        />
+        <SettingsRow
+          icon={pwaStatus.online ? Wifi : WifiOff}
+          label="Connection"
+          trailing={
+            <Badge variant={pwaStatus.online ? 'default' : 'secondary'}>
+              {pwaStatus.online ? 'Online' : 'Offline'}
+            </Badge>
+          }
+        />
+        <SettingsRow
+          icon={Smartphone}
+          label="App"
+          secondary="Works offline after it has loaded once in production."
+          trailing={
+            <Badge variant={pwaStatus.installed ? 'default' : 'outline'}>
+              {pwaStatus.installed ? 'Installed' : 'Browser'}
+            </Badge>
+          }
+        />
         {pwaStatus.installAvailable ? (
-          <Button variant="outline" onClick={() => void handleInstall()}>
-            Install app
-          </Button>
+          <SettingsRow
+            icon={Download}
+            label="Install app"
+            onClick={() => void handleInstall()}
+          />
         ) : null}
-      </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Your garden"
+        footnote="Gather a handful of your flowers into a bouquet to share, or open one a friend sent you."
+      >
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 rounded-xl border border-parchment bg-cream-dark/40 px-3">
+            <Search className="h-4 w-4 shrink-0 text-ink-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search memories…"
+              aria-label="Search memories"
+              onKeyDown={(e) => e.key === 'Enter' && void handleSearch()}
+              className="h-10 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => void handleSearch()}
+                className="shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-sage-dark hover:bg-parchment/60"
+              >
+                Go
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <SettingsRow icon={Flower2} label="Make a bouquet" href="/bouquet/new" />
+        <SettingsRow icon={Flower2} label="My bouquets" href="/bouquets" />
+        <SettingsRow
+          icon={Cake}
+          label="Birthday"
+          secondary={
+            birthdaySaveState === 'error' ? (
+              <span className="text-danger">Could not save your birthday.</span>
+            ) : (
+              'Your garden may mark the occasion.'
+            )
+          }
+          trailing={
+            <Input
+              type="date"
+              value={birthday ?? ''}
+              onChange={(e) => setBirthday(e.target.value || null)}
+              aria-label="Birthday"
+              className="h-9 w-auto"
+            />
+          }
+        />
+        <SettingsRow
+          icon={Sparkles}
+          label="Use my birthday as my special day"
+          secondary={
+            !birthday
+              ? 'Add a birthday to enable this.'
+              : starsSaveState === 'error'
+                ? <span className="text-danger">Could not save this setting.</span>
+                : undefined
+          }
+          trailing={
+            <Switch
+              checked={useBirthdayForStars ?? false}
+              disabled={!birthday}
+              onCheckedChange={(v) => setUseBirthdayForStars(v)}
+              aria-label="Use my birthday as my special day"
+            />
+          }
+        />
+      </SettingsSection>
 
       <NotificationSettings />
 
-      <SettingsCard title="Search memories">
-        <div className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search title, content, tags…"
-            onKeyDown={(e) => e.key === 'Enter' && void handleSearch()}
-          />
-          <Button variant="outline" onClick={() => void handleSearch()}>
-            Go
-          </Button>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard
-        title="Bouquets"
-        description="Gather a handful of your flowers into a bouquet to share, or open one a friend sent you."
+      <SettingsSection
+        title="Data"
+        footnote="Exports all entries and garden metadata as JSON; import restores a previous backup."
       >
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/bouquet/new">Make a bouquet</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/bouquets">My bouquets</Link>
-          </Button>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard
-        title="Backup"
-        description="Export all entries and garden metadata as JSON, or import a previous backup."
-      >
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={exporting} onClick={() => void handleExport()}>
-            {exporting ? 'Exporting…' : 'Download backup'}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={importing}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {importing ? 'Importing…' : 'Import backup'}
-          </Button>
-        </div>
+        <SettingsRow
+          icon={Download}
+          label={exporting ? 'Exporting…' : 'Download backup'}
+          disabled={exporting}
+          onClick={() => void handleExport()}
+        />
+        <SettingsRow
+          icon={Upload}
+          label={importing ? 'Importing…' : 'Import backup'}
+          disabled={importing}
+          onClick={() => fileInputRef.current?.click()}
+        />
         <input
           ref={fileInputRef}
           type="file"
@@ -239,65 +313,21 @@ export default function SettingsPage() {
           className="hidden"
           onChange={(e) => void handleImportFile(e)}
         />
-      </SettingsCard>
+      </SettingsSection>
 
-      {process.env.NODE_ENV === 'development' ? (
-        <SettingsCard title="Flower gallery">
-          <Button variant="outline" asChild>
-            <Link href="/flowers">Preview mood blooms</Link>
-          </Button>
-        </SettingsCard>
+      {process.env.NODE_ENV === 'development' || isAdmin ? (
+        <SettingsSection title="Developer">
+          {process.env.NODE_ENV === 'development' ? (
+            <SettingsRow icon={Palette} label="Flower gallery" href="/flowers" />
+          ) : null}
+          {isAdmin ? (
+            <>
+              <SettingsRow icon={FlaskConical} label="Sky & weather" href="/preview" />
+              <SettingsRow icon={FlaskConical} label="Sample meadow" href="/preview/meadow" />
+            </>
+          ) : null}
+        </SettingsSection>
       ) : null}
-
-      {isAdmin ? (
-        <SettingsCard
-          title="Preview (admin)"
-          description="Sky & weather and the sample meadow playgrounds."
-        >
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/preview">Sky &amp; weather</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/preview/meadow">Sample meadow</Link>
-            </Button>
-          </div>
-        </SettingsCard>
-      ) : null}
-
-      <SettingsCard
-        title="Your special day"
-        description="Add your birthday and your garden may mark the occasion."
-      >
-        <div className="space-y-1">
-          <Label htmlFor="birthday">Birthday</Label>
-          <Input
-            id="birthday"
-            type="date"
-            value={birthday ?? ''}
-            onChange={(e) => setBirthday(e.target.value || null)}
-          />
-          {birthdaySaveState === 'error' ? (
-            <p className="text-xs text-danger">Could not save your birthday.</p>
-          ) : null}
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="use-birthday-stars">Use my birthday as my special day</Label>
-          <input
-            id="use-birthday-stars"
-            type="checkbox"
-            checked={useBirthdayForStars}
-            onChange={(e) => setUseBirthdayForStars(e.target.checked)}
-            disabled={!birthday}
-          />
-          {!birthday ? (
-            <p className="text-xs text-ink-muted">Add a birthday to enable this.</p>
-          ) : null}
-          {starsSaveState === 'error' ? (
-            <p className="text-xs text-danger">Could not save this setting.</p>
-          ) : null}
-        </div>
-      </SettingsCard>
     </div>
   );
 }
