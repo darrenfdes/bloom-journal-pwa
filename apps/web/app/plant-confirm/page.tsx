@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import { FlowerSvg } from '@/components/flower/FlowerSvg';
 import { Button } from '@/components/ui/button';
+import { plantButtonClass } from '@/components/write/EntryForm';
 import { getMood } from '@/lib/constants/moods';
 import { plantEntry } from '@/lib/db/repositories/entries';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
@@ -167,10 +168,19 @@ export default function PlantConfirmPage() {
       </p>
 
       <div className="flex w-full flex-col gap-3">
-        <Button size="lg" disabled={planting} onClick={() => void confirmPlant()}>
+        <Button
+          size="lg"
+          className={plantButtonClass}
+          disabled={planting}
+          onClick={() => void confirmPlant()}
+        >
           {planting ? 'Planting…' : 'Plant this memory'}
         </Button>
-        <Button variant="outline" onClick={keepEditing}>
+        <Button
+          variant="outline"
+          className="h-12 w-full rounded-full"
+          onClick={keepEditing}
+        >
           Keep editing
         </Button>
       </div>

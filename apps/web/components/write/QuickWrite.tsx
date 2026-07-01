@@ -1,24 +1,22 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { EntryForm } from '@/components/write/EntryForm';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { EntryForm, plantButtonClass } from '@/components/write/EntryForm';
+import { Button } from '@/components/ui/button';
+import { Sheet } from '@/components/ui/sheet';
 import { useWriteDraft } from '@/lib/hooks/useWriteDraft';
 import { useBloomStore } from '@/stores/useBloomStore';
 
 /**
- * Quick-add memory modal — opened from the global "+" dock on /garden so a
+ * Quick-add memory sheet — opened from the global "+" dock on /garden so a
  * memory can be captured without leaving the meadow for the full /write page.
+ * Presented as a bottom sheet (the native compose pattern) with the mood/tags
+ * collapsed for fast capture and a "Plant it" button pinned above the keyboard.
  * On plant it hands off to the same `pendingPlant` → /plant-confirm celebration
  * flow that /write uses. The draft persists across open/close (via
- * `useWriteDraft({ mode: 'quick' })`) so dismissing the modal no longer loses
+ * `useWriteDraft({ mode: 'quick' })`) so dismissing the sheet no longer loses
  * what was typed.
  */
 export function QuickWrite() {
@@ -37,25 +35,35 @@ export function QuickWrite() {
     router.push('/plant-confirm');
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-h-[85dvh] max-w-md overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Quick memory</DialogTitle>
-          <DialogDescription>
-            Capture a thought — it grows a flower in your garden.
-          </DialogDescription>
-        </DialogHeader>
+  const handleClose = useCallback(() => setOpen(false), [setOpen]);
 
-        <EntryForm
-          draft={draft}
-          setDraft={setDraft}
-          canPlant={canPlant}
-          onPlant={handlePlant}
-          idPrefix="quick"
-          saveState={saveState}
-        />
-      </DialogContent>
-    </Dialog>
+  return (
+    <Sheet
+      open={open}
+      onClose={handleClose}
+      title="Quick memory"
+      description="Capture a thought — it grows a flower in your garden."
+      footer={
+        <Button
+          size="lg"
+          className={plantButtonClass}
+          disabled={!canPlant}
+          onClick={handlePlant}
+        >
+          Plant it
+        </Button>
+      }
+    >
+      <EntryForm
+        draft={draft}
+        setDraft={setDraft}
+        canPlant={canPlant}
+        onPlant={handlePlant}
+        idPrefix="quick"
+        saveState={saveState}
+        extrasCollapsed
+        hideSubmit
+      />
+    </Sheet>
   );
 }
