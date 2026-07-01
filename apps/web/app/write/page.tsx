@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 
+import { BackLink } from '@/components/layout/BackLink';
 import { EntryForm } from '@/components/write/EntryForm';
+import { PlantBar } from '@/components/write/PlantBar';
 import { useWriteDraft } from '@/lib/hooks/useWriteDraft';
 import { FIRST_OPEN_TAGLINE, JOURNAL_PROMPTS } from '@bloom/core/constants/prompts';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -35,14 +36,7 @@ export default function WritePage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <Link href="/garden" className="text-sm text-ink-soft hover:text-ink">
-          ← Garden
-        </Link>
-        <Link href="/settings" className="text-sm text-ink-soft hover:text-ink">
-          Settings
-        </Link>
-      </div>
+      <BackLink href="/garden" label="Garden" />
 
       <header>
         <h1 className="font-display text-3xl font-semibold text-ink">
@@ -62,7 +56,10 @@ export default function WritePage() {
         prompt={isFirstOpen ? undefined : prompt}
         onApplyPrompt={applyPrompt}
         saveState={saveState}
+        hideSubmit
       />
+
+      <PlantBar canPlant={canPlant} onPlant={handlePlant} />
     </div>
   );
 }
