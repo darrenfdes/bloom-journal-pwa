@@ -421,9 +421,10 @@ export function BloomMeadow({
             })
           : [];
       const sh = mulberry32(h.seed * 13 + 1);
+      const count = 3 + Math.floor(sh() * 5); // 3–7 inclusive, deterministic per hill
       const sheep =
         h.f > 0.2
-          ? [...Array(h.f > 0.4 ? 4 : 3)].map((_, i) => {
+          ? [...Array(count)].map((_, i) => {
               const x = 160 + sh() * (Wl - 320);
               return {
                 id: i,
@@ -934,7 +935,7 @@ export function BloomMeadow({
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
-            <g style={{ opacity: phase.sheep, transition: 'opacity 1.6s ease' }}>
+            <g style={{ opacity: cat === 'heavy_rain' || cat === 'thunderstorm' ? 0 : phase.sheep, transition: 'opacity 1.6s ease' }}>
               {h.sheep.map((s) => (
                 <Sheep
                   key={s.id}
