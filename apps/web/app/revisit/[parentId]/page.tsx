@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { BackLink } from '@/components/layout/BackLink';
 import { EntryForm } from '@/components/write/EntryForm';
+import { PlantBar } from '@/components/write/PlantBar';
 import { useWriteDraft } from '@/lib/hooks/useWriteDraft';
 import { getEntry } from '@/lib/db/repositories/entries';
 import type { EntryRecord } from '@bloom/core';
@@ -43,9 +44,7 @@ export default function RevisitPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <Link href={`/entry/${parent.id}`} className="text-sm text-ink-soft hover:text-ink">
-        ← Back to memory
-      </Link>
+      <BackLink href={`/entry/${parent.id}`} label="Back to memory" />
 
       <header>
         <h1 className="font-display text-3xl font-semibold text-ink">Revisit</h1>
@@ -63,7 +62,10 @@ export default function RevisitPage() {
         showTitle={false}
         submitLabel="Plant revisit"
         saveState={saveState}
+        hideSubmit
       />
+
+      <PlantBar canPlant={canPlant} onPlant={handlePlant} label="Plant revisit" />
     </div>
   );
 }
