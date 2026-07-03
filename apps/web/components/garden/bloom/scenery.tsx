@@ -52,6 +52,9 @@ export const Sheep = ({
   wool,
   shade,
   dark,
+  fluff = 1,
+  seed = 1,
+  pose = 'grazing',
 }: {
   x: number;
   y: number;
@@ -62,34 +65,68 @@ export const Sheep = ({
   wool: string;
   shade: string;
   dark: string;
-}) => (
-  <g transform={`translate(${x} ${y}) scale(${flip ? -sc : sc} ${sc})`}>
-    {/* legs */}
-    <rect x="-5" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
-    <rect x="-2.4" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
-    <rect x="3" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
-    <rect x="5.4" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
-    {/* belly shadow */}
-    <ellipse cx="0" cy="-4.2" rx="8" ry="3" fill={shade} opacity="0.55" />
-    {/* fleece body (bumpy wool silhouette) */}
-    <ellipse cx="0" cy="-6" rx="9" ry="5.6" fill={wool} />
-    <circle cx="-7" cy="-7.6" r="3.4" fill={wool} />
-    <circle cx="-3.4" cy="-9.6" r="3.7" fill={wool} />
-    <circle cx="0.4" cy="-10.2" r="3.7" fill={wool} />
-    <circle cx="4" cy="-9.2" r="3.4" fill={wool} />
-    <circle cx="6.8" cy="-7.4" r="3" fill={wool} />
-    {/* tail */}
-    <circle cx="-8.8" cy="-6.2" r="2" fill={wool} />
-    {/* head — dips down to graze and lifts back up at intervals (body stays still) */}
-    <g style={{ animation: `bj-nod ${dur}s ${delay}s ease-in-out infinite` }}>
-      <ellipse cx="8.8" cy="-7.6" rx="2.9" ry="3.5" fill={dark} />
-      <ellipse cx="10.4" cy="-6" rx="1.7" ry="1.5" fill={dark} />
-      <ellipse cx="6.6" cy="-10" rx="1.9" ry="1" fill={dark} transform="rotate(-28 6.6 -10)" />
-      <ellipse cx="10.8" cy="-9.6" rx="1.7" ry="0.9" fill={dark} transform="rotate(24 10.8 -9.6)" />
-      <circle cx="9.4" cy="-8" r="0.8" fill={wool} />
+  /** fleece fullness (~0.88 lean … 1.12 fluffy); legs/head stay fixed */
+  fluff?: number;
+  /** per-sheep micro-anatomy (fleece bumps, stance, ears) so no two silhouettes match */
+  seed?: number;
+  /** grazing = standing, head dips to nibble; resting = lying down, head up, slow chew */
+  pose?: 'grazing' | 'resting';
+}) => {
+  const rng = mulberry32(seed);
+  const j = () => (rng() - 0.5) * 1.2; // bump centre jitter ±0.6
+  const jr = () => 0.92 + rng() * 0.16; // bump radius ×0.92–1.08
+  const bumps = [
+    { cx: -7 + j(), cy: -7.6 + j(), r: 3.4 * jr() },
+    { cx: -3.4 + j(), cy: -9.6 + j(), r: 3.7 * jr() },
+    { cx: 0.4 + j(), cy: -10.2 + j(), r: 3.7 * jr() },
+    { cx: 4 + j(), cy: -9.2 + j(), r: 3.4 * jr() },
+    { cx: 6.8 + j(), cy: -7.4 + j(), r: 3 * jr() },
+  ];
+  const tailR = 2 * jr();
+  const backLean = (rng() - 0.5) * 7; // outer legs splay a touch so the stance isn't robotic
+  const frontLean = (rng() - 0.5) * 7;
+  const earBack = -30 + rng() * 12; // perked, up-back
+  const earFront = 14 + rng() * 16; // drooping, down-forward
+  const resting = pose === 'resting';
+  return (
+    <g transform={`translate(${x} ${y}) scale(${flip ? -sc : sc} ${sc})`}>
+      {/* soft contact shadow seats the sheep on the hill */}
+      <ellipse cx="0.4" cy="0.5" rx={resting ? 10.6 : 9.2} ry="1.6" fill="#1f2a17" opacity={resting ? 0.16 : 0.12} />
+      {!resting && (
+        <>
+          {/* legs */}
+          <rect x="-5" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} transform={`rotate(${backLean} -4.25 -4)`} />
+          <rect x="-2.4" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
+          <rect x="3" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} />
+          <rect x="5.4" y="-4" width="1.5" height="4.6" rx="0.7" fill={dark} transform={`rotate(${frontLean} 6.15 -4)`} />
+          {/* belly shadow */}
+          <ellipse cx="0" cy="-4.2" rx="8" ry="3" fill={shade} opacity="0.55" />
+        </>
+      )}
+      {/* resting sheep sit their fleece straight on the grass */}
+      <g transform={resting ? 'translate(0 1.4)' : undefined}>
+        {/* fleece body (bumpy wool silhouette) */}
+        <ellipse cx="0" cy="-6" rx={9 * fluff} ry={5.6 * fluff} fill={wool} />
+        {bumps.map((b, i) => (
+          <circle key={i} cx={b.cx} cy={b.cy} r={b.r * fluff} fill={wool} />
+        ))}
+        {/* tail */}
+        <circle cx="-8.8" cy="-6.2" r={tailR * fluff} fill={wool} />
+        {/* head — grazing: dips down to nibble at intervals; resting: held up with a slow chew */}
+        <g style={{ animation: `${resting ? 'bj-chew' : 'bj-nod'} ${dur}s ${delay}s ease-in-out infinite` }}>
+          <ellipse cx="8.8" cy="-7.6" rx="2.9" ry="3.5" fill={dark} />
+          <ellipse cx="10.4" cy="-6" rx="1.7" ry="1.5" fill={dark} />
+          {/* ears: back perked, front drooping */}
+          <ellipse cx="6.6" cy="-10" rx="1.9" ry="0.9" fill={dark} transform={`rotate(${earBack} 6.6 -10)`} />
+          <ellipse cx="11" cy="-9.4" rx="1.8" ry="0.9" fill={dark} transform={`rotate(${earFront} 11 -9.4)`} />
+          {/* wool forelock cap + eye */}
+          <circle cx="8.1" cy="-10.3" r="1.15" fill={wool} />
+          <circle cx="9.6" cy="-8.4" r="0.6" fill={wool} />
+        </g>
+      </g>
     </g>
-  </g>
-);
+  );
+};
 
 /**
  * A lone black ram — the `sebastian-ram.png` cutout, facing the viewer. Rendered as an SVG <image>
