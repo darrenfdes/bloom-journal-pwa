@@ -439,18 +439,27 @@ export function BloomMeadow({
       const count = sheepByHill[idx];
       const anchorX = 160 + sh() * (Wl - 320); // shared anchor, only used in flock mode
       const xs: number[] = [];
+      let lastEwe = -1; // index of the nearest preceding adult (i=0 is always an adult)
+      const eweTaken: boolean[] = []; // eweTaken[i] = true once sheep i already has a lamb beside it
       const sheep = [...Array(count)].map((_, i) => {
         const baseSc = h.f > 0.4 ? 0.55 + sh() * 0.25 : 0.4 + sh() * 0.16;
-        const isLamb = i > 0 && sh() < 0.4; // occasional lamb, tucked beside a neighbour
         const r = sh();
-        // Scattered: each adult picks its own spot; a lamb hugs the previous sheep (a natural
-        // ewe+lamb pair). Flock: everyone clusters around the one anchor.
-        const x =
-          arrangement === 'flock'
-            ? anchorX + (r - 0.5) * 90
-            : isLamb
-              ? xs[i - 1]! + (sh() < 0.5 ? -1 : 1) * (14 + sh() * 10)
-              : 160 + r * (Wl - 320);
+        // A lamb always hugs a free ewe (a preceding adult with no lamb yet), so lambs never pile
+        // on one another. If the nearest ewe already has a lamb, this one becomes an adult instead.
+        // Flock: everyone clusters around the one anchor.
+        const wantLamb = i > 0 && sh() < 0.4;
+        let x: number;
+        let isLamb = false;
+        if (arrangement === 'flock') {
+          x = anchorX + (r - 0.5) * 90;
+        } else if (wantLamb && lastEwe >= 0 && !eweTaken[lastEwe]) {
+          isLamb = true;
+          eweTaken[lastEwe] = true;
+          x = xs[lastEwe]! + (sh() < 0.5 ? -1 : 1) * (14 + sh() * 10);
+        } else {
+          x = 160 + r * (Wl - 320);
+        }
+        if (!isLamb) lastEwe = i; // adults become the next lamb's ewe candidate
         xs.push(x);
         return {
           id: i,
