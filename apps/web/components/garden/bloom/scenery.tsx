@@ -87,6 +87,7 @@ export const Sheep = ({
   const frontLean = (rng() - 0.5) * 7;
   const earBack = -30 + rng() * 12; // perked, up-back
   const earFront = 14 + rng() * 16; // drooping, down-forward
+  const forelock = rng() < 0.45; // some sheep wear a little wool cap between the ears
   const resting = pose === 'resting';
   return (
     <g transform={`translate(${x} ${y}) scale(${flip ? -sc : sc} ${sc})`}>
@@ -119,8 +120,8 @@ export const Sheep = ({
           {/* ears: back perked, front drooping */}
           <ellipse cx="6.6" cy="-10" rx="1.9" ry="0.9" fill={dark} transform={`rotate(${earBack} 6.6 -10)`} />
           <ellipse cx="11" cy="-9.4" rx="1.8" ry="0.9" fill={dark} transform={`rotate(${earFront} 11 -9.4)`} />
-          {/* wool forelock cap + eye */}
-          <circle cx="8.1" cy="-10.3" r="1.15" fill={wool} />
+          {/* wool forelock cap (some sheep) + eye */}
+          {forelock && <circle cx="8.1" cy="-10.3" r="1.15" fill={wool} />}
           <circle cx="9.6" cy="-8.4" r="0.6" fill={wool} />
         </g>
       </g>
