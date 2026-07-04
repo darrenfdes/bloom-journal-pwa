@@ -718,19 +718,24 @@ export function BloomMeadow({
       const r = mulberry32(Date.now() % 1000000);
       const dir = r() < 0.5 ? 1 : -1;
       const count = 4 + Math.round(r());
-      // Sideways "<" opening away from travel: leader in front, ranks trailing alternately above/below.
+      // The whole flock shares a wingbeat rate and bob rhythm; each duck offsets its phase.
+      const flapBase = 0.72 + r() * 0.12;
+      const bobDur = 2.1 + r() * 0.4;
+      // Sideways "<" opening away from travel: leader in front, ranks trailing alternately
+      // above/below, spaced wider than a sprite so wings never overlap. The bob delay grows
+      // with rank so the undulation ripples back through the formation instead of jittering.
       const flock = Array.from({ length: count }, (_, i) => {
         const rank = Math.ceil(i / 2);
         const side = i % 2 ? -1 : 1;
         return {
           id: i,
-          dx: i === 0 ? 0 : -(rank * 30 + (r() - 0.5) * 8),
-          dy: i === 0 ? 0 : side * (rank * 13 + (r() - 0.5) * 6),
-          size: 0.82 + r() * 0.28,
-          flapDur: 0.34 + r() * 0.1,
-          flapDelay: -r() * 0.4,
-          bobDur: 1.7 + r() * 0.8,
-          bobDelay: -r() * 2.4,
+          dx: i === 0 ? 0 : -(rank * 42 + (r() - 0.5) * 10),
+          dy: i === 0 ? 0 : side * (rank * 16 + (r() - 0.5) * 6),
+          size: 0.88 + r() * 0.18,
+          flapDur: flapBase + (r() - 0.5) * 0.08,
+          flapDelay: -r() * 0.8,
+          bobDur,
+          bobDelay: -(rank * 0.33 + r() * 0.12),
         };
       });
       const dur = 24 + r() * 8;
@@ -1062,9 +1067,12 @@ export function BloomMeadow({
         {(creatures || live) && ducks && (
           <div key={ducks.run} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: ducks.dir === -1 ? 'scaleX(-1)' : undefined }}>
             <div style={{ position: 'absolute', top: `${ducks.top}%`, left: 0, animation: `bj-duckcross ${ducks.dur}s linear both` }}>
-              {ducks.flock.map((d) => (
-                <Duck key={d.id} d={d} />
-              ))}
+              {/* slow whole-flock drift, as if riding air currents */}
+              <div style={{ animation: 'bj-duckride 6.8s ease-in-out infinite alternate' }}>
+                {ducks.flock.map((d) => (
+                  <Duck key={d.id} d={d} />
+                ))}
+              </div>
             </div>
           </div>
         )}
