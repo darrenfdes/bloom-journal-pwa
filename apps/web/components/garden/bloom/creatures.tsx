@@ -4,8 +4,9 @@
  * Ambient meadow creatures — ported verbatim from the reference artifact
  * (`apps/web/reference/bloom-artifact-reference-app.jsx`). These were deferred from the
  * live `/garden` and are exercised only by the `/preview/meadow` playground (the
- * `creatures` prop on `BloomMeadow`). Exception: `Duck` is new (not from the artifact)
- * and also flies in the live garden at golden hour/dusk.
+ * `creatures` prop on `BloomMeadow`). Exceptions: `Duck` and `SoloBird` are new (not
+ * from the artifact) and also fly in the live garden — ducks at golden hour/dusk,
+ * lone birds during the day.
  */
 import React, { useEffect, useState } from 'react';
 
@@ -113,6 +114,8 @@ export interface DuckSpec {
   flapDelay: number;
   bobDur: number;
   bobDelay: number;
+  swayDur: number; // station-keeping drift so formation spacing breathes
+  swayDelay: number;
 }
 
 export interface DuckFlightState {
@@ -120,6 +123,7 @@ export interface DuckFlightState {
   dir: 1 | -1;
   top: number; // % down the sky
   dur: number; // s for the full crossing
+  path: 'a' | 'b'; // which undulating crossing keyframe the flight rides
   flock: DuckSpec[];
 }
 
@@ -129,6 +133,7 @@ export function Duck({ d }: { d: DuckSpec }) {
   const fill = '#3a332b';
   return (
     <div style={{ position: 'absolute', left: d.dx, top: d.dy, animation: `bj-duckbob ${d.bobDur}s ${d.bobDelay}s ease-in-out infinite alternate` }}>
+      <div style={{ animation: `bj-ducksway ${d.swayDur}s ${d.swayDelay}s ease-in-out infinite alternate` }}>
       <svg width={44 * s} height={26 * s} viewBox="0 0 44 26" style={{ overflow: 'visible', opacity: 0.88 }}>
         <path d="M 3 15 C 7.5 12.2, 14 10.8, 21 11 C 27 11.2, 31.5 12.8, 33.5 15.1 C 31 17.4, 25.5 18.6, 19.5 18.4 C 12.5 18.2, 6.5 17, 3 15 Z" fill={fill} />
         <path d="M 31 14.8 C 33.2 14, 34.8 12.6, 35.8 11 C 36.4 9.6, 37.9 8.8, 39.3 9.3 C 40.7 9.8, 41.4 11.3, 40.9 12.6 C 40.5 13.7, 39.4 14.4, 38.2 14.3 C 36.2 14.2, 33.8 14.8, 32.2 15.8 Z" fill={fill} />
@@ -137,6 +142,47 @@ export function Duck({ d }: { d: DuckSpec }) {
           <path d="M 20.5 12.2 C 15 9.6, 9 9, 4.8 10.2 C 8.8 13.2, 14.5 14.8, 20.5 15.4 Z" fill={fill} />
         </g>
       </svg>
+      </div>
+    </div>
+  );
+}
+
+export interface SoloBirdSpec {
+  id: number;
+  path: 'a' | 'b'; // which fly-right keyframe variant
+  top: number; // % down the sky
+  dur: number; // s for the crossing
+  delay: number; // s stagger before this bird takes off
+  flapDur: number;
+  flapDelay: number;
+}
+
+export interface SoloBirdState {
+  run: number;
+  dir: 1 | -1;
+  birds: SoloBirdSpec[];
+}
+
+/**
+ * A lone bird crossing the day sky — sprite-sheet wingbeat played with `steps(10)`,
+ * riding an undulating fly-right path (after codepen.io/mountainocean9/pen/XBBRBr).
+ * The element stays at the sprite's native 88×125 frame; apparent size comes from
+ * the path's scale(), so the -900px background step always lands on frame edges.
+ */
+export function SoloBird({ b }: { b: SoloBirdSpec }) {
+  return (
+    <div style={{ position: 'absolute', top: `${b.top}%`, left: 0, willChange: 'transform', animation: `bj-birdpath-${b.path} ${b.dur}s ${b.delay}s linear both` }}>
+      <div
+        style={{
+          width: 88,
+          height: 125,
+          backgroundImage: "url('/bird-cells.svg')",
+          backgroundSize: 'auto 100%',
+          opacity: 0.8,
+          willChange: 'background-position',
+          animation: `bj-birdcycle ${b.flapDur}s ${b.flapDelay}s steps(10) infinite`,
+        }}
+      />
     </div>
   );
 }
@@ -152,8 +198,44 @@ export const CREATURE_KEYFRAMES = `
   @keyframes bj-foxlife{0%{opacity:0}6%{opacity:.96}93%{opacity:.96}100%{opacity:0}}
   @keyframes bj-trot{from{transform:translateY(0) rotate(.5deg)}to{transform:translateY(-2.6px) rotate(-.9deg)}}
   @keyframes bj-cshadow{0%{transform:translateX(-85vw);opacity:0}9%{opacity:1}88%{opacity:1}100%{transform:translateX(145vw);opacity:0}}
-  @keyframes bj-duckcross{from{transform:translateX(-340px)}to{transform:translateX(calc(100vw + 340px))}}
   @keyframes bj-duckflap{0%{transform:rotate(-36deg)}36%{transform:rotate(30deg)}100%{transform:rotate(-36deg)}}
   @keyframes bj-duckbob{from{transform:translateY(0) rotate(1.5deg)}to{transform:translateY(-5px) rotate(-2deg)}}
-  @keyframes bj-duckride{from{transform:translateY(-7px)}to{transform:translateY(7px)}}
+  @keyframes bj-ducksway{from{transform:translateX(-5px)}to{transform:translateX(5px)}}
+  @keyframes bj-duckpath-a{
+    0%{transform:translateX(-340px) translateY(0) scale(.95)}
+    15%{transform:translateX(calc(15vw - 238px)) translateY(1.8vh) scale(.97)}
+    30%{transform:translateX(calc(30vw - 136px)) translateY(-.6vh) scale(1)}
+    50%{transform:translateX(50vw) translateY(2.2vh) scale(1.02)}
+    70%{transform:translateX(calc(70vw + 136px)) translateY(.4vh) scale(1.03)}
+    85%{transform:translateX(calc(85vw + 238px)) translateY(1.6vh) scale(1)}
+    100%{transform:translateX(calc(100vw + 340px)) translateY(0) scale(.97)}
+  }
+  @keyframes bj-duckpath-b{
+    0%{transform:translateX(-340px) translateY(0) scale(1.02)}
+    15%{transform:translateX(calc(15vw - 238px)) translateY(-1.6vh) scale(1)}
+    30%{transform:translateX(calc(30vw - 136px)) translateY(1.2vh) scale(.97)}
+    50%{transform:translateX(50vw) translateY(-2.2vh) scale(.95)}
+    70%{transform:translateX(calc(70vw + 136px)) translateY(-.4vh) scale(.97)}
+    85%{transform:translateX(calc(85vw + 238px)) translateY(-1.8vh) scale(1)}
+    100%{transform:translateX(calc(100vw + 340px)) translateY(0) scale(1.02)}
+  }
+  @keyframes bj-birdcycle{100%{background-position:-900px 0}}
+  @keyframes bj-birdpath-a{
+    0%{transform:translateY(0) translateX(-10vw) scale(.3)}
+    17%{transform:translateY(2vh) translateX(10vw) scale(.4)}
+    33%{transform:translateY(0vh) translateX(30vw) scale(.5)}
+    50%{transform:translateY(4vh) translateX(50vw) scale(.6)}
+    67%{transform:translateY(2vh) translateX(70vw) scale(.6)}
+    83%{transform:translateY(0vh) translateX(90vw) scale(.6)}
+    100%{transform:translateY(0vh) translateX(110vw) scale(.6)}
+  }
+  @keyframes bj-birdpath-b{
+    0%{transform:translateY(-2vh) translateX(-10vw) scale(.5)}
+    17%{transform:translateY(0vh) translateX(10vw) scale(.4)}
+    33%{transform:translateY(-4vh) translateX(30vw) scale(.6)}
+    50%{transform:translateY(1vh) translateX(50vw) scale(.45)}
+    67%{transform:translateY(-2.5vh) translateX(70vw) scale(.5)}
+    83%{transform:translateY(0vh) translateX(90vw) scale(.45)}
+    100%{transform:translateY(0vh) translateX(110vw) scale(.45)}
+  }
 `;
