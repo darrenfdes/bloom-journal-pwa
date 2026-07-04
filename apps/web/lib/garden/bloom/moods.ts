@@ -39,6 +39,9 @@ export const MOODS: Record<Mood, MoodMeta> = {
   overwhelmed: { label: 'Overwhelmed', chip: '#8a7c9c', bloom: 'dahlia' },
   lonely: { label: 'Lonely', chip: '#6f8aae', bloom: 'bluebell' },
   guilty: { label: 'Guilty', chip: '#62768e', bloom: 'bluebell' },
+  angry: { label: 'Angry', chip: '#c23b2e', bloom: 'dahlia' },
+  jealous: { label: 'Jealous', chip: '#8fa05a', bloom: 'dahlia' },
+  cribby: { label: 'Cribby', chip: '#b98255', bloom: 'dahlia' },
 };
 
 export const FALLBACK_BLOOM: Exclude<BloomKind, 'pumpkin'> = 'lavender';

@@ -18,6 +18,7 @@ const emptyDraft: WriteDraft = {
   title: '',
   content: '',
   mood: null,
+  additionalMoods: [],
   tags: [],
   createdAtOverride: null,
   revisitOf: null,
@@ -38,6 +39,7 @@ function isEmpty(draft: WriteDraft): boolean {
     !draft.title.trim() &&
     !draft.content.trim() &&
     draft.mood === null &&
+    draft.additionalMoods.length === 0 &&
     draft.tags.length === 0
   );
 }

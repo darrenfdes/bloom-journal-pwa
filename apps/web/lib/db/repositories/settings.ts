@@ -6,6 +6,7 @@ const EMPTY_DRAFT: WriteDraft = {
   title: '',
   content: '',
   mood: null,
+  additionalMoods: [],
   tags: [],
   createdAtOverride: null,
   revisitOf: null,

@@ -18,6 +18,7 @@ export function entry(
     title: null,
     content: 'A memory.',
     mood: 'peaceful',
+    additionalMoods: [],
     inferredSentiment: null,
     tags: [],
     flowerSeed: 1,

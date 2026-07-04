@@ -47,7 +47,11 @@ export default function EntryPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const mood = entry ? getMood(entry.mood) : null;
+  const moods = entry
+    ? [entry.mood, ...(entry.additionalMoods ?? [])]
+        .map((m) => getMood(m))
+        .filter((m): m is NonNullable<typeof m> => m != null)
+    : [];
 
   const handleFavourite = async () => {
     if (!entry) return;
@@ -97,12 +101,12 @@ export default function EntryPage() {
           {entry.title || 'Untitled'}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {mood && (
-            <Badge variant="secondary" className="gap-1">
+          {moods.map((mood) => (
+            <Badge key={mood.id} variant="secondary" className="gap-1">
               <MoodIcon mood={mood.id} className="size-3.5" />
               {mood.label}
             </Badge>
-          )}
+          ))}
           <time className="text-sm text-ink-muted">
             {new Date(entry.createdAt).toLocaleString()}
           </time>

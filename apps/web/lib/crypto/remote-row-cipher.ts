@@ -16,6 +16,7 @@ export async function encryptRemoteRow(
     title: row.title,
     tags: row.tags ?? [],
     mood: row.mood,
+    additionalMoods: row.additional_moods ?? [],
     inferredSentiment: row.inferred_sentiment,
     weather: row.weather,
   };
@@ -28,6 +29,7 @@ export async function encryptRemoteRow(
     title: null,
     tags: [],
     mood: null,
+    additional_moods: [],
     inferred_sentiment: null,
     weather: null,
     enc_blob: encBlob,
@@ -53,6 +55,7 @@ export async function decryptRemoteRow(
       title: bundle.title,
       tags: bundle.tags,
       mood: bundle.mood,
+      additional_moods: bundle.additionalMoods,
       inferred_sentiment: bundle.inferredSentiment,
       weather: bundle.weather,
       enc_blob: null,

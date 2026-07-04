@@ -69,6 +69,23 @@ describe('inferMood — new feelings', () => {
   it('guilty', () => {
     expect(inferMood('I feel so guilty and ashamed, it was my fault.')).toBe('guilty');
   });
+
+  it('angry', () => {
+    expect(inferMood('I am so angry and furious, absolutely livid right now.')).toBe('angry');
+  });
+
+  it('jealous', () => {
+    expect(inferMood('I feel jealous and envious of their success.')).toBe('jealous');
+  });
+
+  it('cribby only matches the literal word "cribby" (no assumed synonyms)', () => {
+    expect(inferMood('I am feeling cribby today.')).toBe('cribby');
+    expect(inferMood('I feel grumpy and irritable today.')).not.toBe('cribby');
+  });
+
+  it('angry text no longer infers irritated (regression)', () => {
+    expect(inferMood('I am so angry and mad right now.')).not.toBe('irritated');
+  });
 });
 
 describe('inferMood — negation', () => {

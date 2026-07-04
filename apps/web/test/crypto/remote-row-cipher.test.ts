@@ -18,7 +18,14 @@ describe('remote-row-cipher', () => {
   it('nulls sensitive columns and sets enc fields, preserving metadata', async () => {
     const key = await makeKey();
     const row = entryToRemote(
-      entry({ content: 'secret', title: 'T', tags: ['x'], mood: 'joyful', inferredSentiment: 'positive' }),
+      entry({
+        content: 'secret',
+        title: 'T',
+        tags: ['x'],
+        mood: 'joyful',
+        additionalMoods: ['angry'],
+        inferredSentiment: 'positive',
+      }),
       'user-1',
     );
     const enc = await encryptRemoteRow(row, key);
@@ -29,6 +36,7 @@ describe('remote-row-cipher', () => {
     expect(enc.inferred_sentiment).toBeNull();
     expect(enc.weather).toBeNull();
     expect(enc.tags).toEqual([]);
+    expect(enc.additional_moods).toEqual([]);
     expect(enc.enc_version).toBe(ENC_VERSION);
     expect(typeof enc.enc_blob).toBe('string');
 
@@ -47,6 +55,7 @@ describe('remote-row-cipher', () => {
       title: 'T',
       tags: ['x', 'y'],
       mood: 'joyful',
+      additionalMoods: ['jealous', 'cribby'],
       inferredSentiment: 'positive',
     });
     const enc = await encryptRemoteRow(entryToRemote(original, 'user-1'), key);

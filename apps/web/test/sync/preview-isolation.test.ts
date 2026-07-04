@@ -33,7 +33,15 @@ import type { WriteDraft } from '@/lib/types';
 const bounds = { width: 390, height: 800 };
 
 function draft(content: string): WriteDraft {
-  return { title: '', content, mood: null, tags: [], createdAtOverride: null, revisitOf: null };
+  return {
+    title: '',
+    content,
+    mood: null,
+    additionalMoods: [],
+    tags: [],
+    createdAtOverride: null,
+    revisitOf: null,
+  };
 }
 
 beforeEach(async () => {

@@ -166,6 +166,9 @@ function moodOpennessModifier(mood: Mood): number {
     case 'overwhelmed':
     case 'lonely':
     case 'guilty':
+    case 'angry':
+    case 'jealous':
+    case 'cribby':
       return -0.1;
     case 'apathetic':
     case 'numb':

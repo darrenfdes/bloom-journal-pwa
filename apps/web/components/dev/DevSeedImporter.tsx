@@ -11,6 +11,7 @@ type SeedEntry = {
   title: string | null;
   content: string;
   mood: LocalEntryRecord['mood'];
+  additionalMoods?: LocalEntryRecord['additionalMoods'];
   inferredSentiment: LocalEntryRecord['inferredSentiment'];
   tags: string[];
   createdAt: string;
@@ -73,6 +74,7 @@ export function DevSeedImporter() {
           title: entry.title,
           content: entry.content,
           mood: entry.mood,
+          additionalMoods: entry.additionalMoods ?? [],
           inferredSentiment: entry.inferredSentiment,
           tags: entry.tags ?? [],
           createdAt: entry.createdAt,

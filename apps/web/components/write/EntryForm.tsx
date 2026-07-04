@@ -82,7 +82,8 @@ export function EntryForm({
   // carries a mood or tags so nothing is hidden.
   const [showMood, setShowMood] = useState(false);
   const [showTags, setShowTags] = useState(false);
-  const moodVisible = !extrasCollapsed || showMood || draft.mood !== null;
+  const moodVisible =
+    !extrasCollapsed || showMood || draft.mood !== null || draft.additionalMoods.length > 0;
   const tagsVisible = !extrasCollapsed || showTags || draft.tags.length > 0;
 
   // Auto-grow the textarea with its content (ported from `JournalPanel`) so
@@ -154,7 +155,10 @@ export function EntryForm({
       {moodVisible && (
         <fieldset className="space-y-2">
           <legend className="mb-2 text-sm font-medium leading-none text-ink">Mood</legend>
-          <MoodPicker value={draft.mood} onChange={(mood) => setDraft({ mood })} />
+          <MoodPicker
+            value={draft.mood ? [draft.mood, ...draft.additionalMoods] : draft.additionalMoods}
+            onChange={(moods) => setDraft({ mood: moods[0] ?? null, additionalMoods: moods.slice(1) })}
+          />
         </fieldset>
       )}
 
