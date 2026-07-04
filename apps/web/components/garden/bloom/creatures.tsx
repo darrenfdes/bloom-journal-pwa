@@ -120,9 +120,9 @@ export interface DuckSpec {
 
 export interface DuckFlightState {
   run: number;
-  dir: 1 | -1;
   top: number; // % down the sky
   dur: number; // s for the full crossing
+  dist: number; // formation-wide distance scale (small + high = far, big + low = near)
   path: 'a' | 'b'; // which undulating crossing keyframe the flight rides
   flock: DuckSpec[];
 }
