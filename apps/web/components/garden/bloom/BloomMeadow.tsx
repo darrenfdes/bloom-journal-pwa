@@ -63,7 +63,7 @@ import {
   phaseFromHour,
   type PhaseKey,
 } from '@/lib/garden/bloom/phases';
-import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
+import { isDifficultMood, ramAppearanceChance, ramDayRoll } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 import { DUCK_FLIGHT, duckSessionChance, SOLO_BIRDS, soloBirdChance } from '@/lib/garden/bloom/ducks';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
@@ -531,13 +531,11 @@ export function BloomMeadow({
   }, [layout.W, vw, arrangement, sheepSeed]);
 
   /* a lone black ram. Highest chance wins: a difficult-mood entry always brings him out; otherwise
-     rain gives a 20% chance (day or night) and a clear night a 10% chance. The roll is refreshed
-     whenever the night/rain state changes, so each new spell gets its own shot. */
+     rain gives a 20% chance (day or night) and a clear night a 10% chance. The roll is seeded from
+     the date + conditions, so it's stable all day — reopening the app during the same rainy day
+     (or the weather fetch landing after first paint) never re-rolls him. */
   const isNight = phaseKey === 'night';
-  const [ramRoll, setRamRoll] = useState(() => Math.random());
-  useEffect(() => {
-    setRamRoll(Math.random());
-  }, [isNight, precip]);
+  const ramRoll = useMemo(() => ramDayRoll(todayIso, precip, isNight), [todayIso, precip, isNight]);
   const difficultEntry = useMemo(() => {
     const latest = layout.entries.reduce<(typeof layout.entries)[number] | null>(
       (a, e) => (!a || e.createdAt > a.createdAt ? e : a),
