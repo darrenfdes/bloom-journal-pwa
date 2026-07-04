@@ -111,7 +111,7 @@ const MOOD_LEXICON: Record<InferableMood, string[]> = {
   ],
   irritated: [
     'irritated', 'irritable', 'irritating', 'annoyed', 'annoying', 'frustrated', 'frustrating',
-    'frustration', 'angry', 'anger', 'mad', 'grumpy', 'agitated', 'fed up', 'on edge',
+    'frustration', 'grumpy', 'agitated', 'fed up', 'on edge',
   ],
   overwhelmed: [
     'overwhelmed', 'overwhelming', 'too much', 'swamped', 'buried', 'drowning', 'spread thin',
@@ -124,6 +124,16 @@ const MOOD_LEXICON: Record<InferableMood, string[]> = {
     'guilty', 'guilt', 'ashamed', 'shame', 'regret', 'regretful', 'remorse', 'remorseful',
     'my fault', 'blame myself',
   ],
+  angry: [
+    'angry', 'anger', 'mad', 'furious', 'fuming', 'rage', 'enraged', 'livid',
+  ],
+  jealous: [
+    'jealous', 'jealousy', 'envious', 'envy',
+  ],
+  // No assumed synonyms — "cribby" isn't a common word, so it's manual-pick-only.
+  cribby: [
+    'cribby',
+  ],
 };
 
 /**
@@ -135,6 +145,9 @@ const MOOD_LEXICON: Record<InferableMood, string[]> = {
 const MOOD_PRIORITY: InferableMood[] = [
   'guilty',
   'irritated',
+  'angry',
+  'jealous',
+  'cribby',
   'overwhelmed',
   'lonely',
   'drained',
@@ -164,6 +177,9 @@ const NEGATIVE_MOODS = new Set<Mood>([
   'guilty',
   'drained',
   'unmotivated',
+  'angry',
+  'jealous',
+  'cribby',
   // Flat/low moods read closer to negative than positive in the coarse
   // positive/negative/neutral model (a matched mood can't resolve to neutral).
   'apathetic',
