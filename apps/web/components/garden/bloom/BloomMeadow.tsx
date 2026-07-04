@@ -36,8 +36,10 @@ import { GrassTuft, makeHill, Ram, Sheep, Tree } from '@/components/garden/bloom
 import {
   Butterfly,
   CREATURE_KEYFRAMES,
+  Duck,
   Fox,
   WINGS,
+  type DuckFlightState,
   type FlockState,
   type FoxState,
   type ShootState,
@@ -61,6 +63,7 @@ import {
 } from '@/lib/garden/bloom/phases';
 import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { DUCK_FLIGHT, duckSpawnChance } from '@/lib/garden/bloom/ducks';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
 import {
   apsisForEvent,
@@ -258,6 +261,7 @@ export function BloomMeadow({
   const [fox, setFox] = useState<FoxState | null>(null);
   const [cshadow, setCshadow] = useState<{ run: number } | null>(null);
   const [shoot, setShoot] = useState<ShootState | null>(null);
+  const [ducks, setDucks] = useState<DuckFlightState | null>(null);
 
   /* world-events browser (sky playground only) */
   const [eventMode, setEventMode] = useState(false);
@@ -707,6 +711,37 @@ export function BloomMeadow({
     setTimeout(() => setCshadow(null), 28500);
   };
 
+  const spawnDucks = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'golden' && phaseKey !== 'dusk';
+    if (shift) setPhaseKey('golden');
+    const go = () => {
+      const r = mulberry32(Date.now() % 1000000);
+      const dir = r() < 0.5 ? 1 : -1;
+      const count = 4 + Math.round(r());
+      // Sideways "<" opening away from travel: leader in front, ranks trailing alternately above/below.
+      const flock = Array.from({ length: count }, (_, i) => {
+        const rank = Math.ceil(i / 2);
+        const side = i % 2 ? -1 : 1;
+        return {
+          id: i,
+          dx: i === 0 ? 0 : -(rank * 30 + (r() - 0.5) * 8),
+          dy: i === 0 ? 0 : side * (rank * 13 + (r() - 0.5) * 6),
+          size: 0.82 + r() * 0.28,
+          flapDur: 0.34 + r() * 0.1,
+          flapDelay: -r() * 0.4,
+          bobDur: 1.7 + r() * 0.8,
+          bobDelay: -r() * 2.4,
+        };
+      });
+      const dur = 24 + r() * 8;
+      // Mid-sky: low enough to read against the bright band above the hills (a dark
+      // silhouette is invisible on the dark upper sky at dusk) and to clear the header chrome.
+      setDucks({ run: Date.now(), dir, top: 22 + r() * 18, dur, flock });
+      setTimeout(() => setDucks(null), (dur + 2) * 1000);
+    };
+    setTimeout(go, shift ? 1500 : 100);
+  };
+
   const spawnShoot = (manual: boolean) => {
     const shift = manual && phaseKey !== 'night' && phaseKey !== 'dusk';
     if (shift) setPhaseKey('night');
@@ -731,8 +766,8 @@ export function BloomMeadow({
   };
 
   /* ambient: a creature wanders through on its own every minute or two */
-  const triggersRef = useRef({ spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey });
-  triggersRef.current = { spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey };
+  const triggersRef = useRef({ spawnButterflies, spawnFox, spawnShadow, spawnShoot, spawnDucks, phaseKey });
+  triggersRef.current = { spawnButterflies, spawnFox, spawnShadow, spawnShoot, spawnDucks, phaseKey };
   useEffect(() => {
     if (!creatures) return;
     let on = true;
@@ -743,14 +778,15 @@ export function BloomMeadow({
         const { phaseKey: pk, ...fn } = triggersRef.current;
         const opts =
           pk === 'night' ? ['shoot', 'shoot'] :
-          pk === 'dusk' ? ['fox', 'bflies', 'shoot'] :
-          pk === 'golden' ? ['fox', 'shadow', 'bflies'] :
+          pk === 'dusk' ? ['fox', 'bflies', 'shoot', 'ducks'] :
+          pk === 'golden' ? ['fox', 'shadow', 'bflies', 'ducks', 'ducks'] :
           pk === 'dawn' ? ['bflies', 'shadow'] :
           ['bflies', 'shadow', 'bflies'];
         const pick = opts[Math.floor(Math.random() * opts.length)];
         if (pick === 'bflies') fn.spawnButterflies();
         else if (pick === 'fox') fn.spawnFox(false);
         else if (pick === 'shadow') fn.spawnShadow();
+        else if (pick === 'ducks') fn.spawnDucks(false);
         else fn.spawnShoot(false);
         loop();
       }, 42000 + Math.random() * 72000);
@@ -806,6 +842,26 @@ export function BloomMeadow({
       timers.forEach(clearTimeout);
     };
   }, [live, specialStar]);
+
+  /* live: a V of ducks crosses the sky now and then at golden hour (rarer at dusk) */
+  useEffect(() => {
+    if (!live) return;
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const [lo, hi] = DUCK_FLIGHT.repeatEveryMs;
+      t = setTimeout(() => {
+        if (!on) return;
+        if (Math.random() < duckSpawnChance(triggersRef.current.phaseKey)) triggersRef.current.spawnDucks(false);
+        loop();
+      }, lo + Math.random() * (hi - lo));
+    };
+    loop();
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [live]);
 
   /* events browser: snap the sky phase + moon shape to best show the selected event */
   useEffect(() => {
@@ -1002,7 +1058,18 @@ export function BloomMeadow({
           </div>
         ))}
 
-        {/* comet (behind hills — shallow arc to hill crest) */}
+        {/* ducks — a V formation crossing the sky (golden hour / dusk) */}
+        {(creatures || live) && ducks && (
+          <div key={ducks.run} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: ducks.dir === -1 ? 'scaleX(-1)' : undefined }}>
+            <div style={{ position: 'absolute', top: `${ducks.top}%`, left: 0, animation: `bj-duckcross ${ducks.dur}s linear both` }}>
+              {ducks.flock.map((d) => (
+                <Duck key={d.id} d={d} />
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* comet (behind hills — shallow arc to hill crest) */}
         {showComet && (
           <CometVisual
             key={cometSessionKey ? `${cometSessionKey}-${cometLaunch}` : 'comet'}
@@ -1442,6 +1509,7 @@ export function BloomMeadow({
                 ['Fox', () => spawnFox(true), !!fox],
                 ['Cloud shadow', () => spawnShadow(), !!cshadow],
                 ['Shooting star', () => spawnShoot(true), !!shoot],
+                ['Ducks', () => spawnDucks(true), !!ducks],
               ] as const).map(([label, fn, on]) => (
                 <button
                   key={label}
