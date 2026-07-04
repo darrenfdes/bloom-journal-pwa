@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# icon generation QA output (not shipped)
+/public/icon-preview.png
