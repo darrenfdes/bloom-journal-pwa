@@ -4,16 +4,21 @@ import { useEffect, useState } from 'react';
 
 import { FALLBACK_COORDS, type GeoCoords } from '@bloom/core/scene';
 
+import { readCachedCoords } from './weather-cache';
+
 export { FALLBACK_COORDS };
 
 export type GeolocationState = { status: 'ready'; coords: GeoCoords };
 
-/** Resolves immediately with fallback coords; upgrades silently if geolocation is available. */
+/**
+ * Resolves immediately with the last-known coords (falling back to country-level defaults);
+ * upgrades silently if geolocation is available.
+ */
 export function useGeolocation(): GeolocationState {
-  const [state, setState] = useState<GeolocationState>({
+  const [state, setState] = useState<GeolocationState>(() => ({
     status: 'ready',
-    coords: FALLBACK_COORDS,
-  });
+    coords: readCachedCoords() ?? FALLBACK_COORDS,
+  }));
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;

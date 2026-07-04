@@ -10,11 +10,15 @@ import {
   type WeatherState,
 } from '@bloom/core/scene';
 
+import { readCachedWeather, writeCachedWeather } from './weather-cache';
+
 const REFRESH_MS = 30 * 60 * 1000;
 
 export function useWeather(coords: GeoCoords | null): WeatherState | null {
-  const [weather, setWeather] = useState<WeatherState | null>(null);
-  const lastRef = useRef<WeatherState | null>(null);
+  // Hydrate from the last fetch so the first frame already wears the right weather
+  // (stale-while-revalidate; the mount fetch below refreshes it silently).
+  const [weather, setWeather] = useState<WeatherState | null>(() => readCachedWeather());
+  const lastRef = useRef<WeatherState | null>(weather);
 
   const fetchWeather = useCallback(async (c: GeoCoords) => {
     try {
@@ -23,6 +27,7 @@ export function useWeather(coords: GeoCoords | null): WeatherState | null {
       const json = (await res.json()) as Parameters<typeof parseOpenMeteoResponse>[0];
       const parsed = parseOpenMeteoResponse(json, c);
       lastRef.current = parsed;
+      writeCachedWeather(parsed);
       setWeather(parsed);
     } catch {
       setWeather(lastRef.current ?? { ...DEFAULT_WEATHER, coords: c });
