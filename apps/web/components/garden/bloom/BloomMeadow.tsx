@@ -65,7 +65,7 @@ import {
 } from '@/lib/garden/bloom/phases';
 import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
-import { DUCK_FLIGHT, duckSpawnChance, SOLO_BIRDS, soloBirdChance } from '@/lib/garden/bloom/ducks';
+import { DUCK_FLIGHT, duckSessionChance, SOLO_BIRDS, soloBirdChance } from '@/lib/garden/bloom/ducks';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
 import {
   apsisForEvent,
@@ -719,8 +719,7 @@ export function BloomMeadow({
     if (shift) setPhaseKey('golden');
     const go = () => {
       const r = mulberry32(Date.now() % 1000000);
-      const dir = r() < 0.5 ? 1 : -1;
-      const count = 4 + Math.round(r());
+      const count = 3 + Math.floor(r() * 5); // 3–7 ducks
       // Each flight has a base wingbeat character, but every duck beats at a distinctly
       // different rate (±20%-ish, like the codepen birds) so they never look in step.
       const flapBase = 0.72 + r() * 0.12;
@@ -744,10 +743,14 @@ export function BloomMeadow({
           swayDelay: -r() * 3,
         };
       });
-      const dur = 24 + r() * 8;
-      // Mid-sky: low enough to read against the bright band above the hills (a dark
-      // silhouette is invisible on the dark upper sky at dusk) and to clear the header chrome.
-      setDucks({ run: Date.now(), dir, top: 22 + r() * 18, dur, path: r() < 0.5 ? 'a' : 'b', flock });
+      // Distance: far flights are smaller, higher in the sky, and cross a touch slower;
+      // near ones bigger and lower. The band stays low enough to read against the bright
+      // strip above the hills (a dark silhouette is invisible on the dark upper sky at
+      // dusk) and high enough to clear the header chrome.
+      const dist = 0.6 + r() * 0.45;
+      const distNorm = (dist - 0.6) / 0.45;
+      const dur = (24 + r() * 8) * (1.35 - 0.35 * distNorm);
+      setDucks({ run: Date.now(), top: 20 + distNorm * 18 + r() * 4, dur, dist, path: r() < 0.5 ? 'a' : 'b', flock });
       setTimeout(() => setDucks(null), (dur + 2) * 1000);
     };
     setTimeout(go, shift ? 1500 : 100);
@@ -881,25 +884,27 @@ export function BloomMeadow({
     };
   }, [live, specialStar]);
 
-  /* live: a V of ducks crosses the sky now and then at golden hour (rarer at dusk) */
+  /* live: ducks join 1 in 3 golden hours (1 in 6 dusks); when they do, a V crosses every
+     2–3 min. Keyed on phaseKey so the roll happens exactly once per phase entry (mount in
+     the phase counts — that's the app-open case); leaving the phase stops the loop. */
   useEffect(() => {
     if (!live) return;
+    if (Math.random() >= duckSessionChance(phaseKey)) return; // chance 0 outside golden/dusk
     let on = true;
     let t: ReturnType<typeof setTimeout>;
-    const loop = () => {
-      const [lo, hi] = DUCK_FLIGHT.repeatEveryMs;
+    const schedule = ([lo, hi]: readonly [number, number]) => {
       t = setTimeout(() => {
         if (!on) return;
-        if (Math.random() < duckSpawnChance(triggersRef.current.phaseKey)) triggersRef.current.spawnDucks(false);
-        loop();
+        triggersRef.current.spawnDucks(false);
+        schedule(DUCK_FLIGHT.repeatEveryMs);
       }, lo + Math.random() * (hi - lo));
     };
-    loop();
+    schedule(DUCK_FLIGHT.firstFlightDelayMs);
     return () => {
       on = false;
       clearTimeout(t);
     };
-  }, [live]);
+  }, [live, phaseKey]);
 
   /* live: one or two lone birds cross the sky every few minutes during the day */
   useEffect(() => {
@@ -1116,13 +1121,16 @@ export function BloomMeadow({
           </div>
         ))}
 
-        {/* ducks — a V formation crossing the sky (golden hour / dusk) */}
+        {/* ducks — a V formation crossing the sky left to right (golden hour / dusk) */}
         {(creatures || live) && ducks && (
-          <div key={ducks.run} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: ducks.dir === -1 ? 'scaleX(-1)' : undefined }}>
+          <div key={ducks.run} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
             <div style={{ position: 'absolute', top: `${ducks.top}%`, left: 0, willChange: 'transform', animation: `bj-duckpath-${ducks.path} ${ducks.dur}s linear both` }}>
-              {ducks.flock.map((d) => (
-                <Duck key={d.id} d={d} />
-              ))}
+              {/* distance scale shrinks duck size and formation spacing together */}
+              <div style={{ transform: `scale(${ducks.dist})`, transformOrigin: '0 0' }}>
+                {ducks.flock.map((d) => (
+                  <Duck key={d.id} d={d} />
+                ))}
+              </div>
             </div>
           </div>
         )}
