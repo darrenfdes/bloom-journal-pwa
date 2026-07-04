@@ -133,7 +133,7 @@ export function Duck({ d }: { d: DuckSpec }) {
         <path d="M 3 15 C 7.5 12.2, 14 10.8, 21 11 C 27 11.2, 31.5 12.8, 33.5 15.1 C 31 17.4, 25.5 18.6, 19.5 18.4 C 12.5 18.2, 6.5 17, 3 15 Z" fill={fill} />
         <path d="M 31 14.8 C 33.2 14, 34.8 12.6, 35.8 11 C 36.4 9.6, 37.9 8.8, 39.3 9.3 C 40.7 9.8, 41.4 11.3, 40.9 12.6 C 40.5 13.7, 39.4 14.4, 38.2 14.3 C 36.2 14.2, 33.8 14.8, 32.2 15.8 Z" fill={fill} />
         <path d="M 40.6 10.4 L 44 11.6 L 40.9 12.9 Z" fill={fill} />
-        <g style={{ transformBox: 'fill-box', transformOrigin: 'right center', animation: `bj-duckflap ${d.flapDur}s ${d.flapDelay}s ease-in-out infinite alternate` } as React.CSSProperties}>
+        <g style={{ transformBox: 'fill-box', transformOrigin: 'right center', animation: `bj-duckflap ${d.flapDur}s ${d.flapDelay}s ease-in-out infinite` } as React.CSSProperties}>
           <path d="M 20.5 12.2 C 15 9.6, 9 9, 4.8 10.2 C 8.8 13.2, 14.5 14.8, 20.5 15.4 Z" fill={fill} />
         </g>
       </svg>
@@ -153,6 +153,7 @@ export const CREATURE_KEYFRAMES = `
   @keyframes bj-trot{from{transform:translateY(0) rotate(.5deg)}to{transform:translateY(-2.6px) rotate(-.9deg)}}
   @keyframes bj-cshadow{0%{transform:translateX(-85vw);opacity:0}9%{opacity:1}88%{opacity:1}100%{transform:translateX(145vw);opacity:0}}
   @keyframes bj-duckcross{from{transform:translateX(-340px)}to{transform:translateX(calc(100vw + 340px))}}
-  @keyframes bj-duckflap{from{transform:rotate(-38deg)}to{transform:rotate(30deg)}}
-  @keyframes bj-duckbob{from{transform:translateY(0)}to{transform:translateY(-4px)}}
+  @keyframes bj-duckflap{0%{transform:rotate(-36deg)}36%{transform:rotate(30deg)}100%{transform:rotate(-36deg)}}
+  @keyframes bj-duckbob{from{transform:translateY(0) rotate(1.5deg)}to{transform:translateY(-5px) rotate(-2deg)}}
+  @keyframes bj-duckride{from{transform:translateY(-7px)}to{transform:translateY(7px)}}
 `;
