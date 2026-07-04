@@ -36,11 +36,15 @@ import { GrassTuft, makeHill, Ram, Sheep, Tree } from '@/components/garden/bloom
 import {
   Butterfly,
   CREATURE_KEYFRAMES,
+  Duck,
   Fox,
+  SoloBird,
   WINGS,
+  type DuckFlightState,
   type FlockState,
   type FoxState,
   type ShootState,
+  type SoloBirdState,
 } from '@/components/garden/bloom/creatures';
 import { ShootingStar, CometVisual, SHOOTING_STAR_KEYFRAMES, COMET_KEYFRAMES, SHOOTING_STAR_ANGLE, COMET_ANGLE, cometSpawnGeom } from '@/components/garden/bloom/shooting-star-visual';
 import { buildMeadowLayout, type PlacedEntry } from '@/lib/garden/bloom/layout';
@@ -61,6 +65,7 @@ import {
 } from '@/lib/garden/bloom/phases';
 import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { DUCK_FLIGHT, duckSessionChance, SOLO_BIRDS, soloBirdChance } from '@/lib/garden/bloom/ducks';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
 import {
   apsisForEvent,
@@ -258,6 +263,8 @@ export function BloomMeadow({
   const [fox, setFox] = useState<FoxState | null>(null);
   const [cshadow, setCshadow] = useState<{ run: number } | null>(null);
   const [shoot, setShoot] = useState<ShootState | null>(null);
+  const [ducks, setDucks] = useState<DuckFlightState | null>(null);
+  const [birds, setBirds] = useState<SoloBirdState | null>(null);
 
   /* world-events browser (sky playground only) */
   const [eventMode, setEventMode] = useState(false);
@@ -707,6 +714,74 @@ export function BloomMeadow({
     setTimeout(() => setCshadow(null), 28500);
   };
 
+  const spawnDucks = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'golden' && phaseKey !== 'dusk';
+    if (shift) setPhaseKey('golden');
+    const go = () => {
+      const r = mulberry32(Date.now() % 1000000);
+      const count = 3 + Math.floor(r() * 5); // 3–7 ducks
+      // Each flight has a base wingbeat character, but every duck beats at a distinctly
+      // different rate (±20%-ish, like the codepen birds) so they never look in step.
+      const flapBase = 0.72 + r() * 0.12;
+      // Sideways "<" opening away from travel: leader in front, ranks trailing alternately
+      // above/below, spaced wider than a sprite so wings never overlap. The bob delay grows
+      // with rank so the undulation ripples back through the formation; per-duck periods
+      // differ so the ripple decoheres rather than locking into a wave.
+      const flock = Array.from({ length: count }, (_, i) => {
+        const rank = Math.ceil(i / 2);
+        const side = i % 2 ? -1 : 1;
+        return {
+          id: i,
+          dx: i === 0 ? 0 : -(rank * 42 + (r() - 0.5) * 10),
+          dy: i === 0 ? 0 : side * (rank * 16 + (r() - 0.5) * 6),
+          size: 0.88 + r() * 0.18,
+          flapDur: flapBase * (0.85 + r() * 0.35),
+          flapDelay: -r() * 0.8,
+          bobDur: 1.9 + r() * 0.9,
+          bobDelay: -(rank * 0.33 + r() * 0.12),
+          swayDur: 3.4 + r() * 1.8,
+          swayDelay: -r() * 3,
+        };
+      });
+      // Distance: far flights are smaller, higher in the sky, and cross a touch slower;
+      // near ones bigger and lower. The band stays low enough to read against the bright
+      // strip above the hills (a dark silhouette is invisible on the dark upper sky at
+      // dusk) and high enough to clear the header chrome.
+      const dist = 0.6 + r() * 0.45;
+      const distNorm = (dist - 0.6) / 0.45;
+      const dur = (24 + r() * 8) * (1.35 - 0.35 * distNorm);
+      setDucks({ run: Date.now(), top: 20 + distNorm * 18 + r() * 4, dur, dist, path: r() < 0.5 ? 'a' : 'b', flock });
+      setTimeout(() => setDucks(null), (dur + 2) * 1000);
+    };
+    setTimeout(go, shift ? 1500 : 100);
+  };
+
+  const spawnBirds = (manual: boolean) => {
+    const shift = manual && phaseKey !== 'day';
+    if (shift) setPhaseKey('day');
+    const go = () => {
+      const r = mulberry32(Date.now() % 1000000);
+      const dir = r() < 0.5 ? 1 : -1;
+      const count = 1 + Math.round(r());
+      // Lone birds, not a formation: each rides its own undulating fly-right path with
+      // its own speed and wingbeat; a second bird takes off a few seconds after the first.
+      const flight = Array.from({ length: count }, (_, i) => ({
+        id: i,
+        path: (r() < 0.5 ? 'a' : 'b') as 'a' | 'b',
+        // 12%+ keeps the highest path-b dip (-4vh) clear of the header chrome
+        top: 12 + r() * 20,
+        dur: 13 + r() * 4,
+        delay: i === 0 ? 0 : 1.5 + r() * 2.5,
+        flapDur: 0.9 + r() * 0.35,
+        flapDelay: -r(),
+      }));
+      const total = Math.max(...flight.map((b) => b.delay + b.dur));
+      setBirds({ run: Date.now(), dir, birds: flight });
+      setTimeout(() => setBirds(null), (total + 1) * 1000);
+    };
+    setTimeout(go, shift ? 1500 : 100);
+  };
+
   const spawnShoot = (manual: boolean) => {
     const shift = manual && phaseKey !== 'night' && phaseKey !== 'dusk';
     if (shift) setPhaseKey('night');
@@ -731,8 +806,8 @@ export function BloomMeadow({
   };
 
   /* ambient: a creature wanders through on its own every minute or two */
-  const triggersRef = useRef({ spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey });
-  triggersRef.current = { spawnButterflies, spawnFox, spawnShadow, spawnShoot, phaseKey };
+  const triggersRef = useRef({ spawnButterflies, spawnFox, spawnShadow, spawnShoot, spawnDucks, spawnBirds, phaseKey });
+  triggersRef.current = { spawnButterflies, spawnFox, spawnShadow, spawnShoot, spawnDucks, spawnBirds, phaseKey };
   useEffect(() => {
     if (!creatures) return;
     let on = true;
@@ -743,14 +818,16 @@ export function BloomMeadow({
         const { phaseKey: pk, ...fn } = triggersRef.current;
         const opts =
           pk === 'night' ? ['shoot', 'shoot'] :
-          pk === 'dusk' ? ['fox', 'bflies', 'shoot'] :
-          pk === 'golden' ? ['fox', 'shadow', 'bflies'] :
+          pk === 'dusk' ? ['fox', 'bflies', 'shoot', 'ducks'] :
+          pk === 'golden' ? ['fox', 'shadow', 'bflies', 'ducks', 'ducks'] :
           pk === 'dawn' ? ['bflies', 'shadow'] :
-          ['bflies', 'shadow', 'bflies'];
+          ['bflies', 'shadow', 'birds', 'bflies'];
         const pick = opts[Math.floor(Math.random() * opts.length)];
         if (pick === 'bflies') fn.spawnButterflies();
         else if (pick === 'fox') fn.spawnFox(false);
         else if (pick === 'shadow') fn.spawnShadow();
+        else if (pick === 'ducks') fn.spawnDucks(false);
+        else if (pick === 'birds') fn.spawnBirds(false);
         else fn.spawnShoot(false);
         loop();
       }, 42000 + Math.random() * 72000);
@@ -806,6 +883,48 @@ export function BloomMeadow({
       timers.forEach(clearTimeout);
     };
   }, [live, specialStar]);
+
+  /* live: ducks join 1 in 3 golden hours (1 in 6 dusks); when they do, a V crosses every
+     2–3 min. Keyed on phaseKey so the roll happens exactly once per phase entry (mount in
+     the phase counts — that's the app-open case); leaving the phase stops the loop. */
+  useEffect(() => {
+    if (!live) return;
+    if (Math.random() >= duckSessionChance(phaseKey)) return; // chance 0 outside golden/dusk
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const schedule = ([lo, hi]: readonly [number, number]) => {
+      t = setTimeout(() => {
+        if (!on) return;
+        triggersRef.current.spawnDucks(false);
+        schedule(DUCK_FLIGHT.repeatEveryMs);
+      }, lo + Math.random() * (hi - lo));
+    };
+    schedule(DUCK_FLIGHT.firstFlightDelayMs);
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [live, phaseKey]);
+
+  /* live: one or two lone birds cross the sky every few minutes during the day */
+  useEffect(() => {
+    if (!live) return;
+    let on = true;
+    let t: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const [lo, hi] = SOLO_BIRDS.repeatEveryMs;
+      t = setTimeout(() => {
+        if (!on) return;
+        if (Math.random() < soloBirdChance(triggersRef.current.phaseKey)) triggersRef.current.spawnBirds(false);
+        loop();
+      }, lo + Math.random() * (hi - lo));
+    };
+    loop();
+    return () => {
+      on = false;
+      clearTimeout(t);
+    };
+  }, [live]);
 
   /* events browser: snap the sky phase + moon shape to best show the selected event */
   useEffect(() => {
@@ -1002,7 +1121,29 @@ export function BloomMeadow({
           </div>
         ))}
 
-        {/* comet (behind hills — shallow arc to hill crest) */}
+        {/* ducks — a V formation crossing the sky left to right (golden hour / dusk) */}
+        {(creatures || live) && ducks && (
+          <div key={ducks.run} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', top: `${ducks.top}%`, left: 0, willChange: 'transform', animation: `bj-duckpath-${ducks.path} ${ducks.dur}s linear both` }}>
+              {/* distance scale shrinks duck size and formation spacing together */}
+              <div style={{ transform: `scale(${ducks.dist})`, transformOrigin: '0 0' }}>
+                {ducks.flock.map((d) => (
+                  <Duck key={d.id} d={d} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* lone birds — one or two cross the day sky individually, never in formation */}
+        {(creatures || live) && birds && (
+          <div key={birds.run} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: birds.dir === -1 ? 'scaleX(-1)' : undefined }}>
+            {birds.birds.map((b) => (
+              <SoloBird key={b.id} b={b} />
+            ))}
+          </div>
+        )}
+
+      {/* comet (behind hills — shallow arc to hill crest) */}
         {showComet && (
           <CometVisual
             key={cometSessionKey ? `${cometSessionKey}-${cometLaunch}` : 'comet'}
@@ -1442,6 +1583,8 @@ export function BloomMeadow({
                 ['Fox', () => spawnFox(true), !!fox],
                 ['Cloud shadow', () => spawnShadow(), !!cshadow],
                 ['Shooting star', () => spawnShoot(true), !!shoot],
+                ['Ducks', () => spawnDucks(true), !!ducks],
+                ['Birds', () => spawnBirds(true), !!birds],
               ] as const).map(([label, fn, on]) => (
                 <button
                   key={label}
