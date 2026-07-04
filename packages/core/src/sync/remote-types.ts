@@ -9,6 +9,7 @@ export interface RemoteEntryRow {
   /** Null for encrypted rows (content lives in enc_blob); set for legacy plaintext rows. */
   content: string | null;
   mood: string | null;
+  additional_moods: string[];
   inferred_sentiment: string | null;
   tags: string[];
   created_at: string;

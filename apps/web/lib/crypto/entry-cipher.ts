@@ -13,6 +13,7 @@ export interface EntryPlainBundle {
   title: string | null;
   tags: string[];
   mood: string | null;
+  additionalMoods: string[];
   inferredSentiment: string | null;
   weather: EntryWeatherSnapshot | null;
 }

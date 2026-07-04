@@ -52,6 +52,7 @@ export async function plantEntry(
     title: draft.title.trim() || null,
     content: draft.content.trim(),
     mood,
+    additionalMoods: draft.additionalMoods,
     inferredSentiment,
     tags: draft.tags,
     createdAt,
@@ -91,7 +92,7 @@ export async function createEntry(
 
 export async function updateEntry(
   id: string,
-  patch: Partial<Pick<EntryRecord, 'title' | 'content' | 'mood' | 'tags'>>
+  patch: Partial<Pick<EntryRecord, 'title' | 'content' | 'mood' | 'additionalMoods' | 'tags'>>
 ): Promise<EntryRecord | null> {
   const entry = await getEntry(id);
   if (!entry) return null;
@@ -106,6 +107,7 @@ export async function updateEntry(
     title: patch.title !== undefined ? patch.title : entry.title,
     content,
     mood,
+    additionalMoods: patch.additionalMoods ?? entry.additionalMoods,
     inferredSentiment: patch.mood !== undefined && patch.mood !== null ? null : inferredSentiment,
     tags: patch.tags ?? entry.tags,
     updatedAt: now,

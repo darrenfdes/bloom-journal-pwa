@@ -65,7 +65,8 @@ export const BLOOM_MOOD_LABEL: Record<BloomMood, string> = {
  * a bloom "family" look: the low/apathetic moods collapse onto the two muted
  * blooms, and a few additions reuse an existing flower (excited→energized,
  * content→calm, overwhelmed→anxious, lonely/guilty→wistful). `irritated`
- * finally puts the otherwise-unmapped `restless`/dahlia bloom to use.
+ * finally puts the otherwise-unmapped `restless`/dahlia bloom to use, and
+ * `angry`/`jealous`/`cribby` share that same restless/dahlia family.
  */
 export function appMoodToBloomMood(mood: Mood | null | undefined): BloomMood {
   switch (mood) {
@@ -105,6 +106,9 @@ export function appMoodToBloomMood(mood: Mood | null | undefined): BloomMood {
       return 'drained';
     // Difficult
     case 'irritated':
+    case 'angry':
+    case 'jealous':
+    case 'cribby':
       return 'restless';
     case 'overwhelmed':
       return 'anxious';

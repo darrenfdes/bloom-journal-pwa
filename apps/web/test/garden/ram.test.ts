@@ -4,7 +4,17 @@ import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
 
 describe('isDifficultMood', () => {
   it('is true for moods in the shared Difficult category', () => {
-    for (const mood of ['melancholy', 'anxious', 'irritated', 'overwhelmed', 'lonely', 'guilty'] as const) {
+    for (const mood of [
+      'melancholy',
+      'anxious',
+      'irritated',
+      'overwhelmed',
+      'lonely',
+      'guilty',
+      'angry',
+      'jealous',
+      'cribby',
+    ] as const) {
       expect(isDifficultMood(mood)).toBe(true);
     }
   });

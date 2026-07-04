@@ -16,6 +16,7 @@ const sample: EntryPlainBundle = {
   title: 'Quiet morning',
   tags: ['calm', 'reflection'],
   mood: 'peaceful',
+  additionalMoods: ['grateful'],
   inferredSentiment: 'positive',
   weather: {
     category: 'clear',
@@ -44,6 +45,7 @@ describe('entry-cipher', () => {
       title: null,
       tags: [],
       mood: null,
+      additionalMoods: [],
       inferredSentiment: null,
       weather: null,
     };
