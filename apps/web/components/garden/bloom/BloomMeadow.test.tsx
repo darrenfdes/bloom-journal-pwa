@@ -61,6 +61,14 @@ describe('BloomMeadow', () => {
       expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
     });
 
+    it('shows the Ducks scene trigger only in creatures mode', () => {
+      const { unmount } = renderMeadow({ preview: true, entries: [] });
+      expect(screen.queryByRole('button', { name: 'Ducks' })).not.toBeInTheDocument();
+      unmount();
+      renderMeadow({ preview: true, creatures: true, entries: [] });
+      expect(screen.getByRole('button', { name: 'Ducks' })).toBeInTheDocument();
+    });
+
     it('switches phase when a phase pill is clicked', async () => {
       const user = userEvent.setup();
       renderMeadow({ preview: true, entries: [] });
