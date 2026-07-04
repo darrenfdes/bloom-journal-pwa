@@ -94,6 +94,7 @@ export function JournalPanel({ scene, open, onClose }: Props) {
           title: '',
           content,
           mood: null,
+          additionalMoods: [],
           tags: [],
           createdAtOverride: null,
           revisitOf: null,

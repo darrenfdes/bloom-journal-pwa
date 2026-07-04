@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Angry,
+  Annoyed,
   BatteryLow,
   BatteryWarning,
   CircleDashed,
@@ -11,7 +12,9 @@ import {
   CloudMoon,
   CloudRain,
   Coffee,
+  Eye,
   Flame,
+  FlameKindling,
   Frown,
   HandHeart,
   Heart,
@@ -52,6 +55,9 @@ const MOOD_ICONS: Record<Mood, LucideIcon> = {
   overwhelmed: CloudLightning,
   lonely: CloudMoon,
   guilty: Frown,
+  angry: FlameKindling,
+  jealous: Eye,
+  cribby: Annoyed,
 };
 
 type MoodIconProps = {

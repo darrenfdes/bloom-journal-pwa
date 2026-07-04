@@ -23,7 +23,10 @@ export type Mood =
   | 'irritated'
   | 'overwhelmed'
   | 'lonely'
-  | 'guilty';
+  | 'guilty'
+  | 'angry'
+  | 'jealous'
+  | 'cribby';
 
 export type Sentiment = 'positive' | 'negative' | 'neutral';
 
@@ -100,6 +103,8 @@ export interface EntryRecord {
   title: string | null;
   content: string;
   mood: Mood | null;
+  /** Supplementary feelings beyond the primary `mood`; never used for flower rendering. */
+  additionalMoods?: Mood[];
   inferredSentiment: Sentiment | null;
   tags: string[];
   createdAt: string;
@@ -145,6 +150,7 @@ export interface WriteDraft {
   title: string;
   content: string;
   mood: Mood | null;
+  additionalMoods: Mood[];
   tags: string[];
   createdAtOverride: string | null;
   revisitOf: string | null;

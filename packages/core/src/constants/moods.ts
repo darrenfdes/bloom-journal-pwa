@@ -33,6 +33,9 @@ export const MOODS: MoodMeta[] = [
   { id: 'overwhelmed', label: 'Overwhelmed', emoji: '😩', description: 'Too much at once' },
   { id: 'lonely', label: 'Lonely', emoji: '🥀', description: 'Alone and disconnected' },
   { id: 'guilty', label: 'Guilty', emoji: '😔', description: 'Weighed down by regret' },
+  { id: 'angry', label: 'Angry', emoji: '😡', description: 'Hot and ready to burst' },
+  { id: 'jealous', label: 'Jealous', emoji: '😒', description: "Wanting what isn't yours" },
+  { id: 'cribby', label: 'Cribby', emoji: '😤', description: 'Grumpy and short-fused' },
 ];
 
 /** A labelled group of moods, used to lay the picker out in scannable sections. */
@@ -58,7 +61,17 @@ export const MOOD_CATEGORIES: MoodCategory[] = [
   {
     id: 'difficult',
     label: 'Difficult',
-    moods: ['melancholy', 'anxious', 'irritated', 'overwhelmed', 'lonely', 'guilty'],
+    moods: [
+      'melancholy',
+      'anxious',
+      'irritated',
+      'overwhelmed',
+      'lonely',
+      'guilty',
+      'angry',
+      'jealous',
+      'cribby',
+    ],
   },
 ];
 
@@ -250,5 +263,29 @@ export const MOOD_COLORS: Record<
     stem: '#46525E',
     leaf: '#7A8896',
     accent: '#CCD6E0',
+  },
+  angry: {
+    petal: '#C23B2E',
+    petalAlt: '#E2705C',
+    center: '#7A1F12',
+    stem: '#6E4A38',
+    leaf: '#96755A',
+    accent: '#F7B89C',
+  },
+  jealous: {
+    petal: '#8FA05A',
+    petalAlt: '#B7C488',
+    center: '#56642E',
+    stem: '#6B6A42',
+    leaf: '#93966A',
+    accent: '#E2E8C4',
+  },
+  cribby: {
+    petal: '#B98255',
+    petalAlt: '#D9AC82',
+    center: '#7A5230',
+    stem: '#6E5A44',
+    leaf: '#9C8664',
+    accent: '#EAD2B0',
   },
 };

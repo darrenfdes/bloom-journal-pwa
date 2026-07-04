@@ -9,7 +9,9 @@ export function applyGardenFilter(
 
   if (filter.type === 'all') return active;
   if (filter.type === 'mood') {
-    return active.filter((e) => e.mood === filter.mood);
+    return active.filter(
+      (e) => e.mood === filter.mood || (e.additionalMoods ?? []).includes(filter.mood)
+    );
   }
   const monthStr = `${filter.year}-${String(filter.month).padStart(2, '0')}`;
   return active.filter((e) => format(parseISO(e.createdAt), 'yyyy-MM') === monthStr);
