@@ -1,8 +1,17 @@
-const CACHE_VERSION = 'bloom-pwa-v1';
+const CACHE_VERSION = 'bloom-pwa-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const OFFLINE_URL = '/offline';
-const STATIC_ASSETS = ['/', OFFLINE_URL, '/manifest.webmanifest', '/icon.svg'];
+const STATIC_ASSETS = [
+  '/',
+  OFFLINE_URL,
+  '/manifest.webmanifest',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
