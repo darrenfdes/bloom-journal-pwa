@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isDifficultMood, ramAppearanceChance } from '@/lib/garden/bloom/ram';
+import { isDifficultMood, ramAppearanceChance, ramDayRoll, ramX } from '@/lib/garden/bloom/ram';
 
 describe('isDifficultMood', () => {
   it('is true for moods in the shared Difficult category', () => {
@@ -48,5 +48,52 @@ describe('ramAppearanceChance', () => {
 
   it('ranks rain above night when both apply', () => {
     expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.2);
+  });
+});
+
+describe('ramDayRoll', () => {
+  it('is deterministic for the same day and conditions', () => {
+    expect(ramDayRoll('2026-07-04', true, false)).toBe(ramDayRoll('2026-07-04', true, false));
+    expect(ramDayRoll('2026-07-04', false, true)).toBe(ramDayRoll('2026-07-04', false, true));
+  });
+
+  it('stays within [0, 1)', () => {
+    for (const day of ['2026-07-04', '2026-07-05', '2026-12-31', '2027-01-01']) {
+      const roll = ramDayRoll(day, true, false);
+      expect(roll).toBeGreaterThanOrEqual(0);
+      expect(roll).toBeLessThan(1);
+    }
+  });
+
+  it('varies across days and across conditions', () => {
+    const rolls = new Set([
+      ramDayRoll('2026-07-04', true, false),
+      ramDayRoll('2026-07-05', true, false),
+      ramDayRoll('2026-07-06', true, false),
+      ramDayRoll('2026-07-04', false, true),
+      ramDayRoll('2026-07-04', false, false),
+    ]);
+    expect(rolls.size).toBeGreaterThan(1);
+  });
+});
+
+describe('ramX', () => {
+  it('stays within [220, 220 + hillWidth - 440] for a wide hill', () => {
+    const x = ramX(11, 800);
+    expect(x).toBeGreaterThanOrEqual(220);
+    expect(x).toBeLessThanOrEqual(580);
+  });
+
+  it('clamps to 220 when the hill is narrower than 440px', () => {
+    expect(ramX(11, 300)).toBe(220);
+    expect(ramX(11, 0)).toBe(220);
+  });
+
+  it('clamps to 220 exactly at the 440px boundary', () => {
+    expect(ramX(11, 440)).toBe(220);
+  });
+
+  it('is deterministic for the same seed and width', () => {
+    expect(ramX(11, 800)).toBe(ramX(11, 800));
   });
 });

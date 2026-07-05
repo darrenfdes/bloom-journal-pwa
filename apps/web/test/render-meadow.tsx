@@ -2,6 +2,7 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import type { EntryRecord } from '@bloom/core';
+import type { SceneEffect } from '@bloom/core/events';
 
 import { BloomMeadow } from '@/components/garden/bloom/BloomMeadow';
 
@@ -52,20 +53,33 @@ export type MeadowRenderProps = {
     coords: { lat: number; lon: number };
     locationName: string | null;
   } | null;
+  liveSceneEffects?: SceneEffect[];
 };
 
-export function renderMeadow(props: MeadowRenderProps = {}, options?: RenderOptions) {
-  const { entries = [], preview = false, live = false, creatures = false, liveWeather = null } = props;
-  return render(
+function buildMeadow(props: MeadowRenderProps) {
+  const {
+    entries = [],
+    preview = false,
+    live = false,
+    creatures = false,
+    liveWeather = null,
+    liveSceneEffects = [],
+  } = props;
+  return (
     <BloomMeadow
       entries={entries}
       preview={preview}
       live={live}
       creatures={creatures}
       liveWeather={liveWeather as never}
-    />,
-    options
+      liveSceneEffects={liveSceneEffects}
+    />
   );
+}
+
+export function renderMeadow(props: MeadowRenderProps = {}, options?: RenderOptions) {
+  const result = render(buildMeadow(props), options);
+  return { ...result, rerenderMeadow: (next: MeadowRenderProps) => result.rerender(buildMeadow(next)) };
 }
 
 export function resetMeadowMocks() {
