@@ -31,3 +31,14 @@ export const ramAppearanceChance = ({
  */
 export const ramDayRoll = (dayIso: string, raining: boolean, night: boolean): number =>
   mulberry32(hashString(`ram|${dayIso}|${raining}|${night}`))();
+
+/**
+ * X position (world px) for the lone ram on the near hill, seeded from the hill so it's stable
+ * across renders. Clamped so a narrow world (few entries, tight viewport) never pushes the ram
+ * off the left edge.
+ */
+export const ramX = (seed: number, hillWidth: number): number => {
+  const r = mulberry32(seed * 91 + 7);
+  const span = Math.max(0, hillWidth - 440);
+  return 220 + r() * span;
+};

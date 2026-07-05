@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EntryRecord } from '@bloom/core';
+import { findMemoryReplay, formatMemoryReplayDismissKey, isMemoryReplayDismissed } from '@bloom/core';
 import {
   bucketPhaseName,
   getLightningIntervalMs,
@@ -25,7 +26,6 @@ import {
   getRainWindSlantDeg,
   isPrecipitatingCategory,
   shouldShowLightning,
-  weatherCategoryLabel,
   type MoonPhaseState,
   type WeatherCategory,
   type WeatherState,
@@ -63,8 +63,9 @@ import {
   phaseFromHour,
   type PhaseKey,
 } from '@/lib/garden/bloom/phases';
-import { isDifficultMood, ramAppearanceChance, ramDayRoll } from '@/lib/garden/bloom/ram';
+import { isDifficultMood, ramAppearanceChance, ramDayRoll, ramX } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { readMemoryReplayDismiss, writeMemoryReplayDismiss } from '@/lib/memory-replay/dismiss';
 import { DUCK_FLIGHT, duckSessionChance, SOLO_BIRDS, soloBirdChance } from '@/lib/garden/bloom/ducks';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
 import {
@@ -84,6 +85,7 @@ import {
 } from '@/lib/garden/bloom/event-catalog';
 import { EventEffectsLayer } from '@/components/garden/bloom/EventEffectsLayer';
 import { EventStepper } from '@/components/garden/bloom/EventStepper';
+import { PreviewRail } from '@/components/garden/bloom/PreviewRail';
 import type { Rarity, SceneEffect, WorldEvent } from '@bloom/core/events';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -154,18 +156,6 @@ const NEUTRAL_MOON = {
   crater: 'rgba(150,146,118,.42)',
 };
 
-/** Weather states offered by the manual selector in the preview playground. */
-const PREVIEW_WEATHER_CATS: WeatherCategory[] = [
-  'clear',
-  'partly_cloudy',
-  'overcast',
-  'fog',
-  'rain',
-  'heavy_rain',
-  'snow',
-  'thunderstorm',
-];
-
 /**
  * Fixed moon-phase presets for the preview controls. `phase: null` follows the real current moon;
  * the others pin a synodic fraction (0 = new, 0.5 = full) so each lit shape can be inspected.
@@ -232,11 +222,7 @@ export function BloomMeadow({
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
   const setMemoryCardOpen = useBloomStore((s) => s.setMemoryCardOpen);
 
-  const [phaseKey, setPhaseKey] = useState<PhaseKey>(() =>
-    live && liveSceneEffects.includes('cometArc')
-      ? 'night'
-      : phaseFromHour(new Date().getHours()),
-  );
+  const [phaseKey, setPhaseKey] = useState<PhaseKey>(() => phaseFromHour(new Date().getHours()));
   const [liveNow, setLiveNow] = useState(() => new Date());
   const [moonPreset, setMoonPreset] = useState('live'); // fixed moon-phase override (preview only)
   const [weatherCat, setWeatherCat] = useState<WeatherCategory>('clear');
@@ -277,6 +263,26 @@ export function BloomMeadow({
   const hillRefs = [useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null)];
   const drag = useRef({ down: false, x: 0, sl: 0, moved: 0 });
   const ticking = useRef(false);
+
+  // Ambient-scene spawn functions (below) each schedule their own setTimeouts independent of
+  // the ambient-loop effects that trigger them; safeTimeout tracks every one so an unmount
+  // mid-flight (or mid manual-trigger) doesn't set state on an unmounted component.
+  const pendingTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      pendingTimers.current.delete(id);
+      fn();
+    }, ms);
+    pendingTimers.current.add(id);
+    return id;
+  }, []);
+  useEffect(() => {
+    const timers = pendingTimers.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
+  }, []);
 
   const phase = PHASES[phaseKey];
 
@@ -336,17 +342,19 @@ export function BloomMeadow({
     [eventMode, selectedEvent],
   );
   // Live garden: render today's effects, but only the night-sky ones (fireworks, Christmas
-  // star, planet) when the app is actually at dusk/night — those visuals read only after dark.
-  // Moon/sun/etc. tokens stay preview-only to keep their tuning unchanged in live mode.
+  // star, planet, comet) when the app is actually at dusk/night — those visuals read only
+  // after dark. Moon/sun/etc. tokens stay preview-only to keep their tuning unchanged in live
+  // mode. `phaseKey` itself always tracks the real clock (see the live-clock effect below) —
+  // a comet event only widens the sky's canvas, it never overrides what time it actually is.
+  const atNight = phaseKey === 'night' || phaseKey === 'dusk';
   const liveRenderedEffects = useMemo(() => {
     if (!live) return [];
-    const atNight = phaseKey === 'night' || phaseKey === 'dusk';
     const NIGHT_ONLY: SceneEffect[] = ['fireworks', 'christmasStar', 'brightStar'];
     return liveSceneEffects.filter((e) => (NIGHT_ONLY.includes(e) ? atNight : false));
-  }, [live, liveSceneEffects, phaseKey]);
+  }, [live, liveSceneEffects, atNight]);
   const showComet =
     (eventsBrowser && eventMode && eventEffects.includes('cometArc')) ||
-    (live && liveSceneEffects.includes('cometArc'));
+    (live && liveSceneEffects.includes('cometArc') && atNight);
   const cometSessionKey =
     eventsBrowser && eventMode && eventEffects.includes('cometArc') && selectedEvent
       ? selectedEvent.id
@@ -548,8 +556,7 @@ export function BloomMeadow({
   const ram = useMemo(() => {
     const near = hills[2];
     if (!near) return null;
-    const r = mulberry32(near.seed * 91 + 7);
-    const x = 220 + r() * (near.Wl - 440);
+    const x = ramX(near.seed, near.Wl);
     return { x, y: near.yAt(x) + 1, h: 24 };
   }, [hills]);
 
@@ -567,20 +574,26 @@ export function BloomMeadow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hills, layout]);
 
-  /* memory replay: same day, prior year */
+  /* memory replay: same day, prior year — persisted via localStorage so a dismissal survives
+     entries-array identity changes (e.g. a favourite toggle triggering refreshEntries()), and
+     naturally re-shows once a still-eligible match exists on a later day. */
+  const replayMatch = useMemo(() => findMemoryReplay(entries, liveNow), [entries, liveNow]);
+  const replayMatchId = replayMatch?.entry.id ?? null;
   useEffect(() => {
-    const now = new Date();
-    const cands = layout.entries.filter(
-      (e) => e.createdAt.getDate() === now.getDate() && e.createdAt.getMonth() === now.getMonth() && e.createdAt.getFullYear() < now.getFullYear()
-    );
-    if (cands.length) {
-      cands.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      const top = cands[0]!;
-      const t = setTimeout(() => setReplay(top), 1100);
-      return () => clearTimeout(t);
+    if (!replayMatch) {
+      setReplay(null);
+      return;
     }
-    setReplay(null);
-  }, [layout]);
+    if (isMemoryReplayDismissed(readMemoryReplayDismiss(), replayMatch, liveNow)) return;
+    const placed = layout.entries.find((e) => e.id === replayMatch.entry.id);
+    if (!placed) return;
+    const t = setTimeout(() => setReplay(placed), 1100);
+    return () => clearTimeout(t);
+    // Deliberately keyed on the resolved match's id, not on layout/entries/liveNow: an
+    // entries-array identity change (favourite/delete/refresh) that resolves to the *same*
+    // match must not re-schedule/re-pop a card the user already saw or dismissed this session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayMatchId]);
 
   /* start at the most recent month + track viewport width */
   const initialised = useRef(false);
@@ -623,11 +636,15 @@ export function BloomMeadow({
 
   const onWheel = (e: React.WheelEvent) => {
     const el = scrollerRef.current;
-    if (el && Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY;
+    if (el && el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY;
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse' || e.button !== 0 || !scrollerRef.current) return;
+    // Capture the pointer so drag continues (and pointerup is still delivered here) even if
+    // the cursor leaves the scroller during a fast fling — otherwise a release outside the
+    // scroller never fires endDrag and the cursor sticks on "grabbing".
+    scrollerRef.current.setPointerCapture?.(e.pointerId);
     drag.current = { down: true, x: e.clientX, sl: scrollerRef.current.scrollLeft, moved: 0 };
     setGrabbing(true);
   };
@@ -648,6 +665,10 @@ export function BloomMeadow({
   const visitEntry = (e: PlacedEntry) => {
     scrollToX(e.x);
     setTimeout(() => setActive(e), 650);
+  };
+  const dismissReplay = () => {
+    if (replay) writeMemoryReplayDismiss({ date: formatMemoryReplayDismissKey(liveNow), entryId: replay.id });
+    setReplay(null);
   };
 
   const parentOf = (e: PlacedEntry | null) =>
@@ -680,7 +701,7 @@ export function BloomMeadow({
     const run = Date.now();
     setBflies({ run, flock });
     const total = Math.max(...flock.map((f) => f.delay + f.dur + f.stay)) + 1.5;
-    setTimeout(() => setBflies((b) => (b && Date.now() - b.run > total * 900 ? null : b)), total * 1000);
+    safeTimeout(() => setBflies((b) => (b && Date.now() - b.run > total * 900 ? null : b)), total * 1000);
   };
 
   const spawnFox = (manual: boolean) => {
@@ -702,14 +723,14 @@ export function BloomMeadow({
         vars[`--fy${i}`] = `${(h.yAt(xc) - 41.5 * sc + 3).toFixed(1)}px`;
       });
       setFox({ run: Date.now(), vars: vars as React.CSSProperties, dir, sc, dur: 13 });
-      setTimeout(() => setFox(null), 13600);
+      safeTimeout(() => setFox(null), 13600);
     };
-    setTimeout(go, shift ? 1500 : 150);
+    safeTimeout(go, shift ? 1500 : 150);
   };
 
   const spawnShadow = () => {
     setCshadow({ run: Date.now() });
-    setTimeout(() => setCshadow(null), 28500);
+    safeTimeout(() => setCshadow(null), 28500);
   };
 
   const spawnDucks = (manual: boolean) => {
@@ -749,9 +770,9 @@ export function BloomMeadow({
       const distNorm = (dist - 0.6) / 0.45;
       const dur = (24 + r() * 8) * (1.35 - 0.35 * distNorm);
       setDucks({ run: Date.now(), top: 20 + distNorm * 18 + r() * 4, dur, dist, path: r() < 0.5 ? 'a' : 'b', flock });
-      setTimeout(() => setDucks(null), (dur + 2) * 1000);
+      safeTimeout(() => setDucks(null), (dur + 2) * 1000);
     };
-    setTimeout(go, shift ? 1500 : 100);
+    safeTimeout(go, shift ? 1500 : 100);
   };
 
   const spawnBirds = (manual: boolean) => {
@@ -775,9 +796,9 @@ export function BloomMeadow({
       }));
       const total = Math.max(...flight.map((b) => b.delay + b.dur));
       setBirds({ run: Date.now(), dir, birds: flight });
-      setTimeout(() => setBirds(null), (total + 1) * 1000);
+      safeTimeout(() => setBirds(null), (total + 1) * 1000);
     };
-    setTimeout(go, shift ? 1500 : 100);
+    safeTimeout(go, shift ? 1500 : 100);
   };
 
   const spawnShoot = (manual: boolean) => {
@@ -798,9 +819,9 @@ export function BloomMeadow({
         delay: i === 0 ? 0.1 : 2.4 + r() * 1.4,
       }));
       setShoot({ run: Date.now(), streaks });
-      setTimeout(() => setShoot(null), 6500);
+      safeTimeout(() => setShoot(null), 6500);
     };
-    setTimeout(go, shift ? 1500 : 100);
+    safeTimeout(go, shift ? 1500 : 100);
   };
 
   /* ambient: a creature wanders through on its own every minute or two */
@@ -840,18 +861,13 @@ export function BloomMeadow({
   /* live mode: the sky phase follows the local clock and the bodies drift through the day */
   useEffect(() => {
     if (!live) return;
-    if (liveSceneEffects.includes('cometArc')) {
-      setPhaseKey('night');
-      const id = setInterval(() => setLiveNow(new Date()), 60_000);
-      return () => clearInterval(id);
-    }
     const id = setInterval(() => {
       const n = new Date();
       setPhaseKey(phaseFromHour(n.getHours()));
       setLiveNow(n);
     }, 60_000);
     return () => clearInterval(id);
-  }, [live, liveSceneEffects]);
+  }, [live]);
 
   /* special days: a shooting star ~30s after open (90%) + occasional repeats at night (live only) */
   useEffect(() => {
@@ -982,20 +998,6 @@ export function BloomMeadow({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     cursor: 'pointer',
-  };
-
-  /* shared style for the phase + weather selector pills (preview controls) */
-  const tabBtn: React.CSSProperties = {
-    border: 'none',
-    cursor: 'pointer',
-    borderRadius: 999,
-    padding: '6px 11px',
-    fontFamily: sans,
-    fontSize: 10,
-    fontWeight: 800,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    transition: 'all .3s',
   };
 
   return (
@@ -1259,6 +1261,7 @@ export function BloomMeadow({
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
+        onPointerCancel={endDrag}
         style={{ position: 'absolute', inset: 0, zIndex: 10, overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', cursor: grabbing ? 'grabbing' : 'grab' }}
       >
         <div style={{ position: 'relative', width: worldW, height: '100%', filter: phase.filter, transition: 'filter 1.4s ease' }}>
@@ -1511,104 +1514,47 @@ export function BloomMeadow({
               )}
             </div>
           )}
-          {/* Manual sky + weather controls (preview playground only; the live garden is
-              driven by the clock and the real weather). */}
-          {!live && (
-            <>
-              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                {PHASE_ORDER.map((k) => (
-                  <button key={k} onClick={() => setPhaseKey(k)} style={{ ...tabBtn, color: phaseKey === k ? '#2c3328' : 'rgba(247,241,227,.85)', background: phaseKey === k ? '#f3ecd9' : 'transparent' }}>
-                    {PHASES[k].label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                {PREVIEW_WEATHER_CATS.map((c) => (
-                  <button key={c} onClick={() => setWeatherCat(c)} aria-pressed={weatherCat === c} style={{ ...tabBtn, color: weatherCat === c ? '#2c3328' : 'rgba(247,241,227,.85)', background: weatherCat === c ? '#f3ecd9' : 'transparent' }}>
-                    {weatherCategoryLabel(c)}
-                  </button>
-                ))}
-              </div>
-              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                {MOON_PRESETS.map((p) => (
-                  <button
-                    key={p.key}
-                    onClick={() => {
-                      setMoonPreset(p.key);
-                      // jump to night so the chosen moon is actually visible
-                      if (p.phase !== null && phaseKey !== 'night' && phaseKey !== 'dusk') setPhaseKey('night');
-                    }}
-                    aria-pressed={moonPreset === p.key}
-                    style={{ ...tabBtn, color: moonPreset === p.key ? '#2c3328' : 'rgba(247,241,227,.85)', background: moonPreset === p.key ? '#f3ecd9' : 'transparent' }}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              {/* Sheep tuning: scatter vs flock, re-roll the random layout, and toggle hide-in-rain */}
-              <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(247,241,227,.5)', padding: '0 6px 0 9px' }}>Sheep</span>
-                {(['scattered', 'flock'] as const).map((a) => (
-                  <button key={a} onClick={() => setArrangement(a)} aria-pressed={arrangement === a} style={{ ...tabBtn, color: arrangement === a ? '#2c3328' : 'rgba(247,241,227,.85)', background: arrangement === a ? '#f3ecd9' : 'transparent', textTransform: 'capitalize' }}>
-                    {a}
-                  </button>
-                ))}
-                <button onClick={() => setSheepSeed(Math.floor(Math.random() * 1e9))} style={{ ...tabBtn, color: 'rgba(247,241,227,.85)', background: 'transparent' }}>
-                  ⟳ Re-roll
-                </button>
-                <button onClick={() => setSheepRainHide((v) => !v)} aria-pressed={sheepRainHide} style={{ ...tabBtn, color: sheepRainHide ? '#2c3328' : 'rgba(247,241,227,.85)', background: sheepRainHide ? '#f3ecd9' : 'transparent' }}>
-                  Hide in rain
-                </button>
-              </div>
-              {eventsBrowser && (
-                <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', gap: 2 }}>
-                  <button
-                    onClick={toggleEvents}
-                    aria-pressed={eventMode}
-                    style={{ ...tabBtn, color: eventMode ? '#2c3328' : 'rgba(247,241,227,.85)', background: eventMode ? '#f3ecd9' : 'transparent' }}
-                  >
-                    ✦ Events
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-          {creatures && (
-            <div style={{ ...glass, borderRadius: 999, padding: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(247,241,227,.5)', padding: '0 6px 0 9px' }}>Scenes</span>
-              {([
-                ['Butterflies', () => spawnButterflies(), !!bflies],
-                ['Fox', () => spawnFox(true), !!fox],
-                ['Cloud shadow', () => spawnShadow(), !!cshadow],
-                ['Shooting star', () => spawnShoot(true), !!shoot],
-                ['Ducks', () => spawnDucks(true), !!ducks],
-                ['Birds', () => spawnBirds(true), !!birds],
-              ] as const).map(([label, fn, on]) => (
-                <button
-                  key={label}
-                  onClick={fn}
-                  style={{
-                    border: 'none',
-                    cursor: 'pointer',
-                    borderRadius: 999,
-                    padding: '6px 11px',
-                    fontFamily: sans,
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: 1.4,
-                    textTransform: 'uppercase',
-                    color: on ? '#2c3328' : 'rgba(247,241,227,.85)',
-                    background: on ? '#f3ecd9' : 'transparent',
-                    transition: 'all .3s',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Manual sky + weather controls moved to the collapsible right-edge rail
+              (<PreviewRail> below) so the meadow stays visible while tuning. */}
         </div>
       </div>
+
+      {/* ===== PREVIEW CONTROLS RAIL (preview playground only) =====
+          A thin icon rail on the right edge; tapping an icon expands that section's
+          pills inline. The meadow is never covered — see PreviewRail.tsx. */}
+      {!live && (
+        <PreviewRail
+          hasCreatures={creatures}
+          hasEvents={eventsBrowser}
+          phaseKey={phaseKey}
+          onPhaseKey={setPhaseKey}
+          defaultPhaseKey={phaseFromHour(new Date().getHours())}
+          weatherCat={weatherCat}
+          onWeatherCat={setWeatherCat}
+          moonPreset={moonPreset}
+          onMoonPreset={(key) => {
+            setMoonPreset(key);
+            const preset = MOON_PRESETS.find((p) => p.key === key);
+            // jump to night so the chosen moon is actually visible
+            if (preset && preset.phase !== null && phaseKey !== 'night' && phaseKey !== 'dusk') setPhaseKey('night');
+          }}
+          arrangement={arrangement}
+          onArrangement={setArrangement}
+          onRerollSheep={() => setSheepSeed(Math.floor(Math.random() * 1e9))}
+          sheepRainHide={sheepRainHide}
+          onSheepRainHide={() => setSheepRainHide((v) => !v)}
+          scenes={[
+            ['Butterflies', () => spawnButterflies(), !!bflies],
+            ['Fox', () => spawnFox(true), !!fox],
+            ['Cloud shadow', () => spawnShadow(), !!cshadow],
+            ['Shooting star', () => spawnShoot(true), !!shoot],
+            ['Ducks', () => spawnDucks(true), !!ducks],
+            ['Birds', () => spawnBirds(true), !!birds],
+          ]}
+          eventMode={eventMode}
+          onToggleEvents={toggleEvents}
+        />
+      )}
 
       {/* ===== REPLAY CARD ===== */}
       {replay && !active && (
@@ -1616,14 +1562,14 @@ export function BloomMeadow({
           <div style={{ background: 'rgba(251,246,236,.97)', border: '1px solid #e6d9bf', borderRadius: 16, padding: '14px 16px', boxShadow: '0 14px 40px rgba(20,30,28,.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontFamily: sans, fontSize: 10, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: '#a98c4a' }}>✦ This day in your garden</div>
-              <button onClick={() => setReplay(null)} aria-label="Dismiss" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 15, lineHeight: 1, padding: 4 }}>✕</button>
+              <button onClick={dismissReplay} aria-label="Dismiss" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 15, lineHeight: 1, padding: 4 }}>✕</button>
             </div>
             <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 19, color: '#3a4136', margin: '6px 0 3px' }}>“{replay.title || snippet(replay.content, 64)}”</div>
             <div style={{ fontFamily: sans, fontSize: 11.5, color: '#8b8370' }}>
               {snapshotLine(replay.timePhase, replay.weather.toLowerCase(), replay.place)} · {agoLabel(replay.createdAt)}
             </div>
             <button
-              onClick={() => { visitEntry(replay); setReplay(null); }}
+              onClick={() => { dismissReplay(); visitEntry(replay); }}
               style={{ marginTop: 10, border: '1px solid #d8c9a4', background: '#f0e6cd', color: '#5c5236', borderRadius: 999, padding: '6px 16px', fontFamily: sans, fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', cursor: 'pointer' }}
             >
               Open this memory
