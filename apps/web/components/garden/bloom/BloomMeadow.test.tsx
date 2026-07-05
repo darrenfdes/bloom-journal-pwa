@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,6 +13,13 @@ import {
   renderMeadow,
   resetMeadowMocks,
 } from '@/test/render-meadow';
+
+// CometVisual drives an rAF loop; test/setup.ts stubs requestAnimationFrame to call back
+// synchronously, which recurses infinitely if the real component mounts under test.
+vi.mock('@/components/garden/bloom/shooting-star-visual', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/garden/bloom/shooting-star-visual')>();
+  return { ...actual, CometVisual: () => <div data-testid="comet-visual" /> };
+});
 
 describe('BloomMeadow', () => {
   beforeEach(() => {
@@ -46,32 +53,138 @@ describe('BloomMeadow', () => {
     });
   });
 
+  describe('comet event (live mode)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('does not render the comet during daytime hours even when a comet event is active', () => {
+      vi.setSystemTime(new Date(2026, 5, 14, 12, 0, 0));
+      renderMeadow({ live: true, liveSceneEffects: ['cometArc'] });
+      expect(screen.queryByTestId('comet-visual')).not.toBeInTheDocument();
+    });
+
+    it('still renders the comet at night when a comet event is active', () => {
+      vi.setSystemTime(new Date(2026, 5, 14, 23, 0, 0));
+      renderMeadow({ live: true, liveSceneEffects: ['cometArc'] });
+      expect(screen.getByTestId('comet-visual')).toBeInTheDocument();
+    });
+  });
+
+  describe('meadow drag', () => {
+    it('captures the pointer on drag start so a release outside the scroller still ends the drag', () => {
+      const { container } = renderMeadow({ preview: true, entries: [] });
+      const scroller = container.querySelector('.bj-scroll') as HTMLDivElement;
+      const capture = vi.fn();
+      scroller.setPointerCapture = capture;
+
+      const event = new Event('pointerdown', { bubbles: true, cancelable: true });
+      Object.assign(event, { pointerType: 'mouse', button: 0, clientX: 120, pointerId: 3 });
+      fireEvent(scroller, event);
+
+      expect(capture).toHaveBeenCalledWith(3);
+    });
+  });
+
+  describe('wheel scroll', () => {
+    it('ignores vertical wheel when the meadow has nothing to scroll horizontally', () => {
+      const { container } = renderMeadow({ preview: true, entries: [] });
+      const scroller = container.querySelector('.bj-scroll') as HTMLDivElement;
+      Object.defineProperty(scroller, 'scrollWidth', { value: 500, configurable: true });
+      Object.defineProperty(scroller, 'clientWidth', { value: 500, configurable: true });
+      fireEvent.wheel(scroller, { deltaY: 80, deltaX: 0 });
+      expect(scroller.scrollLeft).toBe(0);
+    });
+
+    it('redirects vertical wheel to horizontal scroll when the meadow overflows', () => {
+      const { container } = renderMeadow({ preview: true, entries: [] });
+      const scroller = container.querySelector('.bj-scroll') as HTMLDivElement;
+      Object.defineProperty(scroller, 'scrollWidth', { value: 2000, configurable: true });
+      Object.defineProperty(scroller, 'clientWidth', { value: 500, configurable: true });
+      fireEvent.wheel(scroller, { deltaY: 80, deltaX: 0 });
+      expect(scroller.scrollLeft).toBe(80);
+    });
+  });
+
+  describe('ambient creature timers', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('clears the pending spawn timer on unmount right after a manual trigger', async () => {
+      const { unmount } = renderMeadow({ preview: true, creatures: true, entries: [] });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Scenes' }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Shooting star' }));
+      });
+      unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('clears the inner timer too once a spawn has already fired', async () => {
+      const { unmount } = renderMeadow({ preview: true, creatures: true, entries: [] });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Scenes' }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Shooting star' }));
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(1600); // outer setTimeout(go, 1500|100) fires
+      });
+      unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   describe('preview controls', () => {
-    it('shows phase and weather controls in preview mode', () => {
+    it('expands phase and weather sections from the rail in preview mode', async () => {
+      const user = userEvent.setup();
       renderMeadow({ preview: true, entries: [] });
+
+      // Controls start collapsed (meadow visible); expanding a section reveals its pills.
+      await user.click(screen.getByRole('button', { name: 'Sky phase' }));
       expect(screen.getByRole('button', { name: 'Dawn' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Night' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Weather' }));
       expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Snow' })).toBeInTheDocument();
     });
 
     it('hides manual controls in live mode', () => {
       renderMeadow({ live: true, entries: buildSampleEntries().slice(0, 2) });
-      expect(screen.queryByRole('button', { name: 'Dawn' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+      // The preview controls rail is not rendered in live mode.
+      expect(screen.queryByRole('button', { name: 'Sky phase' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Weather' })).not.toBeInTheDocument();
     });
 
-    it('shows the Ducks scene trigger only in creatures mode', () => {
+    it('shows the Ducks scene trigger only in creatures mode', async () => {
+      const user = userEvent.setup();
       const { unmount } = renderMeadow({ preview: true, entries: [] });
-      expect(screen.queryByRole('button', { name: 'Ducks' })).not.toBeInTheDocument();
+      // No Scenes section in the rail when creatures are off.
+      expect(screen.queryByRole('button', { name: 'Scenes' })).not.toBeInTheDocument();
       unmount();
+
       renderMeadow({ preview: true, creatures: true, entries: [] });
+      await user.click(screen.getByRole('button', { name: 'Scenes' }));
       expect(screen.getByRole('button', { name: 'Ducks' })).toBeInTheDocument();
     });
 
     it('switches phase when a phase pill is clicked', async () => {
       const user = userEvent.setup();
       renderMeadow({ preview: true, entries: [] });
+      await user.click(screen.getByRole('button', { name: 'Sky phase' }));
       const night = screen.getByRole('button', { name: 'Night' });
       await user.click(night);
       expect(night).toHaveStyle({ background: 'rgb(243, 236, 217)' });
@@ -150,6 +263,7 @@ describe('BloomMeadow', () => {
 
   describe('memory replay card', () => {
     beforeEach(() => {
+      window.localStorage.clear();
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-06-14T12:00:00.000Z'));
     });
@@ -197,6 +311,56 @@ describe('BloomMeadow', () => {
         vi.advanceTimersByTime(700);
       });
       expect(screen.getByText('Replay body text.')).toBeInTheDocument();
+    });
+
+    it('does not re-show after entries array identity changes with the same content', async () => {
+      const ann = entry({
+        id: 'replay-stable',
+        title: 'Stable memory',
+        content: 'Anniversary memory.',
+        createdAt: '2025-06-14T18:00:00.000Z',
+      });
+      const { rerenderMeadow } = renderMeadow({ preview: true, entries: [ann] });
+
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+      });
+      expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByRole('button', { name: 'Dismiss' }).click();
+      });
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+
+      // simulate a favourite-toggle-triggered refreshEntries(): new array reference, same content
+      await act(async () => {
+        rerenderMeadow({ preview: true, entries: [{ ...ann }] });
+        vi.advanceTimersByTime(2000);
+      });
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+    });
+
+    it('does not re-show a dismissed replay after remounting the same day', async () => {
+      const ann = entry({
+        id: 'replay-persist',
+        title: 'Persisted memory',
+        content: 'Anniversary memory.',
+        createdAt: '2025-06-14T18:00:00.000Z',
+      });
+      const { unmount } = renderMeadow({ preview: true, entries: [ann] });
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+      });
+      await act(async () => {
+        screen.getByRole('button', { name: 'Dismiss' }).click();
+      });
+      unmount();
+
+      renderMeadow({ preview: true, entries: [{ ...ann }] });
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
     });
   });
 

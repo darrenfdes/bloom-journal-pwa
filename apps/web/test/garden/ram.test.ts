@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isDifficultMood, ramAppearanceChance, ramDayRoll } from '@/lib/garden/bloom/ram';
+import { isDifficultMood, ramAppearanceChance, ramDayRoll, ramX } from '@/lib/garden/bloom/ram';
 
 describe('isDifficultMood', () => {
   it('is true for moods in the shared Difficult category', () => {
@@ -74,5 +74,26 @@ describe('ramDayRoll', () => {
       ramDayRoll('2026-07-04', false, false),
     ]);
     expect(rolls.size).toBeGreaterThan(1);
+  });
+});
+
+describe('ramX', () => {
+  it('stays within [220, 220 + hillWidth - 440] for a wide hill', () => {
+    const x = ramX(11, 800);
+    expect(x).toBeGreaterThanOrEqual(220);
+    expect(x).toBeLessThanOrEqual(580);
+  });
+
+  it('clamps to 220 when the hill is narrower than 440px', () => {
+    expect(ramX(11, 300)).toBe(220);
+    expect(ramX(11, 0)).toBe(220);
+  });
+
+  it('clamps to 220 exactly at the 440px boundary', () => {
+    expect(ramX(11, 440)).toBe(220);
+  });
+
+  it('is deterministic for the same seed and width', () => {
+    expect(ramX(11, 800)).toBe(ramX(11, 800));
   });
 });
