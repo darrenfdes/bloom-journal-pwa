@@ -302,6 +302,7 @@ export function BloomMeadow({
   const cat: WeatherCategory = live ? liveWeather?.category ?? 'clear' : weatherCat;
   const windSpeed = live ? liveWeather?.windSpeed ?? 0 : 0;
   const precip = isPrecipitatingCategory(cat); // drizzle | rain | heavy_rain | thunderstorm
+  const heavyRain = cat === 'heavy_rain'; // gates the lone ram's night-only 20% chance
   const isSnow = cat === 'snow';
   const sheepHidden = precip || isSnow; // the flock shelters out of sight in wet/snowy weather
   const isStormy = shouldShowLightning(cat); // thunderstorm | heavy_rain
@@ -539,11 +540,15 @@ export function BloomMeadow({
   }, [layout.W, vw, arrangement, sheepSeed]);
 
   /* a lone black ram. Highest chance wins: a difficult-mood entry always brings him out; otherwise
-     rain gives a 20% chance (day or night) and a clear night a 10% chance. The roll is seeded from
-     the date + conditions, so it's stable all day — reopening the app during the same rainy day
-     (or the weather fetch landing after first paint) never re-rolls him. */
+     a night with heavy rain gives a 20% chance and any night a 10% chance. Rain during the day no
+     longer brings him out. The roll is seeded from the date + conditions, so it's stable all day —
+     reopening the app during the same heavy-rain night (or the weather fetch landing after first
+     paint) never re-rolls him. */
   const isNight = phaseKey === 'night';
-  const ramRoll = useMemo(() => ramDayRoll(todayIso, precip, isNight), [todayIso, precip, isNight]);
+  const ramRoll = useMemo(
+    () => ramDayRoll(todayIso, heavyRain, isNight),
+    [todayIso, heavyRain, isNight],
+  );
   const difficultEntry = useMemo(() => {
     const latest = layout.entries.reduce<(typeof layout.entries)[number] | null>(
       (a, e) => (!a || e.createdAt > a.createdAt ? e : a),
@@ -552,7 +557,7 @@ export function BloomMeadow({
     return isDifficultMood(latest?.mood);
   }, [layout]);
   const ramVisible =
-    ramRoll < ramAppearanceChance({ difficult: difficultEntry, raining: precip, night: isNight });
+    ramRoll < ramAppearanceChance({ difficult: difficultEntry, heavyRain, night: isNight });
   const ram = useMemo(() => {
     const near = hills[2];
     if (!near) return null;
