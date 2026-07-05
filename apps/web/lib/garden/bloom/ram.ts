@@ -13,24 +13,25 @@ export const isDifficultMood = (mood: Mood | null | undefined): boolean =>
 
 /**
  * Probability the lone black ram appears, by priority tier (highest chance wins):
- * a difficult-mood entry → always; else raining → 20%; else night → 10%; else hidden.
+ * a difficult-mood entry → always; else a night with heavy rain → 20%;
+ * else any night → 10%; else hidden. Rain during the day no longer brings him out.
  */
 export const ramAppearanceChance = ({
   difficult,
-  raining,
+  heavyRain,
   night,
 }: {
   difficult: boolean;
-  raining: boolean;
+  heavyRain: boolean;
   night: boolean;
-}): number => (difficult ? 1 : raining ? 0.2 : night ? 0.1 : 0);
+}): number => (difficult ? 1 : night ? (heavyRain ? 0.2 : 0.1) : 0);
 
 /**
  * Stable [0,1) roll for a given day + conditions — the same all day, so reopening the app
- * during one rainy day never re-rolls whether the ram is out.
+ * during one heavy-rain night never re-rolls whether the ram is out.
  */
-export const ramDayRoll = (dayIso: string, raining: boolean, night: boolean): number =>
-  mulberry32(hashString(`ram|${dayIso}|${raining}|${night}`))();
+export const ramDayRoll = (dayIso: string, heavyRain: boolean, night: boolean): number =>
+  mulberry32(hashString(`ram|${dayIso}|${heavyRain}|${night}`))();
 
 /**
  * X position (world px) for the lone ram on the near hill, seeded from the hill so it's stable
