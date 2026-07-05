@@ -37,6 +37,8 @@ type Store = {
 /** Minimal stub of the Supabase query builder used by the sync engine. */
 function makeFakeClient(store: Store) {
   class FakeQuery {
+    private updatedAtFloor: string | null = null;
+
     constructor(private table: string) {}
     upsert(payload: unknown) {
       (store.upserts[this.table] ??= []).push(payload);
@@ -48,14 +50,24 @@ function makeFakeClient(store: Store) {
     eq() {
       return this;
     }
-    gte() {
+    gte(column: string, value: string) {
+      if (this.table === 'entries' && column === 'updated_at') {
+        this.updatedAtFloor = value;
+      }
       return this;
     }
     maybeSingle() {
       return Promise.resolve({ data: null, error: null });
     }
     then(resolve: (v: { data: unknown[]; error: null }) => unknown) {
-      return Promise.resolve({ data: store.rows[this.table] ?? [], error: null }).then(resolve);
+      const rows = store.rows[this.table] ?? [];
+      const data = this.updatedAtFloor
+        ? rows.filter((row) => {
+            const updatedAt = (row as { updated_at?: string }).updated_at;
+            return updatedAt !== undefined && updatedAt >= this.updatedAtFloor!;
+          })
+        : rows;
+      return Promise.resolve({ data, error: null }).then(resolve);
     }
   }
   return {
@@ -86,7 +98,14 @@ beforeEach(async () => {
 describe('sync encryption', () => {
   it('encrypts entries before pushing to Supabase', async () => {
     await getDb().entries.put({
-      ...entry({ id: 'e1', content: 'top secret', title: 'Diary', tags: ['x'], mood: 'joyful' }),
+      ...entry({
+        id: 'e1',
+        content: 'top secret',
+        title: 'Diary',
+        tags: ['x'],
+        mood: 'joyful',
+        additionalMoods: ['grateful', 'peaceful'],
+      }),
       userId: 'user-1',
       pendingPush: true,
       syncedAt: null,
@@ -102,9 +121,19 @@ describe('sync encryption', () => {
     expect(payload[0].title).toBeNull();
     expect(payload[0].mood).toBeNull();
 
-    // local row is marked synced
-    const local = await getDb().entries.get('e1');
-    expect(local?.pendingPush).toBe(false);
+    // The successful push clears the local pending marker.
+    expect((await getDb().entries.get('e1'))?.pendingPush).toBe(false);
+
+    // The encrypted payload also restores supplementary moods when another device pulls it.
+    store.rows.entries = payload;
+    await getDb().entries.clear();
+    await pullForUser('user-1');
+    const pulled = await getDb().entries.get('e1');
+    expect(pulled?.additionalMoods).toEqual([
+      'grateful',
+      'peaceful',
+    ]);
+    expect(pulled?.pendingPush).toBe(false);
   });
 
   it('decrypts encrypted rows on pull into local plaintext', async () => {
@@ -120,6 +149,66 @@ describe('sync encryption', () => {
     expect(local?.content).toBe('remember this');
     expect(local?.mood).toBe('peaceful');
     expect(local?.userId).toBe('user-1');
+  });
+
+  it('pulls an unseen remote entry older than an unrelated local entry', async () => {
+    await getDb().entries.put({
+      ...entry({ id: 'local-newer', updatedAt: '2026-07-05T12:00:00.000Z' }),
+      userId: 'user-1',
+      pendingPush: true,
+      syncedAt: null,
+    });
+    store.rows.entries = [
+      await encryptRemoteRow(
+        entryToRemote(
+          entry({
+            id: 'remote-older',
+            content: 'still needs downloading',
+            updatedAt: '2026-07-04T12:00:00.000Z',
+          }),
+          'user-1',
+        ),
+        key,
+      ),
+    ];
+
+    await pullForUser('user-1');
+
+    expect((await getDb().entries.get('remote-older'))?.content).toBe(
+      'still needs downloading',
+    );
+  });
+
+  it('does not overwrite a newer local edit with an older remote copy', async () => {
+    await getDb().entries.put({
+      ...entry({
+        id: 'same-entry',
+        content: 'newer local copy',
+        updatedAt: '2026-07-05T12:00:00.000Z',
+      }),
+      userId: 'user-1',
+      pendingPush: true,
+      syncedAt: null,
+    });
+    store.rows.entries = [
+      await encryptRemoteRow(
+        entryToRemote(
+          entry({
+            id: 'same-entry',
+            content: 'older remote copy',
+            updatedAt: '2026-07-04T12:00:00.000Z',
+          }),
+          'user-1',
+        ),
+        key,
+      ),
+    ];
+
+    await pullForUser('user-1');
+
+    const local = await getDb().entries.get('same-entry');
+    expect(local?.content).toBe('newer local copy');
+    expect(local?.pendingPush).toBe(true);
   });
 
   it('fails closed: a missing key leaves entries pending and pushes nothing', async () => {
