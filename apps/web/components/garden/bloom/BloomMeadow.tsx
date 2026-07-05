@@ -646,6 +646,13 @@ export function BloomMeadow({
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse' || e.button !== 0 || !scrollerRef.current) return;
+    if ((e.target as Element).closest('[data-garden-interactive]')) {
+      // Capturing a pointer that started on a flower retargets pointerup to the scroller in real
+      // browsers, so the button never receives a click. Interactive meadow controls own the
+      // gesture; dragging can still begin from the surrounding ground.
+      drag.current.moved = 0;
+      return;
+    }
     // Capture the pointer so drag continues (and pointerup is still delivered here) even if
     // the cursor leaves the scroller during a fast fling — otherwise a release outside the
     // scroller never fires endDrag and the cursor sticks on "grabbing".
@@ -1359,6 +1366,7 @@ export function BloomMeadow({
                 )}
                 {/* hit target — a circle over the bloom head, so you pick the flower (not the stem) */}
                 <button
+                  data-garden-interactive
                   onClick={() => {
                     if (drag.current.moved > 6) return;
                     setActive(e);
