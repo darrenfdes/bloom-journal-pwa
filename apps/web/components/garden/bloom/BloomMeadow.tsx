@@ -1479,6 +1479,18 @@ export function BloomMeadow({
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). Shares the
+              SyncBadge-clearing top offset with the event column beside it. */}
+          {live && layout.entries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => router.push('/garden/explore')}
+              aria-label="Explore your meadow in 3D"
+              style={{ ...glass, alignSelf: 'flex-start', marginTop: 'calc(var(--safe-top) + 26px)', borderRadius: 999, padding: '7px 14px', fontFamily: sans, fontSize: 11.5, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase', cursor: 'pointer' }}
+            >
+              ⌖ Explore
+            </button>
+          )}
           {/* Live garden: name today's headline event (if any) above a subtle hint of the
               next event's date — balancing the title on the left. The column owns the top
               offset that drops it below the fixed SyncBadge (top-right, ~38px) so they

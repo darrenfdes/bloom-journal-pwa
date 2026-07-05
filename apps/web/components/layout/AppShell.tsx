@@ -15,7 +15,8 @@ import { cn } from '@/lib/utils';
 const FULL_WIDTH_PREFIXES = ['/garden', '/plant-confirm', '/preview', '/welcome'];
 // Compose routes (`/write`, `/revisit`) hide the floating nav for a focused
 // editor — they render their own pinned "Plant it" bar at the bottom instead.
-const HIDE_NAV_PREFIXES = ['/plant-confirm', '/preview', '/welcome', '/write', '/revisit'];
+// The 3D meadow hides it too: its virtual joystick lives where the nav floats.
+const HIDE_NAV_PREFIXES = ['/garden/explore', '/plant-confirm', '/preview', '/welcome', '/write', '/revisit'];
 
 function isFullWidthRoute(pathname: string): boolean {
   return FULL_WIDTH_PREFIXES.some(
