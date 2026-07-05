@@ -74,17 +74,11 @@ export async function pullForUser(userId: string): Promise<void> {
 
   try {
     const db = getDb();
-    const localEntries = await db.entries.toArray();
-    const localMax = localEntries.reduce(
-      (max, e) => (e.updatedAt > max ? e.updatedAt : max),
-      '1970-01-01T00:00:00.000Z'
-    );
 
     const { data: remoteEntries, error: entriesError } = await client
       .from('entries')
       .select('*')
-      .eq('user_id', userId)
-      .gte('updated_at', localMax);
+      .eq('user_id', userId);
 
     if (entriesError) throw entriesError;
 
