@@ -29,25 +29,28 @@ describe('isDifficultMood', () => {
 
 describe('ramAppearanceChance', () => {
   it('always shows on a difficult-mood entry, regardless of weather or time', () => {
-    expect(ramAppearanceChance({ difficult: true, raining: false, night: false })).toBe(1);
-    expect(ramAppearanceChance({ difficult: true, raining: true, night: true })).toBe(1);
+    expect(ramAppearanceChance({ difficult: true, heavyRain: false, night: false })).toBe(1);
+    expect(ramAppearanceChance({ difficult: true, heavyRain: true, night: true })).toBe(1);
   });
 
-  it('shows with 20% chance when raining (day or night), absent a difficult mood', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: true, night: false })).toBe(0.2);
-    expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.2);
+  it('shows with 20% chance on a heavy-rain night, absent a difficult mood', () => {
+    expect(ramAppearanceChance({ difficult: false, heavyRain: true, night: true })).toBe(0.2);
   });
 
-  it('shows with a 1/10 chance on a clear night', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: false, night: true })).toBe(0.1);
+  it('shows with a 1/10 chance on any other night (clear or light rain)', () => {
+    expect(ramAppearanceChance({ difficult: false, heavyRain: false, night: true })).toBe(0.1);
+    // Daytime rain categories no longer bring him out — only the night gate matters.
+    expect(ramAppearanceChance({ difficult: false, heavyRain: true, night: false })).toBe(0);
   });
 
-  it('stays hidden on a clear, non-difficult day', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: false, night: false })).toBe(0);
+  it('stays hidden during the day, regardless of rain', () => {
+    expect(ramAppearanceChance({ difficult: false, heavyRain: false, night: false })).toBe(0);
+    expect(ramAppearanceChance({ difficult: false, heavyRain: true, night: false })).toBe(0);
   });
 
-  it('ranks rain above night when both apply', () => {
-    expect(ramAppearanceChance({ difficult: false, raining: true, night: true })).toBe(0.2);
+  it('ranks heavy rain above plain night when both apply', () => {
+    expect(ramAppearanceChance({ difficult: false, heavyRain: true, night: true })).toBe(0.2);
+    expect(ramAppearanceChance({ difficult: false, heavyRain: false, night: true })).toBe(0.1);
   });
 });
 
