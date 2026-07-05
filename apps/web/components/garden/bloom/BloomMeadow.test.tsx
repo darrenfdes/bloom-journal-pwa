@@ -88,6 +88,21 @@ describe('BloomMeadow', () => {
 
       expect(capture).toHaveBeenCalledWith(3);
     });
+
+    it('does not capture a pointer that starts on a flower', () => {
+      const e = entry({ id: 'clickable-flower', title: 'Clickable flower' });
+      const { container } = renderMeadow({ preview: true, entries: [e] });
+      const scroller = container.querySelector('.bj-scroll') as HTMLDivElement;
+      const capture = vi.fn();
+      scroller.setPointerCapture = capture;
+      const flower = screen.getByRole('button', { name: /Clickable flower/ });
+
+      const event = new Event('pointerdown', { bubbles: true, cancelable: true });
+      Object.assign(event, { pointerType: 'mouse', button: 0, clientX: 120, pointerId: 4 });
+      fireEvent(flower, event);
+
+      expect(capture).not.toHaveBeenCalled();
+    });
   });
 
   describe('wheel scroll', () => {
