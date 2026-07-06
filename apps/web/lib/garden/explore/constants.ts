@@ -11,8 +11,11 @@ export const STROLL_FACTOR = 0.45;
 /** The player fox (Khronos glTF Sample Fox — see public/models/CREDITS.md). */
 export const FOX_MODEL_URL = '/models/Fox.glb';
 export const FOX_SCALE = 0.012;
-/** Extra yaw applied to the model so its snout faces the movement heading. */
-export const FOX_HEADING_OFFSET = 0;
+/**
+ * Extra yaw applied to the model so its snout faces the movement heading. The Khronos Fox's
+ * local forward is +Z, but the meadow's forward is −Z, so the model needs a half-turn.
+ */
+export const FOX_HEADING_OFFSET = Math.PI;
 /** Camera look-at height above the ground — roughly the fox's head. */
 export const FOX_HEAD_HEIGHT = 0.65;
 /** Gait speed thresholds (m/s): below walk-min = idle, above run-min = run. */
