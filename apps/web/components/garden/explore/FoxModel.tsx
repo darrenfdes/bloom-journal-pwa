@@ -1,7 +1,7 @@
 'use client';
 
 import { useFrame, useLoader } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -36,6 +36,12 @@ export function FoxModel({
   const gltf = useLoader(GLTFLoader, FOX_MODEL_URL);
   const groupRef = useRef<THREE.Group>(null);
   const prevGait = useRef<FoxGait>('idle');
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const actionsRef = useRef<Record<FoxGait, THREE.AnimationAction | null>>({
+    idle: null,
+    walk: null,
+    run: null,
+  });
 
   // The fox must never swallow flower taps, and its skinned bounds mis-cull at screen edges.
   useEffect(() => {
@@ -45,41 +51,41 @@ export function FoxModel({
     });
   }, [gltf]);
 
-  const { mixer, actions } = useMemo(() => {
+  // Mixer setup AND teardown both live in this effect. Keeping `.play()` out of useMemo is
+  // deliberate: under React StrictMode's dev mount→unmount→remount, a cleanup that stops the
+  // actions would otherwise never be paired with a re-play (useMemo doesn't re-run), leaving
+  // the fox frozen in its bind pose.
+  useEffect(() => {
     const mixer = new THREE.AnimationMixer(gltf.scene);
-    const clip = (name: string) => THREE.AnimationClip.findByName(gltf.animations, name);
-    const action = (name: string) => {
-      const c = clip(name);
-      const a = c ? mixer.clipAction(c) : null;
-      if (a) {
-        a.play();
-        a.setEffectiveWeight(0);
-      }
+    const make = (name: string, weight: number) => {
+      const clip = THREE.AnimationClip.findByName(gltf.animations, name);
+      if (!clip) return null;
+      const a = mixer.clipAction(clip);
+      a.reset().play();
+      a.setEffectiveWeight(weight);
       return a;
     };
-    const actions: Record<FoxGait, THREE.AnimationAction | null> = {
-      idle: action('Survey'),
-      walk: action('Walk'),
-      run: action('Run'),
+    actionsRef.current = {
+      idle: make('Survey', 1),
+      walk: make('Walk', 0),
+      run: make('Run', 0),
     };
-    actions.idle?.setEffectiveWeight(1);
-    return { mixer, actions };
-  }, [gltf]);
-
-  // Guard StrictMode's double mount — without this the second mixer doubles animation speed.
-  useEffect(
-    () => () => {
+    mixerRef.current = mixer;
+    prevGait.current = 'idle';
+    return () => {
       mixer.stopAllAction();
       mixer.uncacheRoot(gltf.scene);
-    },
-    [mixer, gltf],
-  );
+      mixerRef.current = null;
+    };
+  }, [gltf]);
 
   useFrame((_, delta) => {
     const group = groupRef.current;
-    if (!group) return;
+    const mixer = mixerRef.current;
+    if (!group || !mixer) return;
     const p = playerRef.current;
     const m = motionRef.current;
+    const actions = actionsRef.current;
 
     group.position.set(p.x, groundHeightAt(p.x, p.z, ponds), p.z);
     group.rotation.y = m.heading + FOX_HEADING_OFFSET;
@@ -87,7 +93,9 @@ export function FoxModel({
     const gait = gaitFor(m.speed);
     if (gait !== prevGait.current) {
       actions[prevGait.current]?.fadeOut(FADE_S);
-      actions[gait]?.reset().fadeIn(FADE_S);
+      // setEffectiveWeight(1) is essential: fadeIn() modulates the action's base weight, so
+      // without resetting it to 1 the incoming gait (initialised at weight 0) stays invisible.
+      actions[gait]?.reset().setEffectiveWeight(1).fadeIn(FADE_S);
       prevGait.current = gait;
     }
     const walk = actions.walk;
