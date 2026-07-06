@@ -185,7 +185,7 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
   const hint = hintVisible
     ? coarsePointer
       ? 'walk with the stick · tap a flower to open'
-      : 'WASD to walk · drag to look · click a flower'
+      : 'WASD to run · shift to stroll · drag to look · click a flower'
     : null;
 
   return (
@@ -262,7 +262,12 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
       {activeEntry && (
         <ExploreMemoryCard entry={activeEntry} onClose={() => setActiveEntryId(null)} />
       )}
-      <ExploreHud onBack={() => router.push('/garden')} hint={hint} progress={progress} />
+      <ExploreHud
+        onBack={() => router.push('/garden')}
+        hint={hint}
+        progress={progress}
+        coarsePointer={coarsePointer}
+      />
     </div>
   );
 }
