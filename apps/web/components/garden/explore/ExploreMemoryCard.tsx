@@ -6,10 +6,10 @@ import { useEffect } from 'react';
 import type { PlacedEntry } from '@/lib/garden/bloom/layout';
 import { MOODS } from '@/lib/garden/bloom/moods';
 import { agoLabel, fmtFull } from '@/lib/garden/bloom/phases';
+import { usePrefersReducedMotion } from '@/lib/hooks/usePrefersReducedMotion';
 import { useBloomStore } from '@/stores/useBloomStore';
 
-const serif = 'var(--font-serif, Georgia, serif)';
-const sans = 'var(--font-sans, ui-sans-serif, system-ui)';
+import { cardEnterCentered, creamCard, creamPill, HUD_KEYFRAMES, sans, serif } from './hudTokens';
 
 /**
  * Lightweight memory card for the 3D meadow — same visual language as the 2D card (cream
@@ -24,6 +24,7 @@ export function ExploreMemoryCard({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const reduced = usePrefersReducedMotion();
   const setMemoryCardOpen = useBloomStore((s) => s.setMemoryCardOpen);
 
   useEffect(() => {
@@ -37,21 +38,21 @@ export function ExploreMemoryCard({
   return (
     <div
       style={{
+        ...creamCard,
         position: 'absolute',
         left: '50%',
         bottom: 'calc(var(--safe-bottom, env(safe-area-inset-bottom, 0px)) + 20px)',
         transform: 'translateX(-50%)',
         zIndex: 40,
         width: 'min(420px, calc(100vw - 28px))',
-        background: '#fbf6ec',
-        borderRadius: 18,
-        boxShadow: '0 18px 50px rgba(20,28,38,.35)',
-        padding: '18px 20px 16px',
+        padding: '20px 22px 18px',
         fontFamily: sans,
         color: '#3d4438',
         pointerEvents: 'auto',
+        animation: cardEnterCentered(reduced),
       }}
     >
+      <style>{HUD_KEYFRAMES}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {mood && (
           <span
@@ -78,7 +79,16 @@ export function ExploreMemoryCard({
             {mood.label}
           </span>
         )}
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#8b8574' }}>
+        <span
+          style={{
+            marginLeft: 'auto',
+            fontSize: 9.5,
+            fontWeight: 700,
+            letterSpacing: 1.2,
+            textTransform: 'uppercase',
+            color: '#8b8574',
+          }}
+        >
           {fmtFull(entry.createdAt)} · {agoLabel(entry.createdAt)}
         </span>
       </div>
@@ -134,15 +144,10 @@ export function ExploreMemoryCard({
           type="button"
           onClick={() => router.push(`/entry/${entry.id}`)}
           style={{
+            ...creamPill,
             flex: 1,
-            background: '#5c7150',
-            color: '#fbf6ec',
-            border: 'none',
-            borderRadius: 12,
+            textAlign: 'center',
             padding: '10px 14px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
           }}
         >
           Open full memory
@@ -152,14 +157,11 @@ export function ExploreMemoryCard({
           onClick={onClose}
           aria-label="Close"
           style={{
-            background: 'rgba(92,97,82,.1)',
-            color: '#5c6152',
-            border: 'none',
-            borderRadius: 12,
+            ...creamPill,
+            background: 'transparent',
+            border: '1px solid rgba(92,82,54,.28)',
+            color: '#8b8574',
             padding: '10px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
           }}
         >
           Close

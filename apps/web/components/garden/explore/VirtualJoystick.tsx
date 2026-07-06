@@ -64,10 +64,10 @@ export function VirtualJoystick({ inputRef }: { inputRef: RefObject<MoveInput> }
         width: 116,
         height: 116,
         borderRadius: 999,
-        background: 'rgba(20,30,40,.22)',
-        border: '1px solid rgba(250,246,233,.3)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
+        background: 'rgba(22,27,36,.30)',
+        border: '1px solid rgba(247,241,227,.16)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         touchAction: 'none',
         pointerEvents: 'auto',
         display: 'flex',
@@ -75,13 +75,32 @@ export function VirtualJoystick({ inputRef }: { inputRef: RefObject<MoveInput> }
         justifyContent: 'center',
       }}
     >
+      {[
+        { top: 7, left: '50%', marginLeft: -2 },
+        { top: '50%', right: 7, marginTop: -2 },
+        { bottom: 7, left: '50%', marginLeft: -2 },
+        { top: '50%', left: 7, marginTop: -2 },
+      ].map((pos, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 4,
+            height: 4,
+            borderRadius: 999,
+            background: 'rgba(247,241,227,.35)',
+            ...pos,
+          }}
+        />
+      ))}
       <div
         style={{
           width: 46,
           height: 46,
           borderRadius: 999,
-          background: 'rgba(250,246,233,.5)',
-          boxShadow: '0 2px 10px rgba(15,25,35,.3)',
+          background: '#f0e6cd',
+          border: '1px solid #d8c9a4',
+          boxShadow: '0 2px 10px rgba(15,22,20,.35)',
           transform: thumb ? `translate(${thumb.x}px, ${thumb.y}px)` : undefined,
           transition: thumb ? 'none' : 'transform .18s ease',
         }}
