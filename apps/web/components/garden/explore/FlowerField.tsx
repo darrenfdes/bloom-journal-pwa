@@ -7,6 +7,8 @@ import * as THREE from 'three';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
+import { radialTexture } from './textures';
+
 /**
  * One camera-yaw-billboarded quad per journal entry, textured with its rasterized SVG flower.
  * The 100×140 flower viewBox bottom-aligns inside the square texture (`xMidYMax meet`), so a
@@ -130,19 +132,4 @@ export function FlowerField({
       })}
     </>
   );
-}
-
-function radialTexture(inner: string, outer: string): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = 64;
-  c.height = 64;
-  const ctx = c.getContext('2d')!;
-  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
-  g.addColorStop(0, inner);
-  g.addColorStop(1, outer);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 64, 64);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
 }

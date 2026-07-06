@@ -43,6 +43,11 @@ const KEY_AXES: Record<string, Partial<MoveInput>> = {
   ArrowRight: { strafe: 1 },
 };
 
+/** Shift turns the keyboard run into a stroll (the caller scales the input vector). */
+export function strollHeld(keys: ReadonlySet<string>): boolean {
+  return keys.has('ShiftLeft') || keys.has('ShiftRight');
+}
+
 export function keysToInput(keys: ReadonlySet<string>): MoveInput {
   let forward = 0;
   let strafe = 0;

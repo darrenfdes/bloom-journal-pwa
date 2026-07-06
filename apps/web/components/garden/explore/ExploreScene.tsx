@@ -44,9 +44,9 @@ import { CelestialSprites } from './CelestialSprites';
 import { ExploreHud } from './ExploreHud';
 import { ExploreMemoryCard } from './ExploreMemoryCard';
 import { FlowerField } from './FlowerField';
+import { FoxRig } from './FoxRig';
 import { GrassField } from './GrassField';
 import { MountainRing } from './MountainRing';
-import { PlayerRig } from './PlayerRig';
 import { PondDisc } from './PondDisc';
 import { SkyDome } from './SkyDome';
 import { StarField } from './StarField';
@@ -255,7 +255,7 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             windSpeed={weather?.windSpeed ?? 0}
             reducedMotion={reducedMotion}
           />
-          <PlayerRig world={world} playerRef={playerRef} joystickRef={joystickRef} />
+          <FoxRig world={world} playerRef={playerRef} joystickRef={joystickRef} />
         </Canvas>
       </div>
       {coarsePointer && <VirtualJoystick inputRef={joystickRef} />}
