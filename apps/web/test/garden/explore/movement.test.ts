@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyLook, keysToInput, stepPlayer } from '@/lib/garden/explore/movement';
+import { applyLook, keysToInput, stepPlayer, strollHeld } from '@/lib/garden/explore/movement';
 import type { PlayerState } from '@/lib/garden/explore/movement';
 import type { Pond, WorldBounds } from '@/lib/garden/explore/world-layout';
 
@@ -23,6 +23,15 @@ describe('keysToInput', () => {
     expect(Math.hypot(diag.forward, diag.strafe)).toBeCloseTo(1);
     expect(diag.forward).toBeCloseTo(Math.SQRT1_2);
     expect(keysToInput(new Set(['KeyW', 'KeyS']))).toEqual({ forward: 0, strafe: 0 });
+  });
+});
+
+describe('strollHeld', () => {
+  it('detects either shift key', () => {
+    expect(strollHeld(new Set())).toBe(false);
+    expect(strollHeld(new Set(['KeyW']))).toBe(false);
+    expect(strollHeld(new Set(['ShiftLeft']))).toBe(true);
+    expect(strollHeld(new Set(['ShiftRight', 'KeyW']))).toBe(true);
   });
 });
 
