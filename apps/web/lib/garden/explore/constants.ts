@@ -5,6 +5,32 @@
 export const PX_TO_M = 0.05;
 export const EYE_HEIGHT = 1.6;
 export const WALK_SPEED = 3; // m/s
+/** Keyboard input scale while Shift is held — a stroll instead of a run. */
+export const STROLL_FACTOR = 0.45;
+
+/** The player fox (Khronos glTF Sample Fox — see public/models/CREDITS.md). */
+export const FOX_MODEL_URL = '/models/Fox.glb';
+export const FOX_SCALE = 0.012;
+/** Extra yaw applied to the model so its snout faces the movement heading. */
+export const FOX_HEADING_OFFSET = 0;
+/** Camera look-at height above the ground — roughly the fox's head. */
+export const FOX_HEAD_HEIGHT = 0.65;
+/** Gait speed thresholds (m/s): below walk-min = idle, above run-min = run. */
+export const FOX_GAIT_WALK_MIN = 0.15;
+export const FOX_GAIT_RUN_MIN = 2.2;
+
+/** Third-person follow camera: boom length + elevation clamps (radians). */
+export const CAM_BOOM = 4.2;
+export const CAM_ELEV_BASE = 0.32;
+export const CAM_ELEV_MIN = 0.05;
+export const CAM_ELEV_MAX = 1.15;
+/** The camera never dips closer than this to the terrain. */
+export const CAM_MIN_CLEARANCE = 0.4;
+
+/** Exponential damping rates (1/s) for camera follow, fox heading and gait speed. */
+export const CAM_DAMP_RATE = 8;
+export const HEADING_DAMP_RATE = 10;
+export const SPEED_DAMP_RATE = 8;
 
 /** Flowers scatter northward (−z) from the south edge of the band. */
 export const FLOWER_Z_NEAR = -2;
