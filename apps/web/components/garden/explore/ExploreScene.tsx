@@ -49,10 +49,13 @@ import { FlowerField } from './FlowerField';
 import { FoxRig } from './FoxRig';
 import { GrassField } from './GrassField';
 import { MountainRing } from './MountainRing';
+import { PondDecor } from './PondDecor';
 import { PondDisc } from './PondDisc';
+import { RockField } from './RockField';
 import { SkyDome } from './SkyDome';
 import { StarField } from './StarField';
 import { TerrainMesh } from './TerrainMesh';
+import { TreeField } from './TreeField';
 import { useFlowerTextures } from './useFlowerTextures';
 import { VirtualJoystick } from './VirtualJoystick';
 import { WeatherParticles } from './WeatherParticles';
@@ -257,7 +260,15 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
           />
           <TerrainMesh world={world} color={PHASES[phase].grass} />
           <GrassField world={world} color={PHASES[phase].grass} />
-          <PondDisc ponds={world.ponds} skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'} />
+          <TreeField world={world} phase={phase} />
+          <RockField world={world} />
+          <PondDisc
+            ponds={world.ponds}
+            skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'}
+            glint={lighting.sunColor}
+            reducedMotion={reducedMotion}
+          />
+          <PondDecor world={world} />
           <FlowerField
             world={world}
             textures={textures}
