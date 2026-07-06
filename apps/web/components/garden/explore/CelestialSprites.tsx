@@ -5,12 +5,21 @@ import * as THREE from 'three';
 
 import { applyMoonPhaseShadow, type MoonPhaseState } from '@bloom/core/scene';
 
+import type { PhaseKey } from '@/lib/garden/bloom/phases';
+import { haloLayersFor } from '@/lib/garden/explore/sky-detail';
+
+import { radialTexture } from './textures';
+
 /**
  * Sun and moon as camera-facing sprites, positioned from the same continuous celestial
- * interpolation the 2D meadow uses. The moon disc is shaded with the real lunar-phase
- * shadow (erased to transparency so the sky shows through), latitude-flipped like 2D.
+ * interpolation the 2D meadow uses, with soft additive halos behind each (largest at the
+ * warm low dawn/golden sun, muted by cloud cover). The moon disc is shaded with the real
+ * lunar-phase shadow (erased to transparency so the sky shows through), latitude-flipped
+ * like 2D.
  */
 export function CelestialSprites({
+  phase,
+  cloudCover,
   sunDir,
   moonDir,
   sunOpacity,
@@ -20,6 +29,8 @@ export function CelestialSprites({
   latitude,
   center,
 }: {
+  phase: PhaseKey;
+  cloudCover: number;
   sunDir: { x: number; y: number; z: number };
   moonDir: { x: number; y: number; z: number };
   sunOpacity: number;
@@ -81,6 +92,9 @@ export function CelestialSprites({
     return t;
   }, [moonState, latitude]);
 
+  const haloTexture = useMemo(() => radialTexture(`${sunCore}cc`, `${sunCore}00`), [sunCore]);
+  const moonHaloTexture = useMemo(() => radialTexture('#dfe6f5cc', '#dfe6f500'), []);
+
   useEffect(
     () => () => {
       sunTexture.dispose();
@@ -93,20 +107,67 @@ export function CelestialSprites({
     },
     [moonTexture],
   );
+  useEffect(
+    () => () => {
+      haloTexture.dispose();
+    },
+    [haloTexture],
+  );
+  useEffect(() => () => moonHaloTexture.dispose(), [moonHaloTexture]);
+
+  const halos = haloLayersFor(phase);
+  const haloMute = 1 - 0.7 * Math.min(1, Math.max(0, cloudCover));
 
   const DIST = 460;
   return (
     <group position={center}>
       {sunOpacity > 0 && (
+        <>
+          {halos.map(({ scaleMul, opacity }, i) => (
+            <sprite
+              key={`halo-${i}`}
+              position={[sunDir.x * DIST, sunDir.y * DIST, sunDir.z * DIST]}
+              scale={[90 * scaleMul, 90 * scaleMul, 1]}
+              renderOrder={-2}
+            >
+              <spriteMaterial
+                map={haloTexture}
+                transparent
+                opacity={opacity * sunOpacity * haloMute}
+                blending={THREE.AdditiveBlending}
+                fog={false}
+                depthWrite={false}
+                toneMapped={false}
+              />
+            </sprite>
+          ))}
+          <sprite
+            position={[sunDir.x * DIST, sunDir.y * DIST, sunDir.z * DIST]}
+            scale={[90, 90, 1]}
+            renderOrder={-1}
+          >
+            <spriteMaterial
+              map={sunTexture}
+              transparent
+              opacity={sunOpacity}
+              fog={false}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </sprite>
+        </>
+      )}
+      {moonOpacity > 0 && (
         <sprite
-          position={[sunDir.x * DIST, sunDir.y * DIST, sunDir.z * DIST]}
-          scale={[90, 90, 1]}
-          renderOrder={-1}
+          position={[moonDir.x * DIST, moonDir.y * DIST, moonDir.z * DIST]}
+          scale={[70, 70, 1]}
+          renderOrder={-2}
         >
           <spriteMaterial
-            map={sunTexture}
+            map={moonHaloTexture}
             transparent
-            opacity={sunOpacity}
+            opacity={0.15 * moonOpacity * haloMute}
+            blending={THREE.AdditiveBlending}
             fog={false}
             depthWrite={false}
             toneMapped={false}

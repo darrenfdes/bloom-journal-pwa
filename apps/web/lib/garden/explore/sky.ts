@@ -48,9 +48,9 @@ const PHASE_LIGHT: Record<
   night: { sun: 0, hemi: 0.22, moon: 0.18, flower: 0.74 },
 };
 
-const OVERCAST_GREY = '#9aa3ac';
+export const OVERCAST_GREY = '#9aa3ac';
 
-function mixHex(a: string, b: string, t: number): string {
+export function mixHex(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
   const ch = (shift: number) => {

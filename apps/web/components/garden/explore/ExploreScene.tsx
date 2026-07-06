@@ -41,7 +41,9 @@ import { buildExploreWorld } from '@/lib/garden/explore/world-layout';
 import { usePrefersReducedMotion } from '@/lib/hooks/usePrefersReducedMotion';
 
 import { CelestialSprites } from './CelestialSprites';
+import { CloudLayer } from './CloudLayer';
 import { ExploreHud } from './ExploreHud';
+import { HorizonHaze } from './HorizonHaze';
 import { ExploreMemoryCard } from './ExploreMemoryCard';
 import { FlowerField } from './FlowerField';
 import { FoxRig } from './FoxRig';
@@ -226,6 +228,8 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             center={worldCenter}
           />
           <CelestialSprites
+            phase={phase}
+            cloudCover={cloudCover}
             sunDir={sunDir}
             moonDir={moonDir}
             sunOpacity={PHASES[phase].sun.o}
@@ -235,7 +239,18 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             latitude={latitude}
             center={worldCenter}
           />
-          <StarField opacity={starOpacityFor(phase)} center={worldCenter} />
+          <StarField
+            opacity={starOpacityFor(phase)}
+            reducedMotion={reducedMotion}
+            center={worldCenter}
+          />
+          <CloudLayer
+            phase={phase}
+            cloudCover={cloudCover}
+            reducedMotion={reducedMotion}
+            center={worldCenter}
+          />
+          <HorizonHaze phase={phase} cloudCover={cloudCover} center={worldCenter} />
           <MountainRing
             colors={[PHASES[phase].hills[2], PHASES[phase].hills[1]]}
             center={worldCenter}
