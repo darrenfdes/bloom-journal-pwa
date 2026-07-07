@@ -11,6 +11,7 @@ import {
   HEADING_DAMP_RATE,
   SPEED_DAMP_RATE,
 } from './constants';
+import type { MoveInput } from './movement';
 
 export type FoxGait = 'idle' | 'walk' | 'run';
 
@@ -24,6 +25,22 @@ export interface FoxMotionState {
 /** Frame-rate-independent exponential damping of `current` toward `target` at `rate` (1/s). */
 export function expDamp(current: number, target: number, rate: number, dt: number): number {
   return target + (current - target) * Math.exp(-rate * dt);
+}
+
+/** Below this ramped magnitude the fox is treated as fully stopped (snaps to a real halt). */
+const INPUT_STOP_EPS = 0.02;
+
+/**
+ * Ease the movement input toward its target so the fox accelerates from a standstill and coasts
+ * to a stop instead of snapping to full speed. Both components damp at `rate`; once the combined
+ * magnitude falls below a small epsilon it snaps to exactly zero, because `stepPlayer` only halts
+ * on an exact-zero input (an asymptotic decay would otherwise creep forever).
+ */
+export function rampInput(prev: MoveInput, target: MoveInput, rate: number, dt: number): MoveInput {
+  const forward = expDamp(prev.forward, target.forward, rate, dt);
+  const strafe = expDamp(prev.strafe, target.strafe, rate, dt);
+  if (Math.hypot(forward, strafe) < INPUT_STOP_EPS) return { forward: 0, strafe: 0 };
+  return { forward, strafe };
 }
 
 const TWO_PI = Math.PI * 2;

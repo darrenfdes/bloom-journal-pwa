@@ -3,11 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { buildMeadowLayout } from '@/lib/garden/bloom/layout';
 import {
   bushBands,
+  clutterScatter,
+  groundCoverScatter,
   pondDecorFor,
   scatterInBand,
   scatterInRing,
   TREE_MARGIN,
   treeBands,
+  treelineRing,
+  walkableBand,
   worldExclusions,
   type Band,
 } from '@/lib/garden/explore/scatter';
@@ -127,5 +131,57 @@ describe('pondDecorFor', () => {
     }
     // different pond index → different layout
     expect(pondDecorFor(pond, 1)).not.toEqual(a);
+  });
+
+  it('rings cattails outside the reeds and floats blossoms on the inner water', () => {
+    const pond = { x: 20, z: 7, radius: 5, level: -0.15 };
+    const a = pondDecorFor(pond, 0);
+    expect(a.cattails.length).toBeGreaterThan(0);
+    for (const c of a.cattails) {
+      expect(Math.hypot(c.x - pond.x, c.z - pond.z)).toBeGreaterThanOrEqual(pond.radius * 1.02 - 1e-9);
+    }
+    for (const b of a.blossoms) {
+      expect(Math.hypot(b.x - pond.x, b.z - pond.z)).toBeLessThanOrEqual(pond.radius * 0.62 + 1e-9);
+    }
+  });
+});
+
+describe('treelineRing', () => {
+  it('is deterministic and sits off the walkable meadow', () => {
+    const w = world();
+    expect(treelineRing(w)).toEqual(treelineRing(w));
+    const b = w.bounds;
+    for (const t of treelineRing(w)) {
+      const outside = t.x < b.minX || t.x > b.maxX || t.z < b.minZ || t.z > b.maxZ;
+      expect(outside).toBe(true);
+    }
+  });
+});
+
+describe('groundCoverScatter', () => {
+  it('keeps wildflowers and ferns inside the meadow and off the flowers/ponds/spawn', () => {
+    const w = world();
+    const band = walkableBand(w);
+    const ex = worldExclusions(w);
+    const { wildflowers, ferns } = groundCoverScatter(w);
+    expect(wildflowers.length).toBeGreaterThan(0);
+    for (const item of [...wildflowers, ...ferns]) {
+      expect(item.x).toBeGreaterThanOrEqual(band.xMin);
+      expect(item.x).toBeLessThanOrEqual(band.xMax);
+      for (const e of ex) expect(Math.hypot(item.x - e.x, item.z - e.z)).toBeGreaterThanOrEqual(e.radius);
+    }
+    expect(groundCoverScatter(w)).toEqual({ wildflowers, ferns });
+  });
+});
+
+describe('clutterScatter', () => {
+  it('deterministically scatters clutter off the exclusions', () => {
+    const w = world();
+    const ex = worldExclusions(w);
+    const c = clutterScatter(w);
+    expect(clutterScatter(w)).toEqual(c);
+    for (const item of [...c.mushrooms, ...c.logs, ...c.stumps, ...c.pebbles]) {
+      for (const e of ex) expect(Math.hypot(item.x - e.x, item.z - e.z)).toBeGreaterThanOrEqual(e.radius);
+    }
   });
 });

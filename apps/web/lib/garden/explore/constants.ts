@@ -4,9 +4,11 @@
  */
 export const PX_TO_M = 0.05;
 export const EYE_HEIGHT = 1.6;
-export const WALK_SPEED = 3; // m/s
+export const WALK_SPEED = 3.9; // m/s (top run speed)
 /** Keyboard input scale while Shift is held — a stroll instead of a run. */
 export const STROLL_FACTOR = 0.45;
+/** How fast the move input ramps toward its target (1/s) — the fox accelerates from a stop. */
+export const MOVE_ACCEL_RATE = 5.5;
 
 /** The player fox (Khronos glTF Sample Fox — see public/models/CREDITS.md). */
 export const FOX_MODEL_URL = '/models/Fox.glb';

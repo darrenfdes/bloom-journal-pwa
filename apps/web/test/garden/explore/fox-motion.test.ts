@@ -5,6 +5,7 @@ import {
   dampAngle,
   expDamp,
   gaitFor,
+  rampInput,
   stepFoxMotion,
   type FoxMotionState,
 } from '@/lib/garden/explore/fox-motion';
@@ -88,6 +89,36 @@ describe('stepFoxMotion', () => {
   it('returns the previous state for a non-positive dt', () => {
     const m: FoxMotionState = { heading: 1, speed: 2 };
     expect(stepFoxMotion(m, 1, 1, 0)).toBe(m);
+  });
+});
+
+describe('rampInput', () => {
+  const dt = 1 / 60;
+  const full = { forward: 1, strafe: 0 };
+
+  it('accelerates from a standstill without reaching full speed instantly', () => {
+    const first = rampInput({ forward: 0, strafe: 0 }, full, 5.5, dt);
+    expect(first.forward).toBeGreaterThan(0);
+    expect(first.forward).toBeLessThan(1);
+  });
+
+  it('rises monotonically toward the target over successive frames', () => {
+    let inp = { forward: 0, strafe: 0 };
+    const a = rampInput(inp, full, 5.5, dt);
+    const b = rampInput(a, full, 5.5, dt);
+    expect(b.forward).toBeGreaterThan(a.forward);
+    // …and eventually converges close to the target.
+    inp = { forward: 0, strafe: 0 };
+    for (let i = 0; i < 120; i++) inp = rampInput(inp, full, 5.5, dt);
+    expect(inp.forward).toBeCloseTo(1, 3);
+  });
+
+  it('coasts to an exact zero when the input is released', () => {
+    let inp = { forward: 1, strafe: 0 };
+    const stop = { forward: 0, strafe: 0 };
+    for (let i = 0; i < 240; i++) inp = rampInput(inp, stop, 5.5, dt);
+    expect(inp.forward).toBe(0);
+    expect(inp.strafe).toBe(0);
   });
 });
 

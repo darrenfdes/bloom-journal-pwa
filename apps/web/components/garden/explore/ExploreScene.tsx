@@ -32,6 +32,8 @@ import {
 } from '@/lib/garden/explore/movement';
 import {
   fogRangeFor,
+  groundColorFor,
+  hillColorsFor,
   lightingForPhase,
   parseCssLinearGradient,
   starOpacityFor,
@@ -42,12 +44,14 @@ import { usePrefersReducedMotion } from '@/lib/hooks/usePrefersReducedMotion';
 
 import { CelestialSprites } from './CelestialSprites';
 import { CloudLayer } from './CloudLayer';
+import { ClutterField } from './ClutterField';
 import { ExploreHud } from './ExploreHud';
 import { HorizonHaze } from './HorizonHaze';
 import { ExploreMemoryCard } from './ExploreMemoryCard';
 import { FlowerField } from './FlowerField';
 import { FoxRig } from './FoxRig';
 import { GrassField } from './GrassField';
+import { GroundCoverField } from './GroundCoverField';
 import { MountainRing } from './MountainRing';
 import { PondDecor } from './PondDecor';
 import { PondDisc } from './PondDisc';
@@ -254,14 +258,13 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             center={worldCenter}
           />
           <HorizonHaze phase={phase} cloudCover={cloudCover} center={worldCenter} />
-          <MountainRing
-            colors={[PHASES[phase].hills[2], PHASES[phase].hills[1]]}
-            center={worldCenter}
-          />
-          <TerrainMesh world={world} color={PHASES[phase].grass} />
-          <GrassField world={world} color={PHASES[phase].grass} />
+          <MountainRing colors={hillColorsFor(phase)} center={worldCenter} />
+          <TerrainMesh world={world} color={groundColorFor(phase)} />
+          <GrassField world={world} color={groundColorFor(phase)} />
           <TreeField world={world} phase={phase} />
           <RockField world={world} />
+          <GroundCoverField world={world} />
+          <ClutterField world={world} />
           <PondDisc
             ponds={world.ponds}
             skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'}

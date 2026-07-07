@@ -123,7 +123,8 @@ const TREE_PALETTE: Record<PhaseKey, { canopy: string; canopyAlt: string; trunk:
   day: { canopy: '#4e7a46', canopyAlt: '#5f8b52', trunk: '#6e5741' },
   golden: { canopy: '#5e7a48', canopyAlt: '#728756', trunk: '#6b523c' },
   dusk: { canopy: '#3d5340', canopyAlt: '#48604a', trunk: '#4c4136' },
-  night: { canopy: '#26382f', canopyAlt: '#2e4238', trunk: '#35302a' },
+  // Lifted out of near-black so the framing trees still read as trees under moonlight.
+  night: { canopy: '#37503f', canopyAlt: '#41594a', trunk: '#463e35' },
 };
 
 export function treePaletteFor(phase: PhaseKey): { canopy: string; canopyAlt: string; trunk: string } {
