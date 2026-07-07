@@ -3,9 +3,16 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 import { isAdminUser } from '@/lib/auth/admin';
 
-/** The `/preview*` playgrounds are admin-only in production (always open in development). */
-function isPreviewPath(request: NextRequest): boolean {
-  return request.nextUrl.pathname.startsWith('/preview');
+/**
+ * Admin-only surfaces in production (always open in development): the `/preview*` playgrounds and
+ * the `/garden/explore` 3D meadow. Exported for unit testing the path matcher.
+ */
+export function isAdminOnlyPath(pathname: string): boolean {
+  return pathname.startsWith('/preview') || pathname.startsWith('/garden/explore');
+}
+
+function isGatedRequest(request: NextRequest): boolean {
+  return isAdminOnlyPath(request.nextUrl.pathname);
 }
 
 function redirectToGarden(request: NextRequest): NextResponse {
@@ -19,8 +26,8 @@ export async function updateSession(request: NextRequest) {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    // No auth backend to verify against — keep preview gated in production.
-    if (isPreviewPath(request) && !isAdminUser(null)) {
+    // No auth backend to verify against — keep the gated routes closed in production.
+    if (isGatedRequest(request) && !isAdminUser(null)) {
       return redirectToGarden(request);
     }
     return supabaseResponse;
@@ -51,7 +58,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (isPreviewPath(request) && !isAdminUser(user)) {
+  if (isGatedRequest(request) && !isAdminUser(user)) {
     return redirectToGarden(request);
   }
 
