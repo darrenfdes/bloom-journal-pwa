@@ -8,6 +8,7 @@ import type { PhaseKey } from '@/lib/garden/bloom/phases';
 import { treePaletteFor } from '@/lib/garden/explore/sky-detail';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import {
+  blossomTrees,
   bushBands,
   scatterInBand,
   treeBands,
@@ -18,10 +19,12 @@ import {
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
 /**
- * Low-poly trees framing the meadow — layered conifers (stacked cones), clustered broadleaf blobs
- * and slender birches — plus soft edge bushes and a hazed background treeline for depth. Each
- * silhouette is built from several instanced meshes sharing one matrix per tree, so a tree stays a
- * handful of draw calls total. `meshLambertMaterial` picks up the phase-driven scene lights.
+ * Trees framing the meadow — three-tier conifer firs, rounded lush broadleafs, slender pale-bark
+ * birches, a few flowering blossom accents, soft edge bushes and a hazed background treeline for
+ * depth. Each silhouette is built from several instanced meshes sharing one matrix per tree, and
+ * every canopy layer is shaded dark → mid → light to fake volume without extra lights. `meshLambert`
+ * picks up the phase-driven scene lights; rounded canopies (icosahedron detail 1) read as foliage
+ * rather than faceted crystals at the mid-distance the fox always views them from.
  */
 export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseKey }) {
   const palette = useMemo(() => treePaletteFor(phase), [phase]);
@@ -51,6 +54,7 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
       }),
     );
     const treeline = treelineRing(world);
+    const blossoms = blossomTrees(world);
 
     const geometries: THREE.BufferGeometry[] = [];
     const geo = <T extends THREE.BufferGeometry>(g: T): T => {
@@ -58,17 +62,35 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
       return g;
     };
 
-    // Trunks + canopy layers, pre-translated so each tree's base sits at y=0.
-    const trunkGeo = geo(new THREE.CylinderGeometry(0.11, 0.16, 1.1, 6).translate(0, 0.55, 0));
+    // Trunks + canopy layers, pre-translated so each tree's base sits at y=0. Foliage blobs use
+    // icosahedron detail 1 (rounded) so canopies read as leaves, not crystals.
+    const blob = (r: number, x: number, y: number, z: number, squash = 0.9) =>
+      geo(new THREE.IcosahedronGeometry(r, 1).scale(1, squash, 1).translate(x, y, z));
+
+    const trunkGeo = geo(new THREE.CylinderGeometry(0.12, 0.18, 1.15, 6).translate(0, 0.58, 0));
     const birchTrunkGeo = geo(new THREE.CylinderGeometry(0.06, 0.09, 1.7, 6).translate(0, 0.85, 0));
-    const coneLowGeo = geo(new THREE.ConeGeometry(0.95, 1.9, 6).translate(0, 1.75, 0));
-    const coneHighGeo = geo(new THREE.ConeGeometry(0.62, 1.4, 6).translate(0, 2.75, 0));
-    const blobAGeo = geo(new THREE.IcosahedronGeometry(0.95, 0).scale(1, 0.9, 1).translate(0, 1.95, 0));
-    const blobBGeo = geo(new THREE.IcosahedronGeometry(0.7, 0).scale(1, 0.9, 1).translate(0.55, 2.35, 0.2));
-    const blobCGeo = geo(new THREE.IcosahedronGeometry(0.62, 0).scale(1, 0.9, 1).translate(-0.5, 2.2, -0.2));
-    const birchBlobAGeo = geo(new THREE.IcosahedronGeometry(0.55, 0).scale(1, 1.05, 1).translate(0, 2.15, 0));
-    const birchBlobBGeo = geo(new THREE.IcosahedronGeometry(0.42, 0).scale(1, 1.05, 1).translate(0.28, 2.5, 0.1));
-    const bushGeo = geo(new THREE.IcosahedronGeometry(1, 0).scale(1.1, 0.7, 1.1));
+    // Conifer: a wide skirt cone under the existing mid + top cones → a full three-tier fir.
+    const coneBaseGeo = geo(new THREE.ConeGeometry(1.25, 1.8, 7).translate(0, 1.15, 0));
+    const coneMidGeo = geo(new THREE.ConeGeometry(0.92, 1.7, 7).translate(0, 2.05, 0));
+    const coneTopGeo = geo(new THREE.ConeGeometry(0.58, 1.35, 7).translate(0, 2.95, 0));
+    // Broadleaf: three base/mid blobs + a lifted crown blob for a lush rounded canopy.
+    const blobAGeo = blob(0.98, 0, 1.95, 0);
+    const blobBGeo = blob(0.72, 0.55, 2.35, 0.2);
+    const blobCGeo = blob(0.64, -0.5, 2.2, -0.2);
+    const blobCrownGeo = blob(0.6, 0.05, 2.8, 0);
+    // Birch: three small airy blobs on a slender pale trunk.
+    const birchBlobAGeo = blob(0.56, 0, 2.15, 0, 1.05);
+    const birchBlobBGeo = blob(0.44, 0.28, 2.5, 0.1, 1.05);
+    const birchBlobCGeo = blob(0.36, -0.24, 2.35, -0.08, 1.05);
+    // Bush: a rounded lobe plus a smaller offset lobe so it isn't a lone sphere.
+    const bushGeo = geo(new THREE.IcosahedronGeometry(1, 1).scale(1.1, 0.7, 1.1));
+    const bushLobeGeo = geo(new THREE.IcosahedronGeometry(0.62, 1).scale(1.1, 0.7, 1.1).translate(0.55, 0.08, 0.15));
+    // Blossom accent: broadleaf silhouette, tinted pink, on an ordinary brown trunk.
+    const bloomAGeo = blob(0.9, 0, 1.9, 0);
+    const bloomBGeo = blob(0.68, 0.5, 2.3, 0.2);
+    const bloomCGeo = blob(0.6, -0.45, 2.15, -0.2);
+    const bloomCrownGeo = blob(0.55, 0.05, 2.7, 0);
+    // Distant treeline (kept low-poly — fogged): trunk + a single tall cone.
     const tlTrunkGeo = geo(new THREE.CylinderGeometry(0.12, 0.2, 1.2, 5).translate(0, 0.6, 0));
     const tlConeGeo = geo(new THREE.ConeGeometry(0.9, 3.0, 5).translate(0, 2.3, 0));
 
@@ -112,21 +134,37 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
     const kMats = matricesFor(trees.filter((t) => t.variant === 2));
     const bushMats = matricesFor(bushes);
     const tlMats = matricesFor(treeline);
+    const bloomMats = matricesFor(blossoms);
 
     const meshes = [
+      // Conifer firs — skirt (dark) → mid → lit top.
       layer(cMats, trunkGeo, palette.trunk, 741_101),
-      layer(cMats, coneLowGeo, palette.canopy, 741_102),
-      layer(cMats, coneHighGeo, palette.canopy, 741_103),
+      layer(cMats, coneBaseGeo, palette.canopyDark, 741_102),
+      layer(cMats, coneMidGeo, palette.canopy, 741_103),
+      layer(cMats, coneTopGeo, palette.canopyLight, 741_114),
+      // Broadleaf — shadowed base blob, mid blobs, sun-kissed crown.
       layer(bMats, trunkGeo, palette.trunk, 741_104),
-      layer(bMats, blobAGeo, palette.canopyAlt, 741_105),
+      layer(bMats, blobAGeo, palette.canopyDark, 741_105),
       layer(bMats, blobBGeo, palette.canopyAlt, 741_106),
       layer(bMats, blobCGeo, palette.canopyAlt, 741_107),
-      layer(kMats, birchTrunkGeo, palette.trunk, 741_108),
+      layer(bMats, blobCrownGeo, palette.canopyLight, 741_115),
+      // Birch — pale bark, airy light foliage.
+      layer(kMats, birchTrunkGeo, palette.birchBark, 741_108),
       layer(kMats, birchBlobAGeo, palette.canopy, 741_109),
-      layer(kMats, birchBlobBGeo, palette.canopy, 741_110),
-      layer(bushMats, bushGeo, palette.canopyAlt, 741_111),
+      layer(kMats, birchBlobBGeo, palette.canopyLight, 741_110),
+      layer(kMats, birchBlobCGeo, palette.canopy, 741_116),
+      // Bushes — rounded twin lobes.
+      layer(bushMats, bushGeo, palette.canopyDark, 741_111),
+      layer(bushMats, bushLobeGeo, palette.canopyAlt, 741_117),
+      // Blossom accents — dark → pink → light.
+      layer(bloomMats, trunkGeo, palette.trunk, 741_118),
+      layer(bloomMats, bloomAGeo, palette.blossomDark, 741_119),
+      layer(bloomMats, bloomBGeo, palette.blossom, 741_120),
+      layer(bloomMats, bloomCGeo, palette.blossom, 741_121),
+      layer(bloomMats, bloomCrownGeo, palette.blossomLight, 741_122),
+      // Distant treeline — deep-green, hazed.
       layer(tlMats, tlTrunkGeo, palette.trunk, 741_112),
-      layer(tlMats, tlConeGeo, palette.canopy, 741_113),
+      layer(tlMats, tlConeGeo, palette.canopyDark, 741_113),
     ];
     return { meshes, geometries, materials };
   }, [world, palette]);
