@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { PHASES } from '@/lib/garden/bloom/phases';
+import { PHASE_ORDER, PHASES } from '@/lib/garden/bloom/phases';
 import {
   fogRangeFor,
+  groundColorFor,
+  hillColorsFor,
   lightingForPhase,
   parseCssLinearGradient,
   starOpacityFor,
   sunDirectionAt,
 } from '@/lib/garden/explore/sky';
+
+/** Sum of the three channels — a cheap "how light is this hex" proxy for the lift assertions. */
+const brightness = (hex: string): number => {
+  const n = parseInt(hex.slice(1), 16);
+  return ((n >> 16) & 0xff) + ((n >> 8) & 0xff) + (n & 0xff);
+};
 
 describe('parseCssLinearGradient', () => {
   it('parses the real day-phase sky into ordered stops', () => {
@@ -110,5 +118,37 @@ describe('starOpacityFor', () => {
     expect(starOpacityFor('night')).toBe(1);
     expect(starOpacityFor('day')).toBe(0);
     expect(starOpacityFor('dusk')).toBeGreaterThan(starOpacityFor('dawn'));
+  });
+});
+
+describe('groundColorFor', () => {
+  it('passes non-night phases through unchanged', () => {
+    for (const phase of PHASE_ORDER) {
+      if (phase === 'night') continue;
+      expect(groundColorFor(phase)).toBe(PHASES[phase].grass);
+    }
+  });
+
+  it('lifts the night ground above the near-black 2D grass', () => {
+    expect(groundColorFor('night')).not.toBe(PHASES.night.grass);
+    expect(brightness(groundColorFor('night'))).toBeGreaterThan(brightness(PHASES.night.grass));
+    expect(groundColorFor('night')).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('hillColorsFor', () => {
+  it('returns the far→near ridge pair for non-night phases', () => {
+    for (const phase of PHASE_ORDER) {
+      if (phase === 'night') continue;
+      expect(hillColorsFor(phase)).toEqual([PHASES[phase].hills[2], PHASES[phase].hills[1]]);
+    }
+  });
+
+  it('lifts both night ridge colours above the palette', () => {
+    const [far, near] = hillColorsFor('night');
+    expect(brightness(far)).toBeGreaterThan(brightness(PHASES.night.hills[2]));
+    expect(brightness(near)).toBeGreaterThan(brightness(PHASES.night.hills[1]));
+    expect(far).toMatch(/^#[0-9a-f]{6}$/);
+    expect(near).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

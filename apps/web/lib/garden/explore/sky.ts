@@ -45,7 +45,9 @@ const PHASE_LIGHT: Record<
   day: { sun: 1.0, hemi: 0.75, moon: 0, flower: 1 },
   golden: { sun: 0.85, hemi: 0.6, moon: 0, flower: 1.02 },
   dusk: { sun: 0.25, hemi: 0.4, moon: 0.08, flower: 0.88 },
-  night: { sun: 0, hemi: 0.22, moon: 0.18, flower: 0.74 },
+  // Night is lifted well above the 2D `filter: brightness(.74)` so the moonlit meadow, fox and
+  // trees stay legible in 3D — an unlit ground under a dark sky just reads as "broken".
+  night: { sun: 0, hemi: 0.42, moon: 0.45, flower: 0.92 },
 };
 
 export const OVERCAST_GREY = '#9aa3ac';
@@ -77,6 +79,29 @@ export function lightingForPhase(phase: PhaseKey, cloudCover = 0): PhaseLighting
     flowerBrightness: base.flower,
     fogColor: mixHex(horizon.color, OVERCAST_GREY, 0.35 * cloudCover),
   };
+}
+
+/** Cool tints the near-black night palette is mixed toward so the moonlit scene stays readable. */
+const MOONLIT_GROUND = '#5b7d86';
+const MOONLIT_HILL = '#46567a';
+
+/**
+ * Ground/grass colour the 3D terrain + grass use. Every phase but night returns the shared 2D
+ * palette colour unchanged; night lifts it toward a moonlit teal so the meadow floor isn't a
+ * black void under the dark sky (the 2D meadow leans on `filter: brightness()` we can't apply here).
+ */
+export function groundColorFor(phase: PhaseKey): string {
+  const grass = PHASES[phase].grass;
+  return phase === 'night' ? mixHex(grass, MOONLIT_GROUND, 0.5) : grass;
+}
+
+/** Ridge colours (far→near) for the 3D mountain ring — lifted at night so the horizon reads. */
+export function hillColorsFor(phase: PhaseKey): [string, string] {
+  const hills = PHASES[phase].hills;
+  if (phase === 'night') {
+    return [mixHex(hills[2], MOONLIT_HILL, 0.4), mixHex(hills[1], MOONLIT_HILL, 0.4)];
+  }
+  return [hills[2], hills[1]];
 }
 
 /**

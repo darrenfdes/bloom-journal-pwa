@@ -89,6 +89,18 @@ describe('phase palettes', () => {
     expect(haloLayersFor('golden')[0]!.scaleMul).toBeGreaterThan(haloLayersFor('day')[0]!.scaleMul);
     expect(haloLayersFor('dawn')[1]!.opacity).toBeGreaterThan(haloLayersFor('night')[1]!.opacity);
   });
+
+  it('keeps the night tree palette above near-black so trees stay visible', () => {
+    const channels = (hex: string) => parseInt(hex.slice(1), 16);
+    const sum = (hex: string) => {
+      const n = channels(hex);
+      return ((n >> 16) & 0xff) + ((n >> 8) & 0xff) + (n & 0xff);
+    };
+    const night = treePaletteFor('night');
+    // Each night colour clears a modest floor — the old palette sat near black (< ~130).
+    expect(sum(night.canopy)).toBeGreaterThan(150);
+    expect(sum(night.canopyAlt)).toBeGreaterThan(150);
+  });
 });
 
 describe('horizonHazeFor', () => {

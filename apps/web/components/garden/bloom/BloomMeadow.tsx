@@ -192,6 +192,7 @@ export function BloomMeadow({
   preview = false,
   creatures = false,
   live = false,
+  canExplore = false,
   liveWeather = null,
   latitude = 0,
   specialStar = false,
@@ -205,6 +206,8 @@ export function BloomMeadow({
   creatures?: boolean;
   /** Realtime mode (/garden): clock-driven phase + real weather, manual controls hidden. */
   live?: boolean;
+  /** Show the 3D "Explore" entry pill (admin-only surface — gated by the caller). */
+  canExplore?: boolean;
   /** Live weather from `useWeather()`, used only when `live`. */
   liveWeather?: WeatherState | null;
   /** Viewer latitude — orients the moon-phase shadow (S. hemisphere flips it). */
@@ -1481,7 +1484,7 @@ export function BloomMeadow({
         <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). Shares the
               SyncBadge-clearing top offset with the event column beside it. */}
-          {live && layout.entries.length > 0 && (
+          {live && canExplore && layout.entries.length > 0 && (
             <button
               type="button"
               onClick={() => router.push('/garden/explore')}

@@ -6,11 +6,12 @@ import * as THREE from 'three';
 
 import {
   CAM_DAMP_RATE,
+  MOVE_ACCEL_RATE,
   STROLL_FACTOR,
   WALK_SPEED,
 } from '@/lib/garden/explore/constants';
 import { followCameraPose } from '@/lib/garden/explore/follow-camera';
-import { expDamp, stepFoxMotion, type FoxMotionState } from '@/lib/garden/explore/fox-motion';
+import { expDamp, rampInput, stepFoxMotion, type FoxMotionState } from '@/lib/garden/explore/fox-motion';
 import {
   keysToInput,
   stepPlayer,
@@ -53,6 +54,7 @@ export function FoxRig({
 }) {
   const camera = useThree((s) => s.camera);
   const keysRef = useRef<Set<string>>(new Set());
+  const inputRef = useRef<MoveInput>({ forward: 0, strafe: 0 });
   const motionRef = useRef<FoxMotionState>({ heading: playerRef.current.yaw, speed: 0 });
   const shadowRef = useRef<THREE.Mesh>(null);
   const snapped = useRef(false);
@@ -83,10 +85,13 @@ export function FoxRig({
     const keys = keysToInput(keysRef.current);
     const keyScale = strollHeld(keysRef.current) ? STROLL_FACTOR : 1;
     const joy = joystickRef.current;
-    const input: MoveInput = {
+    const target: MoveInput = {
       forward: clamp1(keys.forward * keyScale + joy.forward),
       strafe: clamp1(keys.strafe * keyScale + joy.strafe),
     };
+    // Ease the input so the fox accelerates from rest and coasts to a stop.
+    const input = rampInput(inputRef.current, target, MOVE_ACCEL_RATE, dt);
+    inputRef.current = input;
     const prev = playerRef.current;
     playerRef.current = stepPlayer(prev, input, dt, {
       speed: WALK_SPEED,

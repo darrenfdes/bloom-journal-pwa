@@ -9,6 +9,8 @@ import {
   FOX_HEADING_OFFSET,
   FOX_MODEL_URL,
   FOX_SCALE,
+  STROLL_FACTOR,
+  WALK_SPEED,
 } from '@/lib/garden/explore/constants';
 import { gaitFor, type FoxGait, type FoxMotionState } from '@/lib/garden/explore/fox-motion';
 import type { PlayerState } from '@/lib/garden/explore/movement';
@@ -98,10 +100,12 @@ export function FoxModel({
       actions[gait]?.reset().setEffectiveWeight(1).fadeIn(FADE_S);
       prevGait.current = gait;
     }
+    // Reference speeds the clips were authored around, so the feet track the ground at the new
+    // top speed instead of slipping: a full stroll for Walk, a full run for Run.
     const walk = actions.walk;
-    if (walk) walk.timeScale = clamp(m.speed / 1.35, 0.7, 1.4);
+    if (walk) walk.timeScale = clamp(m.speed / (STROLL_FACTOR * WALK_SPEED), 0.7, 1.4);
     const run = actions.run;
-    if (run) run.timeScale = clamp(m.speed / 3, 0.8, 1.25);
+    if (run) run.timeScale = clamp(m.speed / WALK_SPEED, 0.8, 1.25);
 
     mixer.update(delta);
   });
