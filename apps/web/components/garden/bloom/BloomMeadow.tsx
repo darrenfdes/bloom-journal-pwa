@@ -1480,20 +1480,41 @@ export function BloomMeadow({
               ? 'sky & weather preview'
               : `${layout.entries.length} ${layout.entries.length === 1 ? 'memory' : 'memories'}`}
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). Shares the
-              SyncBadge-clearing top offset with the event column beside it. */}
+          {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). Sits under the
+              title as its own roomy, thumb-friendly CTA (≥44px) — off the crowded event/badge
+              cluster on the right. */}
           {live && canExplore && layout.entries.length > 0 && (
             <button
               type="button"
               onClick={() => router.push('/garden/explore')}
               aria-label="Explore your meadow in 3D"
-              style={{ ...glass, alignSelf: 'flex-start', marginTop: 'calc(var(--safe-top) + 26px)', borderRadius: 999, padding: '7px 14px', fontFamily: sans, fontSize: 11.5, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase', cursor: 'pointer' }}
+              style={{
+                ...glass,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 14,
+                minHeight: 44,
+                borderRadius: 999,
+                padding: '0 20px',
+                fontFamily: sans,
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: 1.4,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                background: 'rgba(22,27,36,.5)',
+                boxShadow: '0 6px 20px rgba(15,25,35,.3)',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+              }}
             >
-              ⌖ Explore
+              <span aria-hidden style={{ fontSize: 17, lineHeight: 1 }}>⌖</span>
+              Explore in 3D
             </button>
           )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* Live garden: name today's headline event (if any) above a subtle hint of the
               next event's date — balancing the title on the left. The column owns the top
               offset that drops it below the fixed SyncBadge (top-right, ~38px) so they
