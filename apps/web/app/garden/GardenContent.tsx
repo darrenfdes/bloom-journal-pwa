@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { sceneEffectsForDay, useDayEvents, primaryEvent } from '@bloom/core/events';
 import type { EventsUserContext } from '@bloom/core/events';
 
+import { useIsAdmin } from '@/lib/auth/useIsAdmin';
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
 import { planetForEvent } from '@/lib/garden/bloom/event-catalog';
@@ -29,6 +30,9 @@ export function GardenContent() {
   const ready = useBloomStore((s) => s.ready);
   const meta = useBloomStore((s) => s.gardenMeta);
   const entries = useBloomStore((s) => s.entries);
+
+  // The 3D explore meadow is admin-only (mirrors /preview) — only admins see its entry pill.
+  const isAdmin = useIsAdmin();
 
   // Realtime weather for the live garden: resolve coords (geolocation → fallback) then poll
   // Open-Meteo. The meadow maps the category to its sky/weather effects.
@@ -101,6 +105,7 @@ export function GardenContent() {
     <BloomMeadow
       entries={entries}
       live
+      canExplore={isAdmin}
       liveWeather={weather}
       latitude={geo.coords.lat}
       specialStar={specialStar}

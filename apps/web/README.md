@@ -43,3 +43,7 @@ Copy `.env.local.example` to `.env.local` when enabling Supabase. The app runs w
 ## Docs
 
 - [Sync design contract](./docs/sync.md)
+
+## Assets
+
+3D model credits (the explore-mode fox) live in [public/models/CREDITS.md](./public/models/CREDITS.md).
