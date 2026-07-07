@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildMeadowLayout } from '@/lib/garden/bloom/layout';
 import {
+  blossomTrees,
   bushBands,
   clutterScatter,
   groundCoverScatter,
@@ -152,6 +153,21 @@ describe('treelineRing', () => {
     expect(treelineRing(w)).toEqual(treelineRing(w));
     const b = w.bounds;
     for (const t of treelineRing(w)) {
+      const outside = t.x < b.minX || t.x > b.maxX || t.z < b.minZ || t.z > b.maxZ;
+      expect(outside).toBe(true);
+    }
+  });
+});
+
+describe('blossomTrees', () => {
+  it('is a sparse deterministic set sitting off the walkable meadow', () => {
+    const w = world();
+    const trees = blossomTrees(w);
+    expect(blossomTrees(w)).toEqual(trees);
+    expect(trees.length).toBeGreaterThan(0);
+    expect(trees.length).toBeLessThanOrEqual(8);
+    const b = w.bounds;
+    for (const t of trees) {
       const outside = t.x < b.minX || t.x > b.maxX || t.z < b.minZ || t.z > b.maxZ;
       expect(outside).toBe(true);
     }
