@@ -117,7 +117,7 @@ export function twinkleOpacity(base: number, layer: 0 | 1 | 2, tSec: number): nu
   return base * (0.72 + 0.28 * Math.sin(tSec * omega + phi));
 }
 
-/** Tree/bush colors per phase — canopies sit near the phase's hill/grass palette. */
+/** Tree/bush base colors per phase — canopies sit near the phase's hill/grass palette. */
 const TREE_PALETTE: Record<PhaseKey, { canopy: string; canopyAlt: string; trunk: string }> = {
   dawn: { canopy: '#5d7a55', canopyAlt: '#6d8a60', trunk: '#6e5741' },
   day: { canopy: '#4e7a46', canopyAlt: '#5f8b52', trunk: '#6e5741' },
@@ -127,6 +127,51 @@ const TREE_PALETTE: Record<PhaseKey, { canopy: string; canopyAlt: string; trunk:
   night: { canopy: '#37503f', canopyAlt: '#41594a', trunk: '#463e35' },
 };
 
-export function treePaletteFor(phase: PhaseKey): { canopy: string; canopyAlt: string; trunk: string } {
-  return TREE_PALETTE[phase];
+// Shade anchors the per-phase canopy is mixed toward to fake volume without extra lights:
+// a warm-dark green for the shadowed underside, a sun-kissed yellow-green for the lit crown.
+const CANOPY_SHADOW = '#1d2b17';
+const CANOPY_SUN = '#cfe6a0';
+// Birch bark tint (trunk mixed toward this) and the soft blossom base for the flowering accents.
+const BARK_PALE = '#efe9dd';
+const BLOSSOM_BASE = '#f4c9dd';
+// Blossoms shade toward a warm plum (not the cold green canopy shadow) so they stay rosy, not muddy.
+const BLOSSOM_SHADOW = '#7c4257';
+
+export interface TreePalette {
+  /** Mid green — the reference tone the shade layers are derived from. */
+  canopy: string;
+  /** Broadleaf mid tone. */
+  canopyAlt: string;
+  /** Shadowed lower foliage. */
+  canopyDark: string;
+  /** Sun-kissed crown highlight. */
+  canopyLight: string;
+  trunk: string;
+  /** Pale birch trunk (still phase-tinted). */
+  birchBark: string;
+  /** Soft blossom pink, faintly phase-tinted, with its own dark→light layering. */
+  blossom: string;
+  blossomDark: string;
+  blossomLight: string;
+}
+
+/**
+ * Phase palette for the tree canopies. The base greens come from `TREE_PALETTE`; the dark/light
+ * shades, pale birch bark and blossom tints are derived so the same graduation follows every phase
+ * (including the lifted night values). Consumed only by `TreeField`.
+ */
+export function treePaletteFor(phase: PhaseKey): TreePalette {
+  const base = TREE_PALETTE[phase];
+  const blossom = mixHex(BLOSSOM_BASE, base.canopy, 0.1);
+  return {
+    canopy: base.canopy,
+    canopyAlt: base.canopyAlt,
+    canopyDark: mixHex(base.canopy, CANOPY_SHADOW, 0.4),
+    canopyLight: mixHex(base.canopy, CANOPY_SUN, 0.3),
+    trunk: base.trunk,
+    birchBark: mixHex(base.trunk, BARK_PALE, 0.82),
+    blossom,
+    blossomDark: mixHex(blossom, BLOSSOM_SHADOW, 0.28),
+    blossomLight: mixHex(blossom, '#ffffff', 0.3),
+  };
 }

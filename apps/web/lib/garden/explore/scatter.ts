@@ -128,6 +128,25 @@ export function treeBands(world: ExploreWorld): Band[] {
   ];
 }
 
+/**
+ * A handful of flowering accent trees dotted through the same frame as the ordinary trees — always
+ * outside the walkable meadow (they reuse `treeBands`), sparse (≤ 2 per band), and deterministic.
+ */
+export function blossomTrees(world: ExploreWorld): ScatterItem[] {
+  const exclusions = worldExclusions(world);
+  return treeBands(world).flatMap((band, i) =>
+    scatterInBand({
+      seed: 743_101 + i * 17,
+      count: 2,
+      band,
+      minScale: 1.3,
+      maxScale: 2.2,
+      variants: 1,
+      exclusions,
+    }),
+  );
+}
+
 /** Thin bush strips just inside the north and south edges. Bushes are soft — no collision. */
 export function bushBands(world: ExploreWorld): Band[] {
   const b = world.bounds;
