@@ -69,19 +69,46 @@ describe('driftedAzimuth', () => {
   });
 });
 
+const sum = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return ((n >> 16) & 0xff) + ((n >> 8) & 0xff) + (n & 0xff);
+};
+
 describe('phase palettes', () => {
   it('returns valid hex tints/palettes for every phase', () => {
     for (const phase of PHASE_ORDER) {
       expect(cloudTintFor(phase)).toMatch(HEX);
       const tree = treePaletteFor(phase);
-      expect(tree.canopy).toMatch(HEX);
-      expect(tree.canopyAlt).toMatch(HEX);
-      expect(tree.trunk).toMatch(HEX);
+      for (const c of [
+        tree.canopy,
+        tree.canopyAlt,
+        tree.canopyDark,
+        tree.canopyLight,
+        tree.trunk,
+        tree.birchBark,
+        tree.blossom,
+        tree.blossomDark,
+        tree.blossomLight,
+      ]) {
+        expect(c).toMatch(HEX);
+      }
       for (const layer of haloLayersFor(phase)) {
         expect(layer.scaleMul).toBeGreaterThan(0);
         expect(layer.opacity).toBeGreaterThan(0);
         expect(layer.opacity).toBeLessThanOrEqual(1);
       }
+    }
+  });
+
+  it('graduates canopy and blossom shades dark → mid → light in every phase', () => {
+    for (const phase of PHASE_ORDER) {
+      const t = treePaletteFor(phase);
+      expect(sum(t.canopyDark)).toBeLessThan(sum(t.canopy));
+      expect(sum(t.canopy)).toBeLessThan(sum(t.canopyLight));
+      expect(sum(t.blossomDark)).toBeLessThan(sum(t.blossom));
+      expect(sum(t.blossom)).toBeLessThan(sum(t.blossomLight));
+      // Birch bark reads pale — always lighter than the ordinary brown trunk.
+      expect(sum(t.birchBark)).toBeGreaterThan(sum(t.trunk));
     }
   });
 
