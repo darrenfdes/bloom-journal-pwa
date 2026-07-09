@@ -1,13 +1,14 @@
 /**
- * Deterministic scatter placement for meadow scenery — trees, bushes, rocks, pond decor.
+ * Deterministic scatter placement for meadow scenery — trees, bushes, rocks, stream decor.
  * All placement is mulberry32-seeded and rejection-sampled around exclusion zones (flowers,
- * ponds, the spawn point) so the same world always produces the same layout.
+ * the stream, the spawn point) so the same world always produces the same layout.
  *
  * Pure logic — no three.js, no React.
  */
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 
-import type { ExploreWorld, Pond } from './world-layout';
+import { closestOnStream, pointAlongStream, type Stream } from './stream';
+import type { ExploreWorld } from './world-layout';
 
 export interface ScatterItem {
   x: number;
@@ -97,17 +98,30 @@ export function scatterInRing(opts: {
   return items;
 }
 
-/** Circles the fox should not spawn scenery on top of: flowers, ponds, and the spawn point. */
+/** How many circles trace the stream channel — enough to overlap and fully cover it. */
+const STREAM_EXCLUSION_SAMPLES = 40;
+
+/** Overlapping circles tracing the whole channel, so scenery never lands in the water. */
+export function streamExclusions(stream: Stream, buffer: number): Exclusion[] {
+  const out: Exclusion[] = [];
+  for (let i = 0; i <= STREAM_EXCLUSION_SAMPLES; i++) {
+    const p = pointAlongStream(stream, i / STREAM_EXCLUSION_SAMPLES);
+    out.push({ x: p.x, z: p.z, radius: p.halfWidth + buffer });
+  }
+  return out;
+}
+
+/** Circles the fox should not spawn scenery on top of: flowers, the stream, and the spawn point. */
 export function worldExclusions(
   world: ExploreWorld,
-  o?: { flowerRadius?: number; pondBuffer?: number; spawnRadius?: number },
+  o?: { flowerRadius?: number; streamBuffer?: number; spawnRadius?: number },
 ): Exclusion[] {
   const flowerRadius = o?.flowerRadius ?? 0.9;
-  const pondBuffer = o?.pondBuffer ?? 1.5;
+  const streamBuffer = o?.streamBuffer ?? 1.2;
   const spawnRadius = o?.spawnRadius ?? 3;
   return [
     ...world.flowers.map((f) => ({ x: f.x, z: f.z, radius: flowerRadius })),
-    ...world.ponds.map((p) => ({ x: p.x, z: p.z, radius: p.radius + pondBuffer })),
+    ...(world.stream ? streamExclusions(world.stream, streamBuffer) : []),
     { x: world.spawn.x, z: world.spawn.z, radius: spawnRadius },
   ];
 }
@@ -156,65 +170,84 @@ export function bushBands(world: ExploreWorld): Band[] {
   ];
 }
 
+/** The widest point of the stream — the pool where lily pads and blossoms float. */
+export function streamPool(stream: Stream): { x: number; z: number; halfWidth: number } {
+  return stream.points.reduce((a, b) => (b.halfWidth > a.halfWidth ? b : a));
+}
+
 /**
- * Pond dressing: floating lily pads, a reed rim, tall cattails just outside the reeds, and a few
- * lily blossoms sitting on the inner pads. All rings are seeded off the pond index.
+ * Scatter items hugging the stream banks: pick an arc-length fraction, then step out along the
+ * channel normal to one side by the local half-width plus a margin. Candidates that fall back
+ * inside the channel (the inside of a bend) are rejected, so bank decor is always out of the water.
+ * Kept within the visible span (t ∈ [0.1, 0.9]) so nothing is wasted off-map.
  */
-export function pondDecorFor(
-  pond: Pond,
-  index: number,
-): {
+export function streamBankScatter(
+  stream: Stream,
+  seed: number,
+  count: number,
+  offMin: number,
+  offMax: number,
+  minScale: number,
+  maxScale: number,
+): ScatterItem[] {
+  const rng = mulberry32(seed);
+  const out: ScatterItem[] = [];
+  let guard = 0;
+  while (out.length < count && guard++ < count * 10) {
+    const p = pointAlongStream(stream, 0.1 + rng() * 0.8);
+    // Left-hand normal of the downstream tangent (unit length).
+    const nx = -p.tangent.z;
+    const nz = p.tangent.x;
+    const side = rng() < 0.5 ? 1 : -1;
+    const off = p.halfWidth + offMin + rng() * (offMax - offMin);
+    const scale = minScale + rng() * (maxScale - minScale);
+    const rotation = rng() * Math.PI * 2;
+    const x = p.x + nx * side * off;
+    const z = p.z + nz * side * off;
+    const s = closestOnStream(x, z, stream);
+    if (s.dist < s.halfWidth + offMin * 0.5) continue; // fell into the water on a bend — retry
+    out.push({ x, z, scale, rotation, variant: 0 });
+  }
+  return out;
+}
+
+/**
+ * Stream dressing: floating lily pads + open blossoms in the pool, a reed fringe hugging both
+ * banks, and tall cattails a little further out. Seeded deterministically off the pool position.
+ */
+export function streamDecorFor(stream: Stream): {
   pads: ScatterItem[];
   reeds: ScatterItem[];
   cattails: ScatterItem[];
   blossoms: ScatterItem[];
 } {
-  const seed = 600_000 + index * 1013;
+  const pool = streamPool(stream);
+  const seed = 600_000 + Math.round(pool.x) * 13;
   return {
     pads: scatterInRing({
       seed,
       count: 7,
-      cx: pond.x,
-      cz: pond.z,
-      rMin: pond.radius * 0.15,
-      rMax: pond.radius * 0.72,
+      cx: pool.x,
+      cz: pool.z,
+      rMin: pool.halfWidth * 0.15,
+      rMax: pool.halfWidth * 0.72,
       minScale: 0.7,
       maxScale: 1.3,
-      variants: 1,
-    }),
-    reeds: scatterInRing({
-      seed: seed + 7,
-      count: 26,
-      cx: pond.x,
-      cz: pond.z,
-      rMin: pond.radius * 0.95,
-      rMax: pond.radius * 1.18,
-      minScale: 0.8,
-      maxScale: 1.35,
-      variants: 1,
-    }),
-    cattails: scatterInRing({
-      seed: seed + 31,
-      count: 12,
-      cx: pond.x,
-      cz: pond.z,
-      rMin: pond.radius * 1.02,
-      rMax: pond.radius * 1.2,
-      minScale: 0.9,
-      maxScale: 1.4,
       variants: 1,
     }),
     blossoms: scatterInRing({
       seed: seed + 53,
       count: 5,
-      cx: pond.x,
-      cz: pond.z,
-      rMin: pond.radius * 0.2,
-      rMax: pond.radius * 0.62,
+      cx: pool.x,
+      cz: pool.z,
+      rMin: pool.halfWidth * 0.2,
+      rMax: pool.halfWidth * 0.6,
       minScale: 0.8,
       maxScale: 1.2,
       variants: 2,
     }),
+    reeds: streamBankScatter(stream, seed + 7, 34, 0.05, 0.5, 0.8, 1.35),
+    cattails: streamBankScatter(stream, seed + 31, 16, 0.55, 1.1, 0.9, 1.4),
   };
 }
 
@@ -255,7 +288,7 @@ export function groundCoverScatter(
   return {
     wildflowers: scatterInBand({
       seed: 811_001,
-      count: Math.min(300, Math.round(area * 0.14)),
+      count: Math.min(180, Math.round(area * 0.09)),
       band,
       minScale: 0.6,
       maxScale: 1.2,
@@ -264,7 +297,7 @@ export function groundCoverScatter(
     }),
     ferns: scatterInBand({
       seed: 811_777,
-      count: Math.min(120, Math.round(area * 0.05)),
+      count: Math.min(70, Math.round(area * 0.03)),
       band,
       minScale: 0.7,
       maxScale: 1.3,
@@ -284,7 +317,7 @@ export function clutterScatter(
   return {
     mushrooms: scatterInBand({
       seed: 821_001,
-      count: Math.min(70, Math.round(area * 0.03)),
+      count: Math.min(40, Math.round(area * 0.018)),
       band,
       minScale: 0.6,
       maxScale: 1.2,
@@ -311,7 +344,7 @@ export function clutterScatter(
     }),
     pebbles: scatterInBand({
       seed: 821_777,
-      count: Math.min(100, Math.round(area * 0.05)),
+      count: Math.min(55, Math.round(area * 0.03)),
       band,
       minScale: 0.5,
       maxScale: 1.2,

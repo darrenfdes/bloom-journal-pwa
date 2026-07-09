@@ -6,9 +6,10 @@ import {
   bushBands,
   clutterScatter,
   groundCoverScatter,
-  pondDecorFor,
   scatterInBand,
   scatterInRing,
+  streamDecorFor,
+  streamPool,
   TREE_MARGIN,
   treeBands,
   treelineRing,
@@ -16,6 +17,7 @@ import {
   worldExclusions,
   type Band,
 } from '@/lib/garden/explore/scatter';
+import { closestOnStream } from '@/lib/garden/explore/stream';
 import { buildExploreWorld } from '@/lib/garden/explore/world-layout';
 import { entry } from '../../fixtures/entry';
 
@@ -79,15 +81,16 @@ describe('scatterInRing', () => {
 });
 
 describe('worldExclusions', () => {
-  it('covers every flower, pond (buffered) and the spawn point', () => {
+  it('covers every flower, the stream channel, and the spawn point', () => {
     const w = world();
     const ex = worldExclusions(w);
-    expect(ex.length).toBe(w.flowers.length + w.ponds.length + 1);
-    for (const p of w.ponds) {
-      const match = ex.find((e) => e.x === p.x && e.z === p.z);
-      expect(match?.radius).toBeGreaterThan(p.radius);
+    for (const f of w.flowers) {
+      expect(ex.some((e) => e.x === f.x && e.z === f.z)).toBe(true);
     }
     expect(ex.some((e) => e.x === w.spawn.x && e.z === w.spawn.z)).toBe(true);
+    // The pool centre falls inside an exclusion, so decor never lands in the water.
+    const pool = streamPool(w.stream!);
+    expect(ex.some((e) => Math.hypot(pool.x - e.x, pool.z - e.z) < e.radius)).toBe(true);
   });
 });
 
@@ -117,32 +120,31 @@ describe('bushBands', () => {
   });
 });
 
-describe('pondDecorFor', () => {
-  it('floats pads inside the pond and rings reeds around the rim, deterministically', () => {
-    const pond = { x: 20, z: 7, radius: 5, level: -0.15 };
-    const a = pondDecorFor(pond, 0);
-    expect(pondDecorFor(pond, 0)).toEqual(a);
-    for (const pad of a.pads) {
-      expect(Math.hypot(pad.x - pond.x, pad.z - pond.z)).toBeLessThanOrEqual(pond.radius * 0.72 + 1e-9);
-    }
-    for (const reed of a.reeds) {
-      const r = Math.hypot(reed.x - pond.x, reed.z - pond.z);
-      expect(r).toBeGreaterThanOrEqual(pond.radius * 0.95 - 1e-9);
-      expect(r).toBeLessThanOrEqual(pond.radius * 1.18 + 1e-9);
-    }
-    // different pond index → different layout
-    expect(pondDecorFor(pond, 1)).not.toEqual(a);
-  });
+describe('streamDecorFor', () => {
+  const streamOf = () => world().stream!;
 
-  it('rings cattails outside the reeds and floats blossoms on the inner water', () => {
-    const pond = { x: 20, z: 7, radius: 5, level: -0.15 };
-    const a = pondDecorFor(pond, 0);
-    expect(a.cattails.length).toBeGreaterThan(0);
-    for (const c of a.cattails) {
-      expect(Math.hypot(c.x - pond.x, c.z - pond.z)).toBeGreaterThanOrEqual(pond.radius * 1.02 - 1e-9);
+  it('floats lily pads and blossoms inside the pool, deterministically', () => {
+    const stream = streamOf();
+    const pool = streamPool(stream);
+    const a = streamDecorFor(stream);
+    expect(streamDecorFor(stream)).toEqual(a);
+    expect(a.pads.length).toBeGreaterThan(0);
+    for (const pad of a.pads) {
+      expect(Math.hypot(pad.x - pool.x, pad.z - pool.z)).toBeLessThanOrEqual(pool.halfWidth + 1e-9);
     }
     for (const b of a.blossoms) {
-      expect(Math.hypot(b.x - pond.x, b.z - pond.z)).toBeLessThanOrEqual(pond.radius * 0.62 + 1e-9);
+      expect(Math.hypot(b.x - pool.x, b.z - pool.z)).toBeLessThanOrEqual(pool.halfWidth + 1e-9);
+    }
+  });
+
+  it('fringes reeds and cattails along the banks, always outside the water', () => {
+    const stream = streamOf();
+    const a = streamDecorFor(stream);
+    expect(a.reeds.length).toBeGreaterThan(0);
+    expect(a.cattails.length).toBeGreaterThan(0);
+    for (const item of [...a.reeds, ...a.cattails]) {
+      const s = closestOnStream(item.x, item.z, stream);
+      expect(s.dist).toBeGreaterThanOrEqual(s.halfWidth - 1e-6);
     }
   });
 });

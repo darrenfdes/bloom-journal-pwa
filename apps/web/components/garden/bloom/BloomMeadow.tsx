@@ -1480,9 +1480,9 @@ export function BloomMeadow({
               ? 'sky & weather preview'
               : `${layout.entries.length} ${layout.entries.length === 1 ? 'memory' : 'memories'}`}
           </div>
-          {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). Sits under the
-              title as its own roomy, thumb-friendly CTA (≥44px) — off the crowded event/badge
-              cluster on the right. */}
+          {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). A roomy labelled
+              CTA on desktop; on phones it collapses to a small, subtle round ⌖ button so it stops
+              dominating the header. Off the crowded event/badge cluster on the right. */}
           {live && canExplore && layout.entries.length > 0 && (
             <button
               type="button"
@@ -1492,25 +1492,36 @@ export function BloomMeadow({
                 ...glass,
                 display: 'inline-flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 8,
-                marginTop: 14,
-                minHeight: 44,
-                borderRadius: 999,
-                padding: '0 20px',
-                fontFamily: sans,
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: 1.4,
-                textTransform: 'uppercase',
+                marginTop: vw <= 640 ? 10 : 14,
                 cursor: 'pointer',
                 background: 'rgba(22,27,36,.5)',
-                boxShadow: '0 6px 20px rgba(15,25,35,.3)',
                 touchAction: 'manipulation',
                 WebkitTapHighlightColor: 'transparent',
+                ...(vw <= 640
+                  ? {
+                      width: 38,
+                      height: 38,
+                      padding: 0,
+                      borderRadius: 999,
+                      boxShadow: '0 3px 10px rgba(15,25,35,.25)',
+                    }
+                  : {
+                      minHeight: 44,
+                      padding: '0 20px',
+                      borderRadius: 999,
+                      fontFamily: sans,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: 1.4,
+                      textTransform: 'uppercase',
+                      boxShadow: '0 6px 20px rgba(15,25,35,.3)',
+                    }),
               }}
             >
-              <span aria-hidden style={{ fontSize: 17, lineHeight: 1 }}>⌖</span>
-              Explore in 3D
+              <span aria-hidden style={{ fontSize: vw <= 640 ? 18 : 17, lineHeight: 1 }}>⌖</span>
+              {vw > 640 && 'Explore in 3D'}
             </button>
           )}
         </div>

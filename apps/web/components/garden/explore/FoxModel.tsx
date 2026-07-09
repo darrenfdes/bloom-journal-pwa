@@ -10,12 +10,13 @@ import {
   FOX_MODEL_URL,
   FOX_SCALE,
   STROLL_FACTOR,
+  WADE_HALF_WIDTH,
   WALK_SPEED,
 } from '@/lib/garden/explore/constants';
 import { gaitFor, type FoxGait, type FoxMotionState } from '@/lib/garden/explore/fox-motion';
 import type { PlayerState } from '@/lib/garden/explore/movement';
-import { groundHeightAt } from '@/lib/garden/explore/terrain';
-import type { Pond } from '@/lib/garden/explore/world-layout';
+import { closestOnStream, type Stream } from '@/lib/garden/explore/stream';
+import { surfaceHeightAt } from '@/lib/garden/explore/terrain';
 
 /**
  * The player's fox — the Khronos glTF Sample Fox (model by PixelMannen, CC0; rigging &
@@ -29,11 +30,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export function FoxModel({
   playerRef,
   motionRef,
-  ponds,
+  stream,
+  reducedMotion = false,
 }: {
   playerRef: RefObject<PlayerState>;
   motionRef: RefObject<FoxMotionState>;
-  ponds: readonly Pond[];
+  stream: Stream | null;
+  reducedMotion?: boolean;
 }) {
   const gltf = useLoader(GLTFLoader, FOX_MODEL_URL);
   const groupRef = useRef<THREE.Group>(null);
@@ -81,7 +84,7 @@ export function FoxModel({
     };
   }, [gltf]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const group = groupRef.current;
     const mixer = mixerRef.current;
     if (!group || !mixer) return;
@@ -89,7 +92,15 @@ export function FoxModel({
     const m = motionRef.current;
     const actions = actionsRef.current;
 
-    group.position.set(p.x, groundHeightAt(p.x, p.z, ponds), p.z);
+    // Float on the water surface in the deep pool (with a gentle bob), otherwise sit on the ground.
+    let y = surfaceHeightAt(p.x, p.z, stream);
+    if (stream && !reducedMotion) {
+      const w = closestOnStream(p.x, p.z, stream);
+      if (w.dist < w.halfWidth && w.halfWidth >= WADE_HALF_WIDTH) {
+        y += Math.sin(state.clock.elapsedTime * 2) * 0.02;
+      }
+    }
+    group.position.set(p.x, y, p.z);
     group.rotation.y = m.heading + FOX_HEADING_OFFSET;
 
     const gait = gaitFor(m.speed);

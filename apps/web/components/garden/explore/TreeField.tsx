@@ -94,6 +94,20 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
     const tlTrunkGeo = geo(new THREE.CylinderGeometry(0.12, 0.2, 1.2, 5).translate(0, 0.6, 0));
     const tlConeGeo = geo(new THREE.ConeGeometry(0.9, 3.0, 5).translate(0, 2.3, 0));
 
+    // Extra near-tree detail (the fox only ever sees these at mid-distance):
+    // a flared root base shared by the broadleaf/conifer/blossom trunks.
+    const rootGeo = geo(new THREE.ConeGeometry(0.34, 0.42, 8).translate(0, 0.17, 0));
+    // Conifer: a wide low skirt beneath the base cone → a fuller four-tier fir.
+    const coneSkirtGeo = geo(new THREE.ConeGeometry(1.55, 1.3, 8).translate(0, 0.72, 0));
+    // Broadleaf + blossom: a low shadowed skirt blob filling out the underside of the canopy.
+    const blobSkirtGeo = blob(0.86, -0.05, 1.5, 0.1);
+    const bloomSkirtGeo = blob(0.8, -0.05, 1.5, 0.1);
+    // Birch: a fourth high blob and a pale angled branch stub.
+    const birchBlobDGeo = blob(0.3, 0.12, 2.78, -0.1, 1.05);
+    const birchBranchGeo = geo(
+      new THREE.CylinderGeometry(0.02, 0.035, 0.85, 4).rotateZ(0.9).translate(0.24, 1.55, 0),
+    );
+
     const materials: THREE.Material[] = [];
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -104,7 +118,7 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
       list.map((it) => {
         q.setFromAxisAngle(up, it.rotation);
         return new THREE.Matrix4().compose(
-          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.ponds), it.z),
+          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.stream), it.z),
           q,
           new THREE.Vector3(it.scale, it.scale, it.scale),
         );
@@ -137,27 +151,35 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
     const bloomMats = matricesFor(blossoms);
 
     const meshes = [
-      // Conifer firs — skirt (dark) → mid → lit top.
+      // Conifer firs — root flare, wide skirt, dark base → mid → lit top.
+      layer(cMats, rootGeo, palette.trunk, 741_130),
       layer(cMats, trunkGeo, palette.trunk, 741_101),
+      layer(cMats, coneSkirtGeo, palette.canopyDark, 741_131),
       layer(cMats, coneBaseGeo, palette.canopyDark, 741_102),
       layer(cMats, coneMidGeo, palette.canopy, 741_103),
       layer(cMats, coneTopGeo, palette.canopyLight, 741_114),
-      // Broadleaf — shadowed base blob, mid blobs, sun-kissed crown.
+      // Broadleaf — root flare, shadowed skirt + base blob, mid blobs, sun-kissed crown.
+      layer(bMats, rootGeo, palette.trunk, 741_132),
       layer(bMats, trunkGeo, palette.trunk, 741_104),
+      layer(bMats, blobSkirtGeo, palette.canopyDark, 741_133),
       layer(bMats, blobAGeo, palette.canopyDark, 741_105),
       layer(bMats, blobBGeo, palette.canopyAlt, 741_106),
       layer(bMats, blobCGeo, palette.canopyAlt, 741_107),
       layer(bMats, blobCrownGeo, palette.canopyLight, 741_115),
-      // Birch — pale bark, airy light foliage.
+      // Birch — pale bark, an angled branch, airy light foliage.
       layer(kMats, birchTrunkGeo, palette.birchBark, 741_108),
+      layer(kMats, birchBranchGeo, palette.birchBark, 741_135),
       layer(kMats, birchBlobAGeo, palette.canopy, 741_109),
       layer(kMats, birchBlobBGeo, palette.canopyLight, 741_110),
       layer(kMats, birchBlobCGeo, palette.canopy, 741_116),
+      layer(kMats, birchBlobDGeo, palette.canopyLight, 741_134),
       // Bushes — rounded twin lobes.
       layer(bushMats, bushGeo, palette.canopyDark, 741_111),
       layer(bushMats, bushLobeGeo, palette.canopyAlt, 741_117),
-      // Blossom accents — dark → pink → light.
+      // Blossom accents — root flare, dark skirt → pink → light.
+      layer(bloomMats, rootGeo, palette.trunk, 741_136),
       layer(bloomMats, trunkGeo, palette.trunk, 741_118),
+      layer(bloomMats, bloomSkirtGeo, palette.blossomDark, 741_137),
       layer(bloomMats, bloomAGeo, palette.blossomDark, 741_119),
       layer(bloomMats, bloomBGeo, palette.blossom, 741_120),
       layer(bloomMats, bloomCGeo, palette.blossom, 741_121),
