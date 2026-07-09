@@ -22,7 +22,7 @@ export function TerrainMesh({ world, color }: { world: ExploreWorld; color: stri
     geo.translate(world.widthM / 2, 0, -7);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
-      pos.setY(i, groundHeightAt(pos.getX(i), pos.getZ(i), world.ponds));
+      pos.setY(i, groundHeightAt(pos.getX(i), pos.getZ(i), world.stream));
     }
     geo.computeVertexNormals();
     return geo;

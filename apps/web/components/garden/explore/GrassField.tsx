@@ -4,10 +4,11 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { closestOnStream } from '@/lib/garden/explore/stream';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
-const TUFT_COUNT = 800;
+const TUFT_COUNT = 550;
 
 /**
  * Two crossed blade pairs — narrow tapered triangles with a dark-base/light-tip vertex
@@ -61,11 +62,14 @@ export function GrassField({ world, color }: { world: ExploreWorld; color: strin
     while (placed < TUFT_COUNT && guard++ < TUFT_COUNT * 4) {
       const x = world.bounds.minX + rng() * (world.bounds.maxX - world.bounds.minX);
       const z = world.bounds.minZ + rng() * (world.bounds.maxZ - world.bounds.minZ);
-      if (world.ponds.some((p) => Math.hypot(x - p.x, z - p.z) < p.radius + 1)) continue;
+      if (world.stream) {
+        const w = closestOnStream(x, z, world.stream);
+        if (w.dist < w.halfWidth + 1) continue; // keep grass off the water
+      }
       const s = 0.7 + rng() * 0.8;
       q.setFromAxisAngle(up, rng() * Math.PI);
       m.compose(
-        new THREE.Vector3(x, groundHeightAt(x, z, world.ponds), z),
+        new THREE.Vector3(x, groundHeightAt(x, z, world.stream), z),
         q,
         new THREE.Vector3(s, s, s),
       );

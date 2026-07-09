@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { applyLook, keysToInput, stepPlayer, strollHeld } from '@/lib/garden/explore/movement';
 import type { PlayerState } from '@/lib/garden/explore/movement';
-import type { Pond, WorldBounds } from '@/lib/garden/explore/world-layout';
+import type { WorldBounds } from '@/lib/garden/explore/world-layout';
 
 const bounds: WorldBounds = { minX: -12, maxX: 96, minZ: -26, maxZ: 12 };
-const opts = { speed: 3, bounds, ponds: [] as Pond[] };
+const opts = { speed: 3, bounds };
 const at = (x: number, z: number, yaw = 0, pitch = 0): PlayerState => ({ x, z, yaw, pitch });
 
 describe('keysToInput', () => {
@@ -64,13 +64,11 @@ describe('stepPlayer', () => {
     expect(north.z).toBe(bounds.minZ);
   });
 
-  it('pushes the player out of pond water', () => {
-    const pond: Pond = { x: 20, z: 5, radius: 5, level: -0.15 };
-    const wet = { ...opts, ponds: [pond] };
-    // Try to walk straight into the pond from its southern edge.
+  it('walks straight through where water is — the stream is no barrier', () => {
+    // Walking north from the southern edge just keeps going through the pool; nothing pushes back.
     let s = at(20, 11);
-    for (let i = 0; i < 40; i++) s = stepPlayer(s, { forward: 1, strafe: 0 }, 0.1, wet);
-    expect(Math.hypot(s.x - pond.x, s.z - pond.z)).toBeGreaterThanOrEqual(pond.radius);
+    for (let i = 0; i < 130; i++) s = stepPlayer(s, { forward: 1, strafe: 0 }, 0.1, opts);
+    expect(s.z).toBe(bounds.minZ);
   });
 
   it('does not move without input', () => {

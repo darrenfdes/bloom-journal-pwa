@@ -8,6 +8,8 @@ import {
   CAM_DAMP_RATE,
   MOVE_ACCEL_RATE,
   STROLL_FACTOR,
+  SWIM_SPEED_FACTOR,
+  WADE_HALF_WIDTH,
   WALK_SPEED,
 } from '@/lib/garden/explore/constants';
 import { followCameraPose } from '@/lib/garden/explore/follow-camera';
@@ -19,6 +21,7 @@ import {
   type MoveInput,
   type PlayerState,
 } from '@/lib/garden/explore/movement';
+import { closestOnStream, type Stream } from '@/lib/garden/explore/stream';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
@@ -43,24 +46,36 @@ class FoxErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
  * the pure movement math, smooths the fox's heading/gait, and floats the follow camera on a
  * damped boom behind it. Renders the fox model plus its soft ground shadow.
  */
+/** True when the fox is over deep enough water to swim (as opposed to wade). */
+function swimming(stream: Stream | null, x: number, z: number): boolean {
+  if (!stream) return false;
+  const w = closestOnStream(x, z, stream);
+  return w.dist < w.halfWidth && w.halfWidth >= WADE_HALF_WIDTH;
+}
+
 export function FoxRig({
   world,
   playerRef,
   joystickRef,
+  reducedMotion = false,
 }: {
   world: ExploreWorld;
   playerRef: RefObject<PlayerState>;
   joystickRef: RefObject<MoveInput>;
+  reducedMotion?: boolean;
 }) {
   const camera = useThree((s) => s.camera);
   const keysRef = useRef<Set<string>>(new Set());
   const inputRef = useRef<MoveInput>({ forward: 0, strafe: 0 });
   const motionRef = useRef<FoxMotionState>({ heading: playerRef.current.yaw, speed: 0 });
   const shadowRef = useRef<THREE.Mesh>(null);
+  const wakeRef = useRef<THREE.Mesh>(null);
   const snapped = useRef(false);
 
   const shadowTexture = useMemo(() => radialTexture('rgba(20,30,25,.5)', 'rgba(20,30,25,0)'), []);
+  const wakeTexture = useMemo(() => radialTexture('rgba(232,246,255,.6)', 'rgba(232,246,255,0)'), []);
   useEffect(() => () => shadowTexture.dispose(), [shadowTexture]);
+  useEffect(() => () => wakeTexture.dispose(), [wakeTexture]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -93,15 +108,13 @@ export function FoxRig({
     const input = rampInput(inputRef.current, target, MOVE_ACCEL_RATE, dt);
     inputRef.current = input;
     const prev = playerRef.current;
-    playerRef.current = stepPlayer(prev, input, dt, {
-      speed: WALK_SPEED,
-      bounds: world.bounds,
-      ponds: world.ponds,
-    });
+    // Swimming through the deep pool is slower than running on land.
+    const speed = swimming(world.stream, prev.x, prev.z) ? WALK_SPEED * SWIM_SPEED_FACTOR : WALK_SPEED;
+    playerRef.current = stepPlayer(prev, input, dt, { speed, bounds: world.bounds });
     const p = playerRef.current;
     motionRef.current = stepFoxMotion(motionRef.current, p.x - prev.x, p.z - prev.z, dt);
 
-    const pose = followCameraPose(p, world.ponds);
+    const pose = followCameraPose(p, world.stream);
     if (snapped.current) {
       camera.position.set(
         expDamp(camera.position.x, pose.position.x, CAM_DAMP_RATE, dt),
@@ -114,10 +127,21 @@ export function FoxRig({
     }
     camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
 
+    // In the deep pool, drop the ground shadow and trail a soft wake instead.
+    const deep = swimming(world.stream, p.x, p.z);
     const shadow = shadowRef.current;
     if (shadow) {
-      shadow.position.set(p.x, groundHeightAt(p.x, p.z, world.ponds) + 0.012, p.z);
+      (shadow.material as THREE.MeshBasicMaterial).opacity = deep ? 0 : 0.45;
+      shadow.position.set(p.x, groundHeightAt(p.x, p.z, world.stream) + 0.012, p.z);
       shadow.rotation.z = -motionRef.current.heading;
+    }
+    const wake = wakeRef.current;
+    if (wake) {
+      (wake.material as THREE.MeshBasicMaterial).opacity = deep ? 0.3 : 0;
+      if (deep && world.stream) {
+        wake.position.set(p.x, world.stream.level + 0.03, p.z);
+        wake.rotation.z = -motionRef.current.heading;
+      }
     }
   });
 
@@ -133,9 +157,24 @@ export function FoxRig({
           toneMapped={false}
         />
       </mesh>
+      <mesh ref={wakeRef} rotation={[-Math.PI / 2, 0, 0]} scale={[0.9, 1.9, 1]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          map={wakeTexture}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
       <FoxErrorBoundary>
         <Suspense fallback={null}>
-          <FoxModel playerRef={playerRef} motionRef={motionRef} ponds={world.ponds} />
+          <FoxModel
+            playerRef={playerRef}
+            motionRef={motionRef}
+            stream={world.stream}
+            reducedMotion={reducedMotion}
+          />
         </Suspense>
       </FoxErrorBoundary>
     </>

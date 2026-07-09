@@ -48,14 +48,15 @@ import { ClutterField } from './ClutterField';
 import { ExploreHud } from './ExploreHud';
 import { HorizonHaze } from './HorizonHaze';
 import { ExploreMemoryCard } from './ExploreMemoryCard';
+import { FishField } from './FishField';
 import { FlowerField } from './FlowerField';
 import { FoxRig } from './FoxRig';
 import { GrassField } from './GrassField';
 import { GroundCoverField } from './GroundCoverField';
 import { MountainRing } from './MountainRing';
-import { PondDecor } from './PondDecor';
-import { PondDisc } from './PondDisc';
 import { RockField } from './RockField';
+import { StreamDecor } from './StreamDecor';
+import { StreamWater } from './StreamWater';
 import { SkyDome } from './SkyDome';
 import { StarField } from './StarField';
 import { TerrainMesh } from './TerrainMesh';
@@ -265,13 +266,18 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
           <RockField world={world} />
           <GroundCoverField world={world} />
           <ClutterField world={world} />
-          <PondDisc
-            ponds={world.ponds}
-            skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'}
-            glint={lighting.sunColor}
-            reducedMotion={reducedMotion}
-          />
-          <PondDecor world={world} />
+          {world.stream && (
+            <>
+              <StreamWater
+                stream={world.stream}
+                skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'}
+                glint={lighting.sunColor}
+                reducedMotion={reducedMotion}
+              />
+              <FishField stream={world.stream} reducedMotion={reducedMotion} />
+            </>
+          )}
+          <StreamDecor world={world} />
           <FlowerField
             world={world}
             textures={textures}
@@ -284,7 +290,12 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             windSpeed={weather?.windSpeed ?? 0}
             reducedMotion={reducedMotion}
           />
-          <FoxRig world={world} playerRef={playerRef} joystickRef={joystickRef} />
+          <FoxRig
+            world={world}
+            playerRef={playerRef}
+            joystickRef={joystickRef}
+            reducedMotion={reducedMotion}
+          />
         </Canvas>
       </div>
       {coarsePointer && <VirtualJoystick inputRef={joystickRef} />}

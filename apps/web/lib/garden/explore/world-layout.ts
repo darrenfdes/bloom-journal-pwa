@@ -14,12 +14,10 @@ import {
   BOUNDS_SOUTH_Z,
   FLOWER_Z_NEAR,
   FLOWER_Z_SPAN,
-  POND_LEVEL,
-  POND_RADIUS,
-  POND_Z,
   PX_TO_M,
   SPAWN_Z,
 } from './constants';
+import { buildStream, type Stream } from './stream';
 
 export interface FlowerPlacement {
   entry: PlacedEntry;
@@ -36,14 +34,6 @@ export interface MonthRegion {
   xCenter: number;
 }
 
-export interface Pond {
-  x: number;
-  z: number;
-  radius: number;
-  /** Water level relative to the ground base (y = 0). */
-  level: number;
-}
-
 export interface WorldBounds {
   minX: number;
   maxX: number;
@@ -54,7 +44,8 @@ export interface WorldBounds {
 export interface ExploreWorld {
   flowers: FlowerPlacement[];
   months: MonthRegion[];
-  ponds: Pond[];
+  /** The watercourse crossing the meadow, or null for gardens too small for water. */
+  stream: Stream | null;
   bounds: WorldBounds;
   /** Total east–west span of the month strips in metres. */
   widthM: number;
@@ -85,31 +76,21 @@ export function buildExploreWorld(layout: MeadowLayout): ExploreWorld {
     };
   });
 
-  const ponds: Pond[] = [];
-  if (months.length >= 2) {
-    const boundaries = months.slice(1).map((m) => m.xStart);
-    const nearestBoundary = (target: number) =>
-      boundaries.reduce((best, b) => (Math.abs(b - target) < Math.abs(best - target) ? b : best));
-    const makePond = (x: number): Pond => ({ x, z: POND_Z, radius: POND_RADIUS, level: POND_LEVEL });
+  const bounds: WorldBounds = {
+    minX: -BOUNDS_MARGIN_X,
+    maxX: widthM + BOUNDS_MARGIN_X,
+    minZ: BOUNDS_NORTH_Z,
+    maxZ: BOUNDS_SOUTH_Z,
+  };
 
-    ponds.push(makePond(nearestBoundary(widthM / 2)));
-    if (months.length >= 8) {
-      const second = nearestBoundary(widthM * 0.75);
-      if (second !== ponds[0]!.x) ponds.push(makePond(second));
-    }
-  }
+  const stream = buildStream({ months, bounds, widthM });
 
   const lastMonth = months[months.length - 1];
   return {
     flowers,
     months,
-    ponds,
-    bounds: {
-      minX: -BOUNDS_MARGIN_X,
-      maxX: widthM + BOUNDS_MARGIN_X,
-      minZ: BOUNDS_NORTH_Z,
-      maxZ: BOUNDS_SOUTH_Z,
-    },
+    stream,
+    bounds,
     widthM,
     spawn: { x: lastMonth ? lastMonth.xCenter : 0, z: SPAWN_Z, yaw: 0 },
   };
