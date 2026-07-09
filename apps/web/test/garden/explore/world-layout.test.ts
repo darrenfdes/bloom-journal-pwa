@@ -21,7 +21,7 @@ describe('buildExploreWorld', () => {
     expect(a.flowers.map((f) => [f.x, f.z, f.height])).toEqual(
       b.flowers.map((f) => [f.x, f.z, f.height]),
     );
-    expect(a.ponds).toEqual(b.ponds);
+    expect(a.stream).toEqual(b.stream);
     expect(a.spawn).toEqual(b.spawn);
   });
 
@@ -65,23 +65,21 @@ describe('buildExploreWorld', () => {
     expect(fav.flowers[0]!.height).toBeLessThan(2.2);
   });
 
-  it('places no pond for a single month, one for three months, clear of the flowers', () => {
+  it('carves no stream for a single month, and a through-stream for three months', () => {
     const one = buildExploreWorld(buildMeadowLayout([entry({ id: 'solo' })]));
-    expect(one.ponds).toHaveLength(0);
+    expect(one.stream).toBeNull();
 
     const three = buildExploreWorld(buildMeadowLayout(threeMonths()));
-    expect(three.ponds).toHaveLength(1);
-    const pond = three.ponds[0]!;
-    expect([28, 56]).toContain(pond.x);
-    // South of the flower band: the pond edge never reaches the flowers' z range.
-    expect(pond.z - pond.radius).toBeGreaterThan(-2);
-    expect(pond.level).toBeLessThan(0);
-  });
-
-  it('adds a second pond for gardens spanning eight or more months', () => {
-    const world = buildExploreWorld(buildMeadowLayout(nineMonths()));
-    expect(world.ponds).toHaveLength(2);
-    expect(world.ponds[0]!.x).not.toBe(world.ponds[1]!.x);
+    const stream = three.stream!;
+    expect(stream).not.toBeNull();
+    // Enters from beyond the north edge and exits beyond the south edge — comes from off-map.
+    expect(stream.points[0]!.z).toBeLessThan(three.bounds.minZ);
+    expect(stream.points[stream.points.length - 1]!.z).toBeGreaterThan(three.bounds.maxZ);
+    // Pool sits on a month boundary near mid-world, south of the flower band.
+    const pool = stream.points.reduce((a, b) => (b.halfWidth > a.halfWidth ? b : a));
+    expect([28, 56]).toContain(pool.x);
+    expect(pool.z).toBeGreaterThan(-2);
+    expect(stream.level).toBeLessThan(0);
   });
 
   it('spawns south of the newest month facing the flowers', () => {
@@ -91,10 +89,10 @@ describe('buildExploreWorld', () => {
     expect(world.spawn.yaw).toBe(0);
   });
 
-  it('handles an empty garden without ponds or flowers', () => {
+  it('handles an empty garden without a stream or flowers', () => {
     const world = buildExploreWorld(buildMeadowLayout([]));
     expect(world.flowers).toHaveLength(0);
-    expect(world.ponds).toHaveLength(0);
+    expect(world.stream).toBeNull();
     expect(world.bounds.minX).toBeLessThan(world.bounds.maxX);
     expect(Number.isFinite(world.spawn.x)).toBe(true);
   });

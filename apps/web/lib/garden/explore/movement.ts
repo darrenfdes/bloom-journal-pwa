@@ -1,11 +1,12 @@
 /**
- * First-person walking math for the explorable meadow: keyboard mapping, position stepping
- * with bounds + pond collision, and drag-look. Pure logic — no three.js, no DOM.
+ * First-person walking math for the explorable meadow: keyboard mapping, position stepping with
+ * bounds clamping, and drag-look. The water is no barrier — the fox wades and swims through it, so
+ * there's no pond collision here (see FoxRig for swim speed). Pure logic — no three.js, no DOM.
  *
  * Conventions match a three.js camera with rotation order 'YXZ': yaw 0 faces north (−z),
  * positive yaw turns left, positive pitch looks up.
  */
-import type { Pond, WorldBounds } from './world-layout';
+import type { WorldBounds } from './world-layout';
 
 export interface MoveInput {
   /** −1..1, positive = walk toward facing direction. */
@@ -24,13 +25,10 @@ export interface PlayerState {
 export interface StepOptions {
   speed: number;
   bounds: WorldBounds;
-  ponds: readonly Pond[];
 }
 
 const PITCH_MIN = (-60 * Math.PI) / 180;
 const PITCH_MAX = (45 * Math.PI) / 180;
-/** Keep the walker a little back from the water's edge. */
-const POND_BUFFER = 0.4;
 
 const KEY_AXES: Record<string, Partial<MoveInput>> = {
   KeyW: { forward: 1 },
@@ -70,35 +68,20 @@ export function stepPlayer(
   s: PlayerState,
   input: MoveInput,
   dt: number,
-  { speed, bounds, ponds }: StepOptions,
+  { speed, bounds }: StepOptions,
 ): PlayerState {
   if (input.forward === 0 && input.strafe === 0) return s;
 
   const sin = Math.sin(s.yaw);
   const cos = Math.cos(s.yaw);
-  let x = s.x + (input.strafe * cos - input.forward * sin) * speed * dt;
-  let z = s.z + (-input.forward * cos - input.strafe * sin) * speed * dt;
+  const x = s.x + (input.strafe * cos - input.forward * sin) * speed * dt;
+  const z = s.z + (-input.forward * cos - input.strafe * sin) * speed * dt;
 
-  x = Math.min(bounds.maxX, Math.max(bounds.minX, x));
-  z = Math.min(bounds.maxZ, Math.max(bounds.minZ, z));
-
-  for (const pond of ponds) {
-    const barrier = pond.radius + POND_BUFFER;
-    const dx = x - pond.x;
-    const dz = z - pond.z;
-    const d = Math.hypot(dx, dz);
-    if (d < barrier) {
-      // Push back out radially; if somehow dead-centre, eject south.
-      if (d === 0) {
-        z = pond.z + barrier;
-      } else {
-        x = pond.x + (dx / d) * barrier;
-        z = pond.z + (dz / d) * barrier;
-      }
-    }
-  }
-
-  return { ...s, x, z };
+  return {
+    ...s,
+    x: Math.min(bounds.maxX, Math.max(bounds.minX, x)),
+    z: Math.min(bounds.maxZ, Math.max(bounds.minZ, z)),
+  };
 }
 
 export function applyLook(
