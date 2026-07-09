@@ -14,8 +14,8 @@ import {
   FOX_HEAD_HEIGHT,
 } from './constants';
 import type { PlayerState } from './movement';
-import { groundHeightAt } from './terrain';
-import type { Pond } from './world-layout';
+import type { Stream } from './stream';
+import { surfaceHeightAt } from './terrain';
 
 export interface CameraPose {
   position: { x: number; y: number; z: number };
@@ -34,7 +34,7 @@ export interface FollowCameraOptions {
 
 export function followCameraPose(
   player: PlayerState,
-  ponds: readonly Pond[],
+  stream: Stream | null,
   opts?: Partial<FollowCameraOptions>,
 ): CameraPose {
   const boom = opts?.boom ?? CAM_BOOM;
@@ -46,7 +46,7 @@ export function followCameraPose(
 
   const target = {
     x: player.x,
-    y: groundHeightAt(player.x, player.z, ponds) + headHeight,
+    y: surfaceHeightAt(player.x, player.z, stream) + headHeight,
     z: player.z,
   };
 
@@ -63,7 +63,7 @@ export function followCameraPose(
   };
   position.y = Math.max(
     position.y,
-    groundHeightAt(position.x, position.z, ponds) + minClearance,
+    surfaceHeightAt(position.x, position.z, stream) + minClearance,
   );
 
   return { position, target };

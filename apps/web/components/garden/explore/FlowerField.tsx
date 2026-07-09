@@ -71,7 +71,7 @@ export function FlowerField({
         {world.flowers.map((f) => {
           const tex = textures.get(f.entry.id);
           if (!tex) return null;
-          const ground = groundHeightAt(f.x, f.z, world.ponds);
+          const ground = groundHeightAt(f.x, f.z, world.stream);
           return (
             <mesh
               key={f.entry.id}
@@ -98,7 +98,7 @@ export function FlowerField({
       </group>
       {world.flowers.map((f) => {
         if (!textures.has(f.entry.id)) return null;
-        const ground = groundHeightAt(f.x, f.z, world.ponds);
+        const ground = groundHeightAt(f.x, f.z, world.stream);
         return (
           <group key={`fx-${f.entry.id}`}>
             <mesh

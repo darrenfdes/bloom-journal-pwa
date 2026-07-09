@@ -65,7 +65,7 @@ export function GroundCoverField({ world }: { world: ExploreWorld }) {
       list.forEach((it, i) => {
         q.setFromAxisAngle(up, it.rotation);
         m.compose(
-          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.ponds), it.z),
+          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.stream), it.z),
           q,
           new THREE.Vector3(it.scale, it.scale, it.scale),
         );

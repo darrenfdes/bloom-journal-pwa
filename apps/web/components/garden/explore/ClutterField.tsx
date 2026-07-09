@@ -60,7 +60,7 @@ export function ClutterField({ world }: { world: ExploreWorld }) {
       list.forEach((it, i) => {
         const s = it.scale * base;
         m.compose(
-          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.ponds) + lift * s, it.z),
+          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.stream) + lift * s, it.z),
           orient(it),
           new THREE.Vector3(s, s, s),
         );

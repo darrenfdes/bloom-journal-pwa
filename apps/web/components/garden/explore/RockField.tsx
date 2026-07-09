@@ -7,43 +7,34 @@ import { mulberry32 } from '@/lib/garden/bloom/rng';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import {
   scatterInBand,
-  scatterInRing,
+  streamBankScatter,
   worldExclusions,
   type ScatterItem,
 } from '@/lib/garden/explore/scatter';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
 /**
- * Low-poly stones scattered across the meadow and clustered at pond rims. Two faceted
+ * Low-poly stones scattered across the meadow and clustered along the stream banks. Two faceted
  * geometries, non-uniform per-instance scale, sunk slightly into the ground; lambert so they
  * shade with the phase lights.
  */
 export function RockField({ world }: { world: ExploreWorld }) {
   const meshes = useMemo(() => {
-    const exclusions = worldExclusions(world, { flowerRadius: 0.8, pondBuffer: 0.6, spawnRadius: 2.5 });
+    const exclusions = worldExclusions(world, { flowerRadius: 0.8, streamBuffer: 0.4, spawnRadius: 2.5 });
     const b = world.bounds;
     const field: ScatterItem[] = scatterInBand({
       seed: 322_019,
-      count: 40,
+      count: 34,
       band: { xMin: b.minX, xMax: b.maxX, zMin: b.minZ, zMax: b.maxZ },
       minScale: 0.12,
       maxScale: 0.5,
       variants: 2,
       exclusions,
     });
-    const rims: ScatterItem[] = world.ponds.flatMap((p, i) =>
-      scatterInRing({
-        seed: 322_500 + i * 131,
-        count: 8,
-        cx: p.x,
-        cz: p.z,
-        rMin: p.radius + 0.8,
-        rMax: p.radius + 2.2,
-        minScale: 0.16,
-        maxScale: 0.42,
-        variants: 2,
-      }),
-    );
+    // Stones bedded along the water's edge.
+    const rims: ScatterItem[] = world.stream
+      ? streamBankScatter(world.stream, 322_500, 26, 0.05, 0.6, 0.16, 0.44)
+      : [];
     const all = [...field, ...rims];
 
     const geos = [new THREE.IcosahedronGeometry(1, 0), new THREE.DodecahedronGeometry(1, 0)];
@@ -65,7 +56,7 @@ export function RockField({ world }: { world: ExploreWorld }) {
         const sy = it.scale * 0.7;
         const sz = it.scale * (0.8 + rng() * 0.5);
         m.compose(
-          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.ponds) - it.scale * 0.2, it.z),
+          new THREE.Vector3(it.x, groundHeightAt(it.x, it.z, world.stream) - it.scale * 0.2, it.z),
           q,
           new THREE.Vector3(sx, sy, sz),
         );

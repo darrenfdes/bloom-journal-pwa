@@ -46,10 +46,28 @@ export const BOUNDS_MARGIN_X = 12;
 export const BOUNDS_NORTH_Z = -26;
 export const BOUNDS_SOUTH_Z = 12;
 
-/** Ponds sit south of the flower band as landmarks between month regions. */
-export const POND_RADIUS = 5;
-export const POND_Z = 7;
-export const POND_LEVEL = -0.15;
+/**
+ * The meadow's watercourse — a stream that enters from beyond the north treeline, widens into a
+ * swimmable pool south of the flower band, and exits beyond the south edge. `POND_LEVEL` is the
+ * water surface; the pool bed is carved deeper (see terrain.ts).
+ */
+export const POND_Z = 7; // pool centre, south of the flower band
+export const POND_LEVEL = -0.15; // water surface height (y)
+/** Half-widths (m): a slim creek at the ends, a broad pool in the middle. */
+export const STREAM_HALF_WIDTH = 1.4;
+export const POOL_HALF_WIDTH = 5.5;
+/** Above this half-width the water is "deep" — the fox swims; below it, the fox wades. */
+export const WADE_HALF_WIDTH = 3.2;
+/** How far past the world bounds the stream's endpoints run, so it reads as coming from off-map. */
+export const STREAM_OFFMAP = 10;
+/** Terrain eases down to the streambed over this distance past the water's edge. */
+export const STREAM_BLEND = 3;
+/** The streambed drops this far below the surface — shallow at the creek, deep in the pool. */
+export const POOL_BED_MIN_DROP = 0.12;
+export const POOL_BED_MAX_DROP = 0.7;
+/** Swimming is slower than running, and the floating fox sits this far below the waterline. */
+export const SWIM_SPEED_FACTOR = 0.5;
+export const FOX_FLOAT_SUBMERSION = 0.2;
 
 export const SPAWN_Z = 5;
 
