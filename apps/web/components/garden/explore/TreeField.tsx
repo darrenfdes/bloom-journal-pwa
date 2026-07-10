@@ -18,15 +18,26 @@ import {
 } from '@/lib/garden/explore/scatter';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
+import { applyWindSway, type WindUniforms } from './wind-material';
+
 /**
  * Trees framing the meadow — three-tier conifer firs, rounded lush broadleafs, slender pale-bark
  * birches, a few flowering blossom accents, soft edge bushes and a hazed background treeline for
  * depth. Each silhouette is built from several instanced meshes sharing one matrix per tree, and
  * every canopy layer is shaded dark → mid → light to fake volume without extra lights. `meshLambert`
  * picks up the phase-driven scene lights; rounded canopies (icosahedron detail 1) read as foliage
- * rather than faceted crystals at the mid-distance the fox always views them from.
+ * rather than faceted crystals at the mid-distance the fox always views them from. Canopy layers
+ * sway in the wind; trunks, roots, branches and the fogged distant treeline stay rigid.
  */
-export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseKey }) {
+export function TreeField({
+  world,
+  phase,
+  wind,
+}: {
+  world: ExploreWorld;
+  phase: PhaseKey;
+  wind: WindUniforms | null;
+}) {
   const palette = useMemo(() => treePaletteFor(phase), [phase]);
 
   const built = useMemo(() => {
@@ -129,8 +140,10 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
       g: THREE.BufferGeometry,
       color: string,
       seed: number,
+      sway = false,
     ): THREE.InstancedMesh => {
       const mat = new THREE.MeshLambertMaterial({ color });
+      if (sway && wind) applyWindSway(mat, 'canopy', wind);
       materials.push(mat);
       const mesh = new THREE.InstancedMesh(g, mat, mats.length);
       const rng = mulberry32(seed);
@@ -154,42 +167,42 @@ export function TreeField({ world, phase }: { world: ExploreWorld; phase: PhaseK
       // Conifer firs — root flare, wide skirt, dark base → mid → lit top.
       layer(cMats, rootGeo, palette.trunk, 741_130),
       layer(cMats, trunkGeo, palette.trunk, 741_101),
-      layer(cMats, coneSkirtGeo, palette.canopyDark, 741_131),
-      layer(cMats, coneBaseGeo, palette.canopyDark, 741_102),
-      layer(cMats, coneMidGeo, palette.canopy, 741_103),
-      layer(cMats, coneTopGeo, palette.canopyLight, 741_114),
+      layer(cMats, coneSkirtGeo, palette.canopyDark, 741_131, true),
+      layer(cMats, coneBaseGeo, palette.canopyDark, 741_102, true),
+      layer(cMats, coneMidGeo, palette.canopy, 741_103, true),
+      layer(cMats, coneTopGeo, palette.canopyLight, 741_114, true),
       // Broadleaf — root flare, shadowed skirt + base blob, mid blobs, sun-kissed crown.
       layer(bMats, rootGeo, palette.trunk, 741_132),
       layer(bMats, trunkGeo, palette.trunk, 741_104),
-      layer(bMats, blobSkirtGeo, palette.canopyDark, 741_133),
-      layer(bMats, blobAGeo, palette.canopyDark, 741_105),
-      layer(bMats, blobBGeo, palette.canopyAlt, 741_106),
-      layer(bMats, blobCGeo, palette.canopyAlt, 741_107),
-      layer(bMats, blobCrownGeo, palette.canopyLight, 741_115),
+      layer(bMats, blobSkirtGeo, palette.canopyDark, 741_133, true),
+      layer(bMats, blobAGeo, palette.canopyDark, 741_105, true),
+      layer(bMats, blobBGeo, palette.canopyAlt, 741_106, true),
+      layer(bMats, blobCGeo, palette.canopyAlt, 741_107, true),
+      layer(bMats, blobCrownGeo, palette.canopyLight, 741_115, true),
       // Birch — pale bark, an angled branch, airy light foliage.
       layer(kMats, birchTrunkGeo, palette.birchBark, 741_108),
       layer(kMats, birchBranchGeo, palette.birchBark, 741_135),
-      layer(kMats, birchBlobAGeo, palette.canopy, 741_109),
-      layer(kMats, birchBlobBGeo, palette.canopyLight, 741_110),
-      layer(kMats, birchBlobCGeo, palette.canopy, 741_116),
-      layer(kMats, birchBlobDGeo, palette.canopyLight, 741_134),
+      layer(kMats, birchBlobAGeo, palette.canopy, 741_109, true),
+      layer(kMats, birchBlobBGeo, palette.canopyLight, 741_110, true),
+      layer(kMats, birchBlobCGeo, palette.canopy, 741_116, true),
+      layer(kMats, birchBlobDGeo, palette.canopyLight, 741_134, true),
       // Bushes — rounded twin lobes.
-      layer(bushMats, bushGeo, palette.canopyDark, 741_111),
-      layer(bushMats, bushLobeGeo, palette.canopyAlt, 741_117),
+      layer(bushMats, bushGeo, palette.canopyDark, 741_111, true),
+      layer(bushMats, bushLobeGeo, palette.canopyAlt, 741_117, true),
       // Blossom accents — root flare, dark skirt → pink → light.
       layer(bloomMats, rootGeo, palette.trunk, 741_136),
       layer(bloomMats, trunkGeo, palette.trunk, 741_118),
-      layer(bloomMats, bloomSkirtGeo, palette.blossomDark, 741_137),
-      layer(bloomMats, bloomAGeo, palette.blossomDark, 741_119),
-      layer(bloomMats, bloomBGeo, palette.blossom, 741_120),
-      layer(bloomMats, bloomCGeo, palette.blossom, 741_121),
-      layer(bloomMats, bloomCrownGeo, palette.blossomLight, 741_122),
+      layer(bloomMats, bloomSkirtGeo, palette.blossomDark, 741_137, true),
+      layer(bloomMats, bloomAGeo, palette.blossomDark, 741_119, true),
+      layer(bloomMats, bloomBGeo, palette.blossom, 741_120, true),
+      layer(bloomMats, bloomCGeo, palette.blossom, 741_121, true),
+      layer(bloomMats, bloomCrownGeo, palette.blossomLight, 741_122, true),
       // Distant treeline — deep-green, hazed.
       layer(tlMats, tlTrunkGeo, palette.trunk, 741_112),
       layer(tlMats, tlConeGeo, palette.canopyDark, 741_113),
     ];
     return { meshes, geometries, materials };
-  }, [world, palette]);
+  }, [world, palette, wind]);
 
   useEffect(
     () => () => {

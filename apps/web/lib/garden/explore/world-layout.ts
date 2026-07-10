@@ -52,6 +52,22 @@ export interface ExploreWorld {
   spawn: { x: number; z: number; yaw: number };
 }
 
+/**
+ * The month/year label under a world x-position — drives the HUD's wayfinding pill as the fox
+ * walks the time axis. The walkable margins beyond the month strips clamp to the first/last
+ * month; null only for an empty garden.
+ */
+export function monthLabelAt(
+  x: number,
+  world: Pick<ExploreWorld, 'months' | 'widthM'>,
+): string | null {
+  const count = world.months.length;
+  if (count === 0) return null;
+  const band = world.widthM / count;
+  const i = Math.min(count - 1, Math.max(0, Math.floor(x / band)));
+  return world.months[i]!.label;
+}
+
 export function buildExploreWorld(layout: MeadowLayout): ExploreWorld {
   const bandM = layout.MW * PX_TO_M;
   const widthM = layout.months.length * bandM;

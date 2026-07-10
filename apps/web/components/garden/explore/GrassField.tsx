@@ -8,6 +8,8 @@ import { closestOnStream } from '@/lib/garden/explore/stream';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
+import { applyWindSway, type WindUniforms } from './wind-material';
+
 const TUFT_COUNT = 550;
 
 /**
@@ -39,9 +41,18 @@ function tuftGeometry() {
 
 /**
  * One InstancedMesh of deterministic grass tufts scattered across the walkable meadow
- * (skipping pond water). Static — matrices are set once per world.
+ * (skipping pond water). Matrices are set once per world; sway happens in the vertex
+ * shader when `wind` is provided (null under reduced motion).
  */
-export function GrassField({ world, color }: { world: ExploreWorld; color: string }) {
+export function GrassField({
+  world,
+  color,
+  wind,
+}: {
+  world: ExploreWorld;
+  color: string;
+  wind: WindUniforms | null;
+}) {
   const geometry = useMemo(() => tuftGeometry(), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -52,6 +63,7 @@ export function GrassField({ world, color }: { world: ExploreWorld; color: strin
       side: THREE.DoubleSide,
       toneMapped: false,
     });
+    if (wind) applyWindSway(material, 'grass', wind);
     const instanced = new THREE.InstancedMesh(geometry, material, TUFT_COUNT);
     const rng = mulberry32(913_007);
     const m = new THREE.Matrix4();
@@ -79,7 +91,7 @@ export function GrassField({ world, color }: { world: ExploreWorld; color: strin
     instanced.count = placed;
     instanced.instanceMatrix.needsUpdate = true;
     return instanced;
-  }, [world, color, geometry]);
+  }, [world, color, geometry, wind]);
 
   useEffect(
     () => () => {

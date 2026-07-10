@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildMeadowLayout } from '@/lib/garden/bloom/layout';
-import { buildExploreWorld } from '@/lib/garden/explore/world-layout';
+import { buildExploreWorld, monthLabelAt } from '@/lib/garden/explore/world-layout';
 import { entry } from '../../fixtures/entry';
 
 const threeMonths = () => [
@@ -95,5 +95,30 @@ describe('buildExploreWorld', () => {
     expect(world.stream).toBeNull();
     expect(world.bounds.minX).toBeLessThan(world.bounds.maxX);
     expect(Number.isFinite(world.spawn.x)).toBe(true);
+  });
+});
+
+describe('monthLabelAt', () => {
+  it('returns the month band under x, boundaries belonging to the newer month', () => {
+    const world = buildExploreWorld(buildMeadowLayout(threeMonths()));
+    expect(monthLabelAt(4, world)).toBe('January 2026');
+    expect(monthLabelAt(28, world)).toBe('February 2026');
+    expect(monthLabelAt(55.9, world)).toBe('February 2026');
+    expect(monthLabelAt(70, world)).toBe('March 2026');
+  });
+
+  it('clamps the off-strip walkable margins to the first/last month', () => {
+    const world = buildExploreWorld(buildMeadowLayout(threeMonths()));
+    expect(monthLabelAt(world.bounds.minX, world)).toBe('January 2026');
+    expect(monthLabelAt(world.bounds.maxX, world)).toBe('March 2026');
+  });
+
+  it('handles a single-month garden and returns null for an empty one', () => {
+    const one = buildExploreWorld(
+      buildMeadowLayout([entry({ id: 'solo', createdAt: new Date(2026, 5, 1) })]),
+    );
+    expect(monthLabelAt(one.spawn.x, one)).toBe('June 2026');
+    const empty = buildExploreWorld(buildMeadowLayout([]));
+    expect(monthLabelAt(0, empty)).toBeNull();
   });
 });

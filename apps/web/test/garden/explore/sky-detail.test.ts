@@ -9,6 +9,7 @@ import {
   driftedAzimuth,
   haloLayersFor,
   horizonHazeFor,
+  moonDiscPalette,
   treePaletteFor,
   twinkleOpacity,
   visibleCloudCount,
@@ -158,5 +159,33 @@ describe('twinkleOpacity', () => {
     }
     expect(max - min).toBeGreaterThan(0.2);
     expect(twinkleOpacity(0, 0, 5)).toBe(0);
+  });
+});
+
+describe('moonDiscPalette', () => {
+  it('returns the classic cream disc + cool halo when untinted', () => {
+    expect(moonDiscPalette(null)).toEqual({
+      light: '#fbf7ea',
+      mid: '#efe9d4',
+      limb: '#e2dcc4',
+      crater: 'rgba(180,174,150,.35)',
+      halo: '#dfe6f5',
+    });
+  });
+
+  it('passes a named-moon tint through to disc and halo', () => {
+    const harvest = {
+      light: '#f6e2bd',
+      mid: '#eccb92',
+      limb: '#d6ad72',
+      crater: 'rgba(150,120,78,.34)',
+      glow: '250,214,150',
+    };
+    const p = moonDiscPalette(harvest);
+    expect(p.light).toBe('#f6e2bd');
+    expect(p.mid).toBe('#eccb92');
+    expect(p.limb).toBe('#d6ad72');
+    expect(p.crater).toBe('rgba(150,120,78,.34)');
+    expect(p.halo).toBe('rgb(250,214,150)');
   });
 });

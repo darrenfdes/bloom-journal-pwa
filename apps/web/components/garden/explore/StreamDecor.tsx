@@ -7,6 +7,8 @@ import { streamDecorFor } from '@/lib/garden/explore/scatter';
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
+import { applyWindSway, type WindUniforms } from './wind-material';
+
 /** A few tall thin reed blades, crossed like the grass tufts but darker and taller. */
 function reedGeometry() {
   const blade = (x0: number, z0: number, x1: number, z1: number, h: number) => [
@@ -27,9 +29,10 @@ const BLOSSOM = ['#e8a0c0', '#f4efe4'];
 /**
  * Stream dressing: floating lily pads + a few open blossoms in the pool, a reed fringe hugging the
  * banks, and tall cattails a little further out. Placed deterministically by `streamDecorFor`;
- * lambert pads/cattails shade with the phase lights, unlit reeds read as brushstrokes.
+ * lambert pads/cattails shade with the phase lights, unlit reeds read as brushstrokes. Reeds and
+ * cattails sway in the wind (pads/blossoms float, they don't bend).
  */
-export function StreamDecor({ world }: { world: ExploreWorld }) {
+export function StreamDecor({ world, wind }: { world: ExploreWorld; wind: WindUniforms | null }) {
   const built = useMemo(() => {
     if (!world.stream) return null;
     const level = world.stream.level;
@@ -47,6 +50,11 @@ export function StreamDecor({ world }: { world: ExploreWorld }) {
     const blossomMat = new THREE.MeshBasicMaterial({ color: '#ffffff', side: THREE.DoubleSide, toneMapped: false });
     const stalkMat = new THREE.MeshLambertMaterial({ color: '#4a6b3e' });
     const headMat = new THREE.MeshLambertMaterial({ color: '#7a5230' });
+    if (wind) {
+      applyWindSway(reedMat, 'reed', wind);
+      applyWindSway(stalkMat, 'reed', wind);
+      applyWindSway(headMat, 'reed', wind);
+    }
     const materials = [padMat, reedMat, blossomMat, stalkMat, headMat];
 
     const m = new THREE.Matrix4();
@@ -97,7 +105,7 @@ export function StreamDecor({ world }: { world: ExploreWorld }) {
       geometries,
       materials,
     };
-  }, [world]);
+  }, [world, wind]);
 
   useEffect(() => {
     if (!built) return;

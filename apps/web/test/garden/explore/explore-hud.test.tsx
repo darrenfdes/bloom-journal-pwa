@@ -83,4 +83,42 @@ describe('ExploreHud', () => {
     expect(screen.getByText(/PixelMannen/)).toBeTruthy();
     expect(screen.getByText(/CC BY 4\.0/)).toBeTruthy();
   });
+
+  it('shows the sound toggle with pressed state and fires the handler', () => {
+    const onToggleSound = vi.fn();
+    const { rerender } = render(
+      <ExploreHud onBack={() => {}} hint={null} progress={null} soundOn onToggleSound={onToggleSound} />,
+    );
+    const btn = screen.getByRole('button', { name: /ambient sound/i });
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(btn);
+    expect(onToggleSound).toHaveBeenCalled();
+
+    rerender(
+      <ExploreHud
+        onBack={() => {}}
+        hint={null}
+        progress={null}
+        soundOn={false}
+        onToggleSound={onToggleSound}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /ambient sound/i }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+  });
+
+  it('hides the sound toggle when no handler is wired', () => {
+    render(<ExploreHud onBack={() => {}} hint={null} progress={null} />);
+    expect(screen.queryByRole('button', { name: /ambient sound/i })).toBeNull();
+  });
+
+  it('shows the month pill only when a label is provided', () => {
+    const { rerender } = render(
+      <ExploreHud onBack={() => {}} hint={null} progress={null} monthLabel="June 2026" />,
+    );
+    expect(screen.getByText('June 2026')).toBeTruthy();
+    rerender(<ExploreHud onBack={() => {}} hint={null} progress={null} monthLabel={null} />);
+    expect(screen.queryByText('June 2026')).toBeNull();
+  });
 });

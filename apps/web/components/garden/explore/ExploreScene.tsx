@@ -13,9 +13,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EntryRecord } from '@bloom/core';
-import { getMoonPhase } from '@bloom/core/scene';
+import { getMoonPhase, shouldShowLightning } from '@bloom/core/scene';
 import type { WeatherCategory, WeatherState } from '@bloom/core/scene';
 
+import type { WorldEvent } from '@bloom/core/events';
+
+import { moonScaleForEvent, moonTintForEvent } from '@/lib/garden/bloom/event-catalog';
 import { buildMeadowLayout } from '@/lib/garden/bloom/layout';
 import {
   celestialAt,
@@ -24,12 +27,15 @@ import {
   phaseFromHour,
   type PhaseKey,
 } from '@/lib/garden/bloom/phases';
+import { ambienceMixFor } from '@/lib/garden/explore/ambience';
+import { getAmbienceEnabled, setAmbienceEnabled } from '@/lib/garden/explore/ambience-pref';
 import { EYE_HEIGHT } from '@/lib/garden/explore/constants';
 import {
   applyLook,
   type MoveInput,
   type PlayerState,
 } from '@/lib/garden/explore/movement';
+import { closestOnStream } from '@/lib/garden/explore/stream';
 import {
   fogRangeFor,
   groundColorFor,
@@ -39,9 +45,12 @@ import {
   starOpacityFor,
   sunDirectionAt,
 } from '@/lib/garden/explore/sky';
-import { buildExploreWorld } from '@/lib/garden/explore/world-layout';
+import { windSpeedFallback } from '@/lib/garden/explore/wind';
+import { buildExploreWorld, monthLabelAt } from '@/lib/garden/explore/world-layout';
 import { usePrefersReducedMotion } from '@/lib/hooks/usePrefersReducedMotion';
 
+import { AmbientMotes } from './AmbientMotes';
+import { ButterflyField } from './ButterflyField';
 import { CelestialSprites } from './CelestialSprites';
 import { CloudLayer } from './CloudLayer';
 import { ClutterField } from './ClutterField';
@@ -52,9 +61,12 @@ import { FishField } from './FishField';
 import { FlowerField } from './FlowerField';
 import { FoxRig } from './FoxRig';
 import { GrassField } from './GrassField';
+import { LightningRig } from './LightningRig';
 import { GroundCoverField } from './GroundCoverField';
 import { MountainRing } from './MountainRing';
 import { RockField } from './RockField';
+import { ShootingStars } from './ShootingStars';
+import { SkyFlights } from './SkyFlights';
 import { StreamDecor } from './StreamDecor';
 import { StreamWater } from './StreamWater';
 import { SkyDome } from './SkyDome';
@@ -64,6 +76,9 @@ import { TreeField } from './TreeField';
 import { useFlowerTextures } from './useFlowerTextures';
 import { VirtualJoystick } from './VirtualJoystick';
 import { WeatherParticles } from './WeatherParticles';
+import { WindDriver } from './WindDriver';
+import { AmbienceEngine } from './ambience-engine';
+import { createWindUniforms } from './wind-material';
 
 const LOOK_SENSITIVITY = 0.0045;
 const HINT_FADE_MS = 6000;
@@ -97,9 +112,16 @@ export interface ExploreSceneProps {
   entries: EntryRecord[];
   weather: WeatherState | null;
   latitude: number;
+  /** Today's headline world event (named moon, supermoon…), or null for an ordinary day. */
+  moonEvent?: WorldEvent | null;
 }
 
-export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) {
+export function ExploreScene({
+  entries,
+  weather,
+  latitude,
+  moonEvent = null,
+}: ExploreSceneProps) {
   const router = useRouter();
   const params = useSearchParams();
   const reducedMotion = usePrefersReducedMotion();
@@ -137,9 +159,24 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
       ? OVERRIDE_CLOUD[devWeather]
       : Math.min(1, Math.max(0, (weather?.cloudCover ?? 0) / 100));
 
-  const lighting = useMemo(() => lightingForPhase(phase, cloudCover), [phase, cloudCover]);
+  const lighting = useMemo(
+    () => lightingForPhase(phase, cloudCover, category),
+    [phase, cloudCover, category],
+  );
   const fog = fogRangeFor(category);
   const skyStops = useMemo(() => parseCssLinearGradient(PHASES[phase].sky), [phase]);
+
+  // Live wind speed (km/h), or a representative value when the category is a dev override so
+  // sway/rain-slant respond to `?weather=` too. One shared uniforms object drives every swaying
+  // material; null under reduced motion → vegetation stays fully static.
+  const windSpeed =
+    devWeather && WEATHER_CATEGORIES.includes(devWeather)
+      ? windSpeedFallback(devWeather)
+      : (weather?.windSpeed ?? 0);
+  const wind = useMemo(
+    () => (reducedMotion ? null : createWindUniforms()),
+    [reducedMotion],
+  );
 
   // Sun (or moon at night) drives the one directional light. A dev phase override pins the
   // body to its phase keyframe so screenshots don't depend on the wall clock.
@@ -151,7 +188,70 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
   const lightColor = moonlit ? '#c7d3ec' : lighting.sunColor;
   const lightIntensity = moonlit ? lighting.moonIntensity : lighting.sunIntensity;
   const moonState = useMemo(() => getMoonPhase(now), [now]);
+  // Named-moon looks self-neutralize: tint is null unless today is a named full moon, and the
+  // scale is 1 unless the event carries a lunar distance (supermoon/micromoon).
+  const moonTint = useMemo(() => (moonEvent ? moonTintForEvent(moonEvent) : null), [moonEvent]);
+  const moonScale = useMemo(() => (moonEvent ? moonScaleForEvent(moonEvent) : 1), [moonEvent]);
   const worldCenter: [number, number, number] = [world.widthM / 2, 0, -7];
+
+  // Ambient sound — synthesized WebAudio (see ambience-engine.ts). The engine is created on
+  // the first user gesture (autoplay policy) and its layer gains glide after the live mix on
+  // a coarse interval. NOTE: prefers-reduced-motion deliberately does NOT govern audio — it's
+  // a motion preference, not a sound one; the HUD speaker pill (persisted) is the only gate.
+  const [soundOn, setSoundOn] = useState(() => getAmbienceEnabled());
+  const engineRef = useRef<AmbienceEngine | null>(null);
+  useEffect(() => {
+    if (!soundOn || engineRef.current) return;
+    const startEngine = () => {
+      if (!engineRef.current) engineRef.current = new AmbienceEngine();
+    };
+    window.addEventListener('pointerdown', startEngine, { once: true });
+    window.addEventListener('keydown', startEngine, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', startEngine);
+      window.removeEventListener('keydown', startEngine);
+    };
+  }, [soundOn]);
+  useEffect(() => () => engineRef.current?.dispose(), []);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      let streamDist = Infinity;
+      if (world.stream) {
+        const w = closestOnStream(playerRef.current.x, playerRef.current.z, world.stream);
+        streamDist = Math.max(0, w.dist - w.halfWidth);
+      }
+      engine.setMix(
+        soundOn
+          ? ambienceMixFor({ phase, category, windSpeed, streamDist })
+          : { wind: 0, stream: 0, crickets: 0, birds: 0, rain: 0 },
+        soundOn ? 0.8 : 0.25,
+      );
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [world, phase, category, windSpeed, soundOn]);
+  const toggleSound = () =>
+    setSoundOn((on) => {
+      const next = !on;
+      setAmbienceEnabled(next);
+      // The toggle click is itself a gesture, so unmuting may create the engine directly.
+      if (next && !engineRef.current) engineRef.current = new AmbienceEngine();
+      return next;
+    });
+
+  // Wayfinding: which month the fox is walking through. The player ref mutates without
+  // re-rendering, so poll it — React bails out when the label string is unchanged.
+  const [monthLabel, setMonthLabel] = useState<string | null>(() =>
+    monthLabelAt(playerRef.current.x, world),
+  );
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setMonthLabel(monthLabelAt(playerRef.current.x, world)),
+      300,
+    );
+    return () => window.clearInterval(id);
+  }, [world]);
 
   // The tapped flower's memory card (null = closed).
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
@@ -246,12 +346,23 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             moonState={moonState}
             latitude={latitude}
             center={worldCenter}
+            moonTint={moonTint}
+            moonScale={moonScale}
           />
           <StarField
             opacity={starOpacityFor(phase)}
             reducedMotion={reducedMotion}
             center={worldCenter}
           />
+          {!reducedMotion && (
+            <ShootingStars
+              phase={phase}
+              cloudCover={cloudCover}
+              category={category}
+              center={worldCenter}
+              forceShoot={isDev && params.get('shoot') === '1'}
+            />
+          )}
           <CloudLayer
             phase={phase}
             cloudCover={cloudCover}
@@ -259,13 +370,14 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             center={worldCenter}
           />
           <HorizonHaze phase={phase} cloudCover={cloudCover} center={worldCenter} />
-          <MountainRing colors={hillColorsFor(phase)} center={worldCenter} />
-          <TerrainMesh world={world} color={groundColorFor(phase)} />
-          <GrassField world={world} color={groundColorFor(phase)} />
-          <TreeField world={world} phase={phase} />
+          <MountainRing colors={hillColorsFor(phase, category)} center={worldCenter} />
+          <TerrainMesh world={world} color={groundColorFor(phase, category)} />
+          <GrassField world={world} color={groundColorFor(phase, category)} wind={wind} />
+          <TreeField world={world} phase={phase} wind={wind} />
           <RockField world={world} />
-          <GroundCoverField world={world} />
+          <GroundCoverField world={world} wind={wind} />
           <ClutterField world={world} />
+          {wind && <WindDriver uniforms={wind} category={category} windSpeed={windSpeed} />}
           {world.stream && (
             <>
               <StreamWater
@@ -277,7 +389,7 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
               <FishField stream={world.stream} reducedMotion={reducedMotion} />
             </>
           )}
-          <StreamDecor world={world} />
+          <StreamDecor world={world} wind={wind} />
           <FlowerField
             world={world}
             textures={textures}
@@ -285,11 +397,34 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
             reducedMotion={reducedMotion}
             onSelect={setActiveEntryId}
           />
+          {!reducedMotion && (
+            <ButterflyField world={world} phase={phase} category={category} />
+          )}
+          {!reducedMotion && (
+            <SkyFlights
+              phase={phase}
+              category={category}
+              playerRef={playerRef}
+              forceFlight={
+                isDev && (params.get('flight') === 'ducks' || params.get('flight') === 'bird')
+                  ? (params.get('flight') as 'ducks' | 'bird')
+                  : null
+              }
+            />
+          )}
           <WeatherParticles
             category={category}
-            windSpeed={weather?.windSpeed ?? 0}
+            windSpeed={windSpeed}
             reducedMotion={reducedMotion}
           />
+          <AmbientMotes phase={phase} category={category} reducedMotion={reducedMotion} />
+          {!reducedMotion && category && shouldShowLightning(category) && (
+            <LightningRig
+              category={category}
+              fogColor={lighting.fogColor}
+              fastForDev={isDev && params.get('flash') === '1'}
+            />
+          )}
           <FoxRig
             world={world}
             playerRef={playerRef}
@@ -307,6 +442,9 @@ export function ExploreScene({ entries, weather, latitude }: ExploreSceneProps) 
         hint={hint}
         progress={progress}
         coarsePointer={coarsePointer}
+        monthLabel={monthLabel}
+        soundOn={soundOn}
+        onToggleSound={toggleSound}
       />
     </div>
   );

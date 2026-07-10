@@ -63,21 +63,34 @@ export function mixHex(a: string, b: string, t: number): string {
   return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
 }
 
-export function lightingForPhase(phase: PhaseKey, cloudCover = 0): PhaseLighting {
+// 3D-only snow anchors — value-copied from the 2D meadow's settled-snow blanket and
+// SNOW_HILLS palette (components/garden/bloom/BloomMeadow.tsx) so both views whiten alike.
+const SNOW_GROUND = '#e9eff7';
+const SNOW_HILL_FAR = '#b6cde7';
+const SNOW_HILL_NEAR = '#d3e2f3';
+
+export function lightingForPhase(
+  phase: PhaseKey,
+  cloudCover = 0,
+  category?: WeatherCategory,
+): PhaseLighting {
   const palette = PHASES[phase];
   const base = PHASE_LIGHT[phase];
   const stops = parseCssLinearGradient(palette.sky);
   const mid = stops[1] ?? stops[0]!;
   const horizon = stops[stops.length - 1]!;
+  const snow = category === 'snow';
+  const fogColor = mixHex(horizon.color, OVERCAST_GREY, 0.35 * cloudCover);
   return {
     hemiSky: mid.color,
-    hemiGround: palette.grass,
+    // Snow bounces sky light back up off the blanket; the fog cools toward the snow blue-grey.
+    hemiGround: snow ? mixHex(palette.grass, SNOW_GROUND, 0.6) : palette.grass,
     hemiIntensity: base.hemi,
     sunColor: palette.sun.core,
     sunIntensity: base.sun * (1 - 0.5 * cloudCover),
     moonIntensity: base.moon,
     flowerBrightness: base.flower,
-    fogColor: mixHex(horizon.color, OVERCAST_GREY, 0.35 * cloudCover),
+    fogColor: snow ? mixHex(fogColor, SNOW_HILL_NEAR, 0.5) : fogColor,
   };
 }
 
@@ -90,18 +103,24 @@ const MOONLIT_HILL = '#46567a';
  * palette colour unchanged; night lifts it toward a moonlit teal so the meadow floor isn't a
  * black void under the dark sky (the 2D meadow leans on `filter: brightness()` we can't apply here).
  */
-export function groundColorFor(phase: PhaseKey): string {
+export function groundColorFor(phase: PhaseKey, category?: WeatherCategory): string {
   const grass = PHASES[phase].grass;
-  return phase === 'night' ? mixHex(grass, MOONLIT_GROUND, 0.5) : grass;
+  // Snow mixes AFTER the night lift so a snowy night reads as moonlit blue-white, not grey.
+  const base = phase === 'night' ? mixHex(grass, MOONLIT_GROUND, 0.5) : grass;
+  return category === 'snow' ? mixHex(base, SNOW_GROUND, 0.78) : base;
 }
 
 /** Ridge colours (far→near) for the 3D mountain ring — lifted at night so the horizon reads. */
-export function hillColorsFor(phase: PhaseKey): [string, string] {
+export function hillColorsFor(phase: PhaseKey, category?: WeatherCategory): [string, string] {
   const hills = PHASES[phase].hills;
-  if (phase === 'night') {
-    return [mixHex(hills[2], MOONLIT_HILL, 0.4), mixHex(hills[1], MOONLIT_HILL, 0.4)];
+  const base: [string, string] =
+    phase === 'night'
+      ? [mixHex(hills[2], MOONLIT_HILL, 0.4), mixHex(hills[1], MOONLIT_HILL, 0.4)]
+      : [hills[2], hills[1]];
+  if (category === 'snow') {
+    return [mixHex(base[0], SNOW_HILL_FAR, 0.8), mixHex(base[1], SNOW_HILL_NEAR, 0.8)];
   }
-  return [hills[2], hills[1]];
+  return base;
 }
 
 /**

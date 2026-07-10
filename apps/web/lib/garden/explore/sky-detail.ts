@@ -5,6 +5,7 @@
  * stay coherent. Pure logic — no three.js, no DOM.
  */
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import type { MoonTint } from '@/lib/garden/bloom/event-catalog';
 import { PHASES, type PhaseKey } from '@/lib/garden/bloom/phases';
 
 import { mixHex, OVERCAST_GREY, parseCssLinearGradient } from './sky';
@@ -115,6 +116,41 @@ export function twinkleOpacity(base: number, layer: 0 | 1 | 2, tSec: number): nu
   if (base <= 0) return 0;
   const { omega, phi } = TWINKLE[layer];
   return base * (0.72 + 0.28 * Math.sin(tSec * omega + phi));
+}
+
+export interface MoonDiscPalette {
+  /** Disc radial gradient: lit highlight → body → darkened limb. */
+  light: string;
+  mid: string;
+  limb: string;
+  /** Crater/maria fill (CSS colour with its own alpha). */
+  crater: string;
+  /** Halo colour — hex for the classic moon, `rgb(r,g,b)` for a named-moon glow. */
+  halo: string;
+}
+
+/**
+ * Colours for the 3D moon disc/halo. Untinted (null) returns the classic cream disc the moon
+ * has always used; a named full moon's `MoonTint` (Strawberry/Harvest/Hunter's, from the 2D
+ * world-events catalog) retints disc, craters and halo alike.
+ */
+export function moonDiscPalette(tint: MoonTint | null): MoonDiscPalette {
+  if (!tint) {
+    return {
+      light: '#fbf7ea',
+      mid: '#efe9d4',
+      limb: '#e2dcc4',
+      crater: 'rgba(180,174,150,.35)',
+      halo: '#dfe6f5',
+    };
+  }
+  return {
+    light: tint.light,
+    mid: tint.mid,
+    limb: tint.limb,
+    crater: tint.crater,
+    halo: `rgb(${tint.glow})`,
+  };
 }
 
 /** Tree/bush base colors per phase — canopies sit near the phase's hill/grass palette. */

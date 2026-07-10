@@ -2,6 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useMemo } from 'react';
+
+import { primaryEvent, useDayEvents, type EventsUserContext } from '@bloom/core/events';
 
 import { useGeolocation } from '@/lib/scene/useGeolocation';
 import { useWeather } from '@/lib/scene/useWeather';
@@ -21,6 +24,13 @@ const ExploreScene = dynamic(
   },
 );
 
+// Only sky events matter here (named-moon tint/size), so the placeholder personal context
+// GardenContent starts with is fine permanently — no birthday/anniversary cards render in 3D.
+const EVENTS_USER: EventsUserContext = {
+  birthday: '0001-01-01',
+  appInstallDate: new Date().toISOString().slice(0, 10),
+};
+
 export function ExploreContent() {
   const ready = useBloomStore((s) => s.ready);
   const entries = useBloomStore((s) => s.entries);
@@ -28,6 +38,16 @@ export function ExploreContent() {
   // Same live-weather source as /garden: coords (geolocation → fallback) then Open-Meteo.
   const geo = useGeolocation();
   const weather = useWeather(geo.coords);
+
+  // Today's headline world event, if any — drives the 3D moon's named tint/apparent size.
+  const dayEvents = useDayEvents(new Date(), EVENTS_USER, {
+    coords: { latitude: geo.coords.lat, longitude: geo.coords.lon },
+    timeZoneOffsetMinutes: -new Date().getTimezoneOffset(),
+  });
+  const moonEvent = useMemo(
+    () => (dayEvents.length ? (primaryEvent(dayEvents) ?? null) : null),
+    [dayEvents],
+  );
 
   if (!ready) {
     return (
@@ -50,5 +70,12 @@ export function ExploreContent() {
     );
   }
 
-  return <ExploreScene entries={entries} weather={weather} latitude={geo.coords.lat} />;
+  return (
+    <ExploreScene
+      entries={entries}
+      weather={weather}
+      latitude={geo.coords.lat}
+      moonEvent={moonEvent}
+    />
+  );
 }

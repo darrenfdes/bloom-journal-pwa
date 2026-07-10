@@ -5,10 +5,17 @@ import * as THREE from 'three';
 
 import { applyMoonPhaseShadow, type MoonPhaseState } from '@bloom/core/scene';
 
+import type { MoonTint } from '@/lib/garden/bloom/event-catalog';
 import type { PhaseKey } from '@/lib/garden/bloom/phases';
-import { haloLayersFor } from '@/lib/garden/explore/sky-detail';
+import { haloLayersFor, moonDiscPalette } from '@/lib/garden/explore/sky-detail';
 
 import { radialTexture } from './textures';
+
+/** Radial-gradient stops for the moon halo — hex palette gets hex alpha, rgb() gets rgba(). */
+const haloStops = (halo: string): [string, string] =>
+  halo.startsWith('#')
+    ? [`${halo}cc`, `${halo}00`]
+    : [halo.replace('rgb(', 'rgba(').replace(')', ',.8)'), halo.replace('rgb(', 'rgba(').replace(')', ',0)')];
 
 /**
  * Sun and moon as camera-facing sprites, positioned from the same continuous celestial
@@ -28,6 +35,8 @@ export function CelestialSprites({
   moonState,
   latitude,
   center,
+  moonTint = null,
+  moonScale = 1,
 }: {
   phase: PhaseKey;
   cloudCover: number;
@@ -39,6 +48,10 @@ export function CelestialSprites({
   moonState: MoonPhaseState;
   latitude: number;
   center: [number, number, number];
+  /** Named-full-moon tint (Harvest, Strawberry…); null = the classic cream moon. */
+  moonTint?: MoonTint | null;
+  /** Apparent-size multiplier (supermoon slightly larger, micromoon smaller). */
+  moonScale?: number;
 }) {
   const sunTexture = useMemo(() => {
     const c = document.createElement('canvas');
@@ -57,22 +70,24 @@ export function CelestialSprites({
     return t;
   }, [sunCore]);
 
+  const moonPalette = useMemo(() => moonDiscPalette(moonTint), [moonTint]);
+
   const moonTexture = useMemo(() => {
     const c = document.createElement('canvas');
     c.width = 128;
     c.height = 128;
     const ctx = c.getContext('2d')!;
     const r = 56;
-    // Cream disc with a soft limb, then a few faint craters like the 2D moon.
+    // Cream (or named-moon-tinted) disc with a soft limb, then a few faint craters like 2D.
     const g = ctx.createRadialGradient(58, 58, 8, 64, 64, r);
-    g.addColorStop(0, '#fbf7ea');
-    g.addColorStop(0.8, '#efe9d4');
-    g.addColorStop(1, '#e2dcc4');
+    g.addColorStop(0, moonPalette.light);
+    g.addColorStop(0.8, moonPalette.mid);
+    g.addColorStop(1, moonPalette.limb);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(64, 64, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(180,174,150,.35)';
+    ctx.fillStyle = moonPalette.crater;
     for (const [cx, cy, cr] of [
       [48, 52, 7],
       [76, 72, 9],
@@ -90,10 +105,13 @@ export function CelestialSprites({
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
-  }, [moonState, latitude]);
+  }, [moonState, latitude, moonPalette]);
 
   const haloTexture = useMemo(() => radialTexture(`${sunCore}cc`, `${sunCore}00`), [sunCore]);
-  const moonHaloTexture = useMemo(() => radialTexture('#dfe6f5cc', '#dfe6f500'), []);
+  const moonHaloTexture = useMemo(
+    () => radialTexture(...haloStops(moonPalette.halo)),
+    [moonPalette],
+  );
 
   useEffect(
     () => () => {
@@ -160,7 +178,7 @@ export function CelestialSprites({
       {moonOpacity > 0 && (
         <sprite
           position={[moonDir.x * DIST, moonDir.y * DIST, moonDir.z * DIST]}
-          scale={[70, 70, 1]}
+          scale={[70 * moonScale, 70 * moonScale, 1]}
           renderOrder={-2}
         >
           <spriteMaterial
@@ -177,7 +195,7 @@ export function CelestialSprites({
       {moonOpacity > 0 && (
         <sprite
           position={[moonDir.x * DIST, moonDir.y * DIST, moonDir.z * DIST]}
-          scale={[26, 26, 1]}
+          scale={[26 * moonScale, 26 * moonScale, 1]}
           renderOrder={-1}
         >
           <spriteMaterial
