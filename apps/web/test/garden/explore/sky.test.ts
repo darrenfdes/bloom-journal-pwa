@@ -152,3 +152,44 @@ describe('hillColorsFor', () => {
     expect(near).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
+
+describe('snow whitening', () => {
+  it('whitens the ground for every phase under snow', () => {
+    for (const phase of PHASE_ORDER) {
+      const snowy = groundColorFor(phase, 'snow');
+      expect(brightness(snowy)).toBeGreaterThan(brightness(groundColorFor(phase)));
+      expect(snowy).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
+  it('whitens both ridges under snow', () => {
+    for (const phase of PHASE_ORDER) {
+      const [far, near] = hillColorsFor(phase);
+      const [sFar, sNear] = hillColorsFor(phase, 'snow');
+      expect(brightness(sFar)).toBeGreaterThan(brightness(far));
+      expect(brightness(sNear)).toBeGreaterThan(brightness(near));
+    }
+  });
+
+  it('leaves every non-snow category bit-identical to the current output', () => {
+    for (const phase of PHASE_ORDER) {
+      expect(groundColorFor(phase, 'rain')).toBe(groundColorFor(phase));
+      expect(groundColorFor(phase, undefined)).toBe(groundColorFor(phase));
+      expect(hillColorsFor(phase, 'clear')).toEqual(hillColorsFor(phase));
+      expect(lightingForPhase(phase, 0.3, 'overcast')).toEqual(lightingForPhase(phase, 0.3));
+    }
+  });
+
+  it('keeps a snowy night dimmer than a snowy day but brighter than bare night', () => {
+    const night = brightness(groundColorFor('night', 'snow'));
+    expect(night).toBeGreaterThan(brightness(groundColorFor('night')));
+    expect(night).toBeLessThan(brightness(groundColorFor('day', 'snow')));
+  });
+
+  it('bounces snow light into the hemisphere ground and cools the fog', () => {
+    const plain = lightingForPhase('day', 0.85);
+    const snowy = lightingForPhase('day', 0.85, 'snow');
+    expect(brightness(snowy.hemiGround)).toBeGreaterThan(brightness(plain.hemiGround));
+    expect(snowy.fogColor).not.toBe(plain.fogColor);
+  });
+});

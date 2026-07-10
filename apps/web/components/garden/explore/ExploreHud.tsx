@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react';
 
 import { usePrefersReducedMotion } from '@/lib/hooks/usePrefersReducedMotion';
 
-import { cardEnter, creamCard, glass, glassPanel, HUD_KEYFRAMES, microLabel, sans, serif } from './hudTokens';
+import {
+  cardEnter,
+  cardEnterCentered,
+  creamCard,
+  glass,
+  glassPanel,
+  HUD_KEYFRAMES,
+  microLabel,
+  sans,
+  serif,
+} from './hudTokens';
 
 /**
  * DOM chrome over the 3D canvas: back-to-garden button, a controls help panel, a fading
@@ -51,6 +61,9 @@ export function ExploreHud({
   hint,
   progress,
   coarsePointer = false,
+  monthLabel = null,
+  soundOn = true,
+  onToggleSound,
 }: {
   onBack: () => void;
   /** Control hint shown at the bottom; null hides it. */
@@ -59,6 +72,11 @@ export function ExploreHud({
   progress: number | null;
   /** Touch device — show stick controls in the help panel instead of keyboard ones. */
   coarsePointer?: boolean;
+  /** Month/year the fox is walking through ("June 2026"); null hides the wayfinding pill. */
+  monthLabel?: string | null;
+  /** Ambient-sound state for the speaker pill; omit `onToggleSound` to hide it. */
+  soundOn?: boolean;
+  onToggleSound?: () => void;
 }) {
   const reduced = usePrefersReducedMotion();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -100,6 +118,57 @@ export function ExploreHud({
       >
         ← Garden
       </button>
+
+      {monthLabel && (
+        <div
+          key={monthLabel}
+          style={{
+            ...glass,
+            position: 'absolute',
+            top: SAFE_TOP,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            borderRadius: 999,
+            padding: '8px 18px',
+            pointerEvents: 'none',
+            fontFamily: serif,
+            fontStyle: 'italic',
+            fontSize: 14,
+            color: 'rgba(247,241,227,.85)',
+            whiteSpace: 'nowrap',
+            animation: cardEnterCentered(reduced),
+          }}
+        >
+          {monthLabel}
+        </div>
+      )}
+
+      {onToggleSound && (
+        <button
+          type="button"
+          onClick={onToggleSound}
+          aria-label="Toggle ambient sound"
+          aria-pressed={soundOn}
+          style={{
+            ...glassPill,
+            position: 'absolute',
+            top: SAFE_TOP,
+            right: 62,
+            width: 38,
+            height: 38,
+            padding: 0,
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: soundOn ? 1 : 0.55,
+            textDecoration: soundOn ? 'none' : 'line-through',
+            animation: cardEnter(reduced),
+          }}
+        >
+          ♪
+        </button>
+      )}
 
       <button
         type="button"

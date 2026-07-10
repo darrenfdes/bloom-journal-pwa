@@ -8,6 +8,8 @@ import { groundCoverScatter, type ScatterItem } from '@/lib/garden/explore/scatt
 import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import type { ExploreWorld } from '@/lib/garden/explore/world-layout';
 
+import { applyWindSway, type WindUniforms } from './wind-material';
+
 /** Soft cottage-meadow wildflower hues, picked per instance by scatter variant. */
 const WILDFLOWER_HUES = ['#e57ba0', '#f2d06b', '#f4efe4', '#b79ad6', '#e8896a'];
 const STEM_GREEN = '#4d7a43';
@@ -35,7 +37,13 @@ function fernGeometry(): THREE.BufferGeometry {
  * across the meadow floor — deterministic, off the journal flowers/ponds/spawn. Unlit so they stay
  * legible in every phase; the blossom colour rides on the instance colour, with a little jitter.
  */
-export function GroundCoverField({ world }: { world: ExploreWorld }) {
+export function GroundCoverField({
+  world,
+  wind,
+}: {
+  world: ExploreWorld;
+  wind: WindUniforms | null;
+}) {
   const built = useMemo(() => {
     const { wildflowers, ferns } = groundCoverScatter(world);
 
@@ -60,6 +68,7 @@ export function GroundCoverField({ world }: { world: ExploreWorld }) {
         side: THREE.DoubleSide,
         toneMapped: false,
       });
+      if (wind) applyWindSway(mat, 'flowerbed', wind);
       const mesh = new THREE.InstancedMesh(geo, mat, list.length);
       const rng = mulberry32(seed);
       list.forEach((it, i) => {
@@ -92,7 +101,7 @@ export function GroundCoverField({ world }: { world: ExploreWorld }) {
       geometries,
       materials: [stem.mat, blossom.mat, fern.mat],
     };
-  }, [world]);
+  }, [world, wind]);
 
   useEffect(
     () => () => {
