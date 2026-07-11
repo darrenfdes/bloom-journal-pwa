@@ -18,6 +18,7 @@ import {
   type Band,
 } from '@/lib/garden/explore/scatter';
 import { closestOnStream } from '@/lib/garden/explore/stream';
+import { groundHeightAt } from '@/lib/garden/explore/terrain';
 import { buildExploreWorld } from '@/lib/garden/explore/world-layout';
 import { entry } from '../../fixtures/entry';
 
@@ -145,6 +146,28 @@ describe('streamDecorFor', () => {
     for (const item of [...a.reeds, ...a.cattails]) {
       const s = closestOnStream(item.x, item.z, stream);
       expect(s.dist).toBeGreaterThanOrEqual(s.halfWidth - 1e-6);
+    }
+  });
+
+  it('scatters pebbles and bank grass at the waterline, always out of the water', () => {
+    const stream = streamOf();
+    const a = streamDecorFor(stream);
+    // Rejection sampling may drop the odd candidate that can't find dry footing.
+    expect(a.pebbles.length).toBeGreaterThan(70 * 0.8);
+    expect(a.pebbles.length).toBeLessThanOrEqual(70);
+    expect(a.bankGrass.length).toBeGreaterThan(40 * 0.8);
+    expect(a.bankGrass.length).toBeLessThanOrEqual(40);
+    for (const item of [...a.pebbles, ...a.bankGrass]) {
+      const s = closestOnStream(item.x, item.z, stream);
+      expect(s.dist).toBeGreaterThanOrEqual(s.halfWidth - 1e-6);
+    }
+  });
+
+  it('plants every bank item on dry ground (above the water level)', () => {
+    const stream = streamOf();
+    const a = streamDecorFor(stream);
+    for (const item of [...a.reeds, ...a.cattails, ...a.pebbles, ...a.bankGrass]) {
+      expect(groundHeightAt(item.x, item.z, stream)).toBeGreaterThanOrEqual(stream.level);
     }
   });
 });

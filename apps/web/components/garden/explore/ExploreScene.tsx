@@ -27,15 +27,12 @@ import {
   phaseFromHour,
   type PhaseKey,
 } from '@/lib/garden/bloom/phases';
-import { ambienceMixFor } from '@/lib/garden/explore/ambience';
-import { getAmbienceEnabled, setAmbienceEnabled } from '@/lib/garden/explore/ambience-pref';
 import { EYE_HEIGHT } from '@/lib/garden/explore/constants';
 import {
   applyLook,
   type MoveInput,
   type PlayerState,
 } from '@/lib/garden/explore/movement';
-import { closestOnStream } from '@/lib/garden/explore/stream';
 import {
   fogRangeFor,
   groundColorFor,
@@ -46,7 +43,11 @@ import {
   sunDirectionAt,
 } from '@/lib/garden/explore/sky';
 import { windSpeedFallback } from '@/lib/garden/explore/wind';
-import { buildExploreWorld, monthLabelAt } from '@/lib/garden/explore/world-layout';
+import {
+  buildExploreWorld,
+  monthNeighborsAt,
+  type MonthNeighbors,
+} from '@/lib/garden/explore/world-layout';
 import { usePrefersReducedMotion } from '@/lib/hooks/usePrefersReducedMotion';
 
 import { AmbientMotes } from './AmbientMotes';
@@ -67,7 +68,9 @@ import { MountainRing } from './MountainRing';
 import { RockField } from './RockField';
 import { ShootingStars } from './ShootingStars';
 import { SkyFlights } from './SkyFlights';
+import { StreamBanks } from './StreamBanks';
 import { StreamDecor } from './StreamDecor';
+import { StreamFoam } from './StreamFoam';
 import { StreamWater } from './StreamWater';
 import { SkyDome } from './SkyDome';
 import { StarField } from './StarField';
@@ -77,7 +80,6 @@ import { useFlowerTextures } from './useFlowerTextures';
 import { VirtualJoystick } from './VirtualJoystick';
 import { WeatherParticles } from './WeatherParticles';
 import { WindDriver } from './WindDriver';
-import { AmbienceEngine } from './ambience-engine';
 import { createWindUniforms } from './wind-material';
 
 const LOOK_SENSITIVITY = 0.0045;
@@ -194,62 +196,19 @@ export function ExploreScene({
   const moonScale = useMemo(() => (moonEvent ? moonScaleForEvent(moonEvent) : 1), [moonEvent]);
   const worldCenter: [number, number, number] = [world.widthM / 2, 0, -7];
 
-  // Ambient sound — synthesized WebAudio (see ambience-engine.ts). The engine is created on
-  // the first user gesture (autoplay policy) and its layer gains glide after the live mix on
-  // a coarse interval. NOTE: prefers-reduced-motion deliberately does NOT govern audio — it's
-  // a motion preference, not a sound one; the HUD speaker pill (persisted) is the only gate.
-  const [soundOn, setSoundOn] = useState(() => getAmbienceEnabled());
-  const engineRef = useRef<AmbienceEngine | null>(null);
-  useEffect(() => {
-    if (!soundOn || engineRef.current) return;
-    const startEngine = () => {
-      if (!engineRef.current) engineRef.current = new AmbienceEngine();
-    };
-    window.addEventListener('pointerdown', startEngine, { once: true });
-    window.addEventListener('keydown', startEngine, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', startEngine);
-      window.removeEventListener('keydown', startEngine);
-    };
-  }, [soundOn]);
-  useEffect(() => () => engineRef.current?.dispose(), []);
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      const engine = engineRef.current;
-      if (!engine) return;
-      let streamDist = Infinity;
-      if (world.stream) {
-        const w = closestOnStream(playerRef.current.x, playerRef.current.z, world.stream);
-        streamDist = Math.max(0, w.dist - w.halfWidth);
-      }
-      engine.setMix(
-        soundOn
-          ? ambienceMixFor({ phase, category, windSpeed, streamDist })
-          : { wind: 0, stream: 0, crickets: 0, birds: 0, rain: 0 },
-        soundOn ? 0.8 : 0.25,
-      );
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [world, phase, category, windSpeed, soundOn]);
-  const toggleSound = () =>
-    setSoundOn((on) => {
-      const next = !on;
-      setAmbienceEnabled(next);
-      // The toggle click is itself a gesture, so unmuting may create the engine directly.
-      if (next && !engineRef.current) engineRef.current = new AmbienceEngine();
-      return next;
-    });
-
-  // Wayfinding: which month the fox is walking through. The player ref mutates without
-  // re-rendering, so poll it — React bails out when the label string is unchanged.
-  const [monthLabel, setMonthLabel] = useState<string | null>(() =>
-    monthLabelAt(playerRef.current.x, world),
+  // Wayfinding: which month the fox is walking through (plus its neighbours for the pill's
+  // direction hints). The player ref mutates without re-rendering, so poll it — and keep the
+  // same object reference while the month is unchanged so React can bail out of re-rendering.
+  const [month, setMonth] = useState<MonthNeighbors | null>(() =>
+    monthNeighborsAt(playerRef.current.x, world),
   );
   useEffect(() => {
-    const id = window.setInterval(
-      () => setMonthLabel(monthLabelAt(playerRef.current.x, world)),
-      300,
-    );
+    const id = window.setInterval(() => {
+      setMonth((prevVal) => {
+        const nextVal = monthNeighborsAt(playerRef.current.x, world);
+        return prevVal && nextVal && prevVal.current === nextVal.current ? prevVal : nextVal;
+      });
+    }, 300);
     return () => window.clearInterval(id);
   }, [world]);
 
@@ -386,6 +345,15 @@ export function ExploreScene({
                 glint={lighting.sunColor}
                 reducedMotion={reducedMotion}
               />
+              <StreamBanks
+                stream={world.stream}
+                skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'}
+              />
+              <StreamFoam
+                stream={world.stream}
+                skyTint={skyStops[skyStops.length - 1]?.color ?? '#bedaee'}
+                reducedMotion={reducedMotion}
+              />
               <FishField stream={world.stream} reducedMotion={reducedMotion} />
             </>
           )}
@@ -442,9 +410,7 @@ export function ExploreScene({
         hint={hint}
         progress={progress}
         coarsePointer={coarsePointer}
-        monthLabel={monthLabel}
-        soundOn={soundOn}
-        onToggleSound={toggleSound}
+        month={month}
       />
     </div>
   );

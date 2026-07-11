@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildMeadowLayout } from '@/lib/garden/bloom/layout';
-import { buildExploreWorld, monthLabelAt } from '@/lib/garden/explore/world-layout';
+import {
+  buildExploreWorld,
+  monthLabelAt,
+  monthNeighborsAt,
+} from '@/lib/garden/explore/world-layout';
 import { entry } from '../../fixtures/entry';
 
 const threeMonths = () => [
@@ -75,9 +79,10 @@ describe('buildExploreWorld', () => {
     // Enters from beyond the north edge and exits beyond the south edge — comes from off-map.
     expect(stream.points[0]!.z).toBeLessThan(three.bounds.minZ);
     expect(stream.points[stream.points.length - 1]!.z).toBeGreaterThan(three.bounds.maxZ);
-    // Pool sits on a month boundary near mid-world, south of the flower band.
+    // Pool sits on the newest month boundary, south of the flower band — half a band west of spawn.
     const pool = stream.points.reduce((a, b) => (b.halfWidth > a.halfWidth ? b : a));
-    expect([28, 56]).toContain(pool.x);
+    expect(pool.x).toBe(56);
+    expect(three.spawn.x - pool.x).toBeCloseTo(14);
     expect(pool.z).toBeGreaterThan(-2);
     expect(stream.level).toBeLessThan(0);
   });
@@ -120,5 +125,62 @@ describe('monthLabelAt', () => {
     expect(monthLabelAt(one.spawn.x, one)).toBe('June 2026');
     const empty = buildExploreWorld(buildMeadowLayout([]));
     expect(monthLabelAt(0, empty)).toBeNull();
+  });
+});
+
+describe('monthNeighborsAt', () => {
+  it('names both neighbours (shortened) from a middle band', () => {
+    const world = buildExploreWorld(buildMeadowLayout(threeMonths()));
+    expect(monthNeighborsAt(40, world)).toEqual({
+      prev: 'Jan',
+      current: 'February 2026',
+      next: 'Mar',
+    });
+  });
+
+  it('drops the missing neighbour at the oldest and newest months', () => {
+    const world = buildExploreWorld(buildMeadowLayout(threeMonths()));
+    expect(monthNeighborsAt(4, world)).toEqual({
+      prev: null,
+      current: 'January 2026',
+      next: 'Feb',
+    });
+    expect(monthNeighborsAt(70, world)).toEqual({
+      prev: 'Feb',
+      current: 'March 2026',
+      next: null,
+    });
+  });
+
+  it('clamps the off-strip walkable margins like monthLabelAt', () => {
+    const world = buildExploreWorld(buildMeadowLayout(threeMonths()));
+    expect(monthNeighborsAt(world.bounds.minX, world)!.current).toBe('January 2026');
+    expect(monthNeighborsAt(world.bounds.maxX, world)!.current).toBe('March 2026');
+  });
+
+  it('shortens longer month names to their standard abbreviation', () => {
+    const world = buildExploreWorld(
+      buildMeadowLayout([
+        entry({ id: 'jul', createdAt: new Date(2026, 6, 10) }),
+        entry({ id: 'aug', createdAt: new Date(2026, 7, 10) }),
+        entry({ id: 'sep', createdAt: new Date(2026, 8, 10) }),
+      ]),
+    );
+    const mid = monthNeighborsAt(40, world)!;
+    expect(mid.prev).toBe('Jul');
+    expect(mid.next).toBe('Sep');
+  });
+
+  it('handles a single-month garden and returns null for an empty one', () => {
+    const one = buildExploreWorld(
+      buildMeadowLayout([entry({ id: 'solo', createdAt: new Date(2026, 5, 1) })]),
+    );
+    expect(monthNeighborsAt(one.spawn.x, one)).toEqual({
+      prev: null,
+      current: 'June 2026',
+      next: null,
+    });
+    const empty = buildExploreWorld(buildMeadowLayout([]));
+    expect(monthNeighborsAt(0, empty)).toBeNull();
   });
 });

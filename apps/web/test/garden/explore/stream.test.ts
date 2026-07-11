@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { POND_LEVEL, POOL_HALF_WIDTH, STREAM_HALF_WIDTH } from '@/lib/garden/explore/constants';
-import { buildStream, closestOnStream, pointAlongStream, type Stream } from '@/lib/garden/explore/stream';
+import {
+  buildStream,
+  closestOnStream,
+  pointAlongStream,
+  resampleStream,
+  type Stream,
+} from '@/lib/garden/explore/stream';
 import type { MonthRegion, WorldBounds } from '@/lib/garden/explore/world-layout';
 
 const bounds: WorldBounds = { minX: -12, maxX: 96, minZ: -26, maxZ: 12 };
@@ -69,6 +75,48 @@ describe('pointAlongStream', () => {
   });
 });
 
+describe('resampleStream', () => {
+  it('keeps both endpoints of the original polyline', () => {
+    const stream = buildStream(worldish(3))!;
+    const pts = resampleStream(stream);
+    const first = stream.points[0]!;
+    const last = stream.points[stream.points.length - 1]!;
+    expect(pts[0]!.x).toBeCloseTo(first.x);
+    expect(pts[0]!.z).toBeCloseTo(first.z);
+    expect(pts[0]!.halfWidth).toBeCloseTo(first.halfWidth);
+    expect(pts[pts.length - 1]!.x).toBeCloseTo(last.x);
+    expect(pts[pts.length - 1]!.z).toBeCloseTo(last.z);
+    expect(pts[pts.length - 1]!.halfWidth).toBeCloseTo(last.halfWidth);
+  });
+
+  it('stays exactly on the polyline with locally sane half-widths', () => {
+    const stream = buildStream(worldish(3))!;
+    const min = Math.min(...stream.points.map((p) => p.halfWidth));
+    const max = Math.max(...stream.points.map((p) => p.halfWidth));
+    for (const p of resampleStream(stream)) {
+      const s = closestOnStream(p.x, p.z, stream);
+      expect(s.dist).toBeCloseTo(0, 6);
+      expect(p.halfWidth).toBeGreaterThanOrEqual(min - 1e-9);
+      expect(p.halfWidth).toBeLessThanOrEqual(max + 1e-9);
+    }
+  });
+
+  it('emits evenly spaced points and is deterministic', () => {
+    const stream = buildStream(worldish(3))!;
+    const pts = resampleStream(stream, 1.5);
+    expect(pts.length).toBeGreaterThan(stream.points.length);
+    const gaps: number[] = [];
+    for (let i = 1; i < pts.length; i++) {
+      gaps.push(Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z));
+    }
+    for (const g of gaps) {
+      expect(g).toBeLessThanOrEqual(1.5 + 1e-9);
+      expect(g).toBeGreaterThan(0);
+    }
+    expect(resampleStream(stream, 1.5)).toEqual(pts);
+  });
+});
+
 describe('buildStream', () => {
   it('returns null for gardens with fewer than two months', () => {
     expect(buildStream(worldish(0))).toBeNull();
@@ -101,9 +149,21 @@ describe('buildStream', () => {
     );
   });
 
-  it('centers the pool on a month boundary near mid-world', () => {
-    const stream = buildStream(worldish(3))!;
-    const widest = stream.points.reduce((a, b) => (b.halfWidth > a.halfWidth ? b : a));
-    expect([28, 56]).toContain(widest.x);
+  it('centers the pool on the newest month boundary, a short walk west of spawn', () => {
+    const widestOf = (n: number) => {
+      const stream = buildStream(worldish(n))!;
+      return stream.points.reduce((a, b) => (b.halfWidth > a.halfWidth ? b : a));
+    };
+    expect(widestOf(2).x).toBe(28);
+    expect(widestOf(3).x).toBe(56);
+    expect(widestOf(5).x).toBe(112);
+  });
+
+  it('keeps the spawn point dry with room for the spawn exclusion', () => {
+    const world = worldish(3);
+    const stream = buildStream(world)!;
+    const spawn = { x: world.months[2]!.xCenter, z: 5 }; // last month's centre, SPAWN_Z
+    const s = closestOnStream(spawn.x, spawn.z, stream);
+    expect(s.dist).toBeGreaterThan(s.halfWidth + 3); // dry, clear of the exclusion radius
   });
 });

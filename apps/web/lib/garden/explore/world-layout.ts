@@ -52,6 +52,15 @@ export interface ExploreWorld {
   spawn: { x: number; z: number; yaw: number };
 }
 
+/** Index of the month band under a world x-position (walkable margins clamp to the first/last
+ * strip); null only for an empty garden. */
+function monthIndexAt(x: number, world: Pick<ExploreWorld, 'months' | 'widthM'>): number | null {
+  const count = world.months.length;
+  if (count === 0) return null;
+  const band = world.widthM / count;
+  return Math.min(count - 1, Math.max(0, Math.floor(x / band)));
+}
+
 /**
  * The month/year label under a world x-position — drives the HUD's wayfinding pill as the fox
  * walks the time axis. The walkable margins beyond the month strips clamp to the first/last
@@ -61,11 +70,39 @@ export function monthLabelAt(
   x: number,
   world: Pick<ExploreWorld, 'months' | 'widthM'>,
 ): string | null {
-  const count = world.months.length;
-  if (count === 0) return null;
-  const band = world.widthM / count;
-  const i = Math.min(count - 1, Math.max(0, Math.floor(x / band)));
-  return world.months[i]!.label;
+  const i = monthIndexAt(x, world);
+  return i === null ? null : world.months[i]!.label;
+}
+
+export interface MonthNeighbors {
+  /** Older month to the west (short name, e.g. "May"); null at the oldest month. */
+  prev: string | null;
+  /** Full label of the month underfoot, e.g. "June 2026". */
+  current: string;
+  /** Newer month to the east (short name, e.g. "Jul"); null at the newest month. */
+  next: string | null;
+}
+
+// The first three letters of every MONTH_NAMES entry match MONTH_ABBR, so slicing the label
+// gives the standard abbreviation without threading the month index through MonthRegion.
+const shortName = (m: MonthRegion) => m.label.split(' ')[0]!.slice(0, 3);
+
+/**
+ * The month underfoot plus its immediate neighbours — the HUD pill's direction hints (older
+ * months lie west, newer east). Same clamping as `monthLabelAt`; null only for an empty garden.
+ */
+export function monthNeighborsAt(
+  x: number,
+  world: Pick<ExploreWorld, 'months' | 'widthM'>,
+): MonthNeighbors | null {
+  const i = monthIndexAt(x, world);
+  if (i === null) return null;
+  const months = world.months;
+  return {
+    prev: i > 0 ? shortName(months[i - 1]!) : null,
+    current: months[i]!.label,
+    next: i < months.length - 1 ? shortName(months[i + 1]!) : null,
+  };
 }
 
 export function buildExploreWorld(layout: MeadowLayout): ExploreWorld {
@@ -99,7 +136,7 @@ export function buildExploreWorld(layout: MeadowLayout): ExploreWorld {
     maxZ: BOUNDS_SOUTH_Z,
   };
 
-  const stream = buildStream({ months, bounds, widthM });
+  const stream = buildStream({ months, bounds });
 
   const lastMonth = months[months.length - 1];
   return {
