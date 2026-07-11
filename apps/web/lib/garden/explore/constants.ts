@@ -20,6 +20,14 @@ export const FOX_SCALE = 0.012;
 export const FOX_HEADING_OFFSET = Math.PI;
 /** Camera look-at height above the ground — roughly the fox's head. */
 export const FOX_HEAD_HEIGHT = 0.65;
+
+/** The stream fish (Quaternius low-poly Fish — see public/models/CREDITS.md). */
+export const FISH_MODEL_URL = '/models/Fish.glb';
+/**
+ * Extra yaw applied to the fish model so its nose faces the `fishAt` heading. The Quaternius
+ * Fish's local forward is already +Z — the same convention as the pure fish logic.
+ */
+export const FISH_HEADING_OFFSET = 0;
 /** Gait speed thresholds (m/s): below walk-min = idle, above run-min = run. */
 export const FOX_GAIT_WALK_MIN = 0.15;
 export const FOX_GAIT_RUN_MIN = 2.2;

@@ -77,48 +77,51 @@ describe('ExploreHud', () => {
     expect(screen.queryByText('Wandering the meadow')).toBeNull();
   });
 
-  it('credits the fox model in the controls panel', () => {
+  it('credits the fox and fish models in the controls panel', () => {
     render(<ExploreHud onBack={() => {}} hint={null} progress={null} />);
     fireEvent.click(screen.getByRole('button', { name: /controls help/i }));
     expect(screen.getByText(/PixelMannen/)).toBeTruthy();
     expect(screen.getByText(/CC BY 4\.0/)).toBeTruthy();
+    expect(screen.getByText(/Quaternius/)).toBeTruthy();
   });
 
-  it('shows the sound toggle with pressed state and fires the handler', () => {
-    const onToggleSound = vi.fn();
+  it('shows the month pill with dimmed neighbour hints when a month is provided', () => {
     const { rerender } = render(
-      <ExploreHud onBack={() => {}} hint={null} progress={null} soundOn onToggleSound={onToggleSound} />,
+      <ExploreHud
+        onBack={() => {}}
+        hint={null}
+        progress={null}
+        month={{ prev: 'May', current: 'June 2026', next: 'Jul' }}
+      />,
     );
-    const btn = screen.getByRole('button', { name: /ambient sound/i });
-    expect(btn.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(btn);
-    expect(onToggleSound).toHaveBeenCalled();
+    expect(screen.getByText('June 2026')).toBeTruthy();
+    expect(screen.getByText('‹ May')).toBeTruthy();
+    expect(screen.getByText('Jul ›')).toBeTruthy();
+    rerender(<ExploreHud onBack={() => {}} hint={null} progress={null} month={null} />);
+    expect(screen.queryByText('June 2026')).toBeNull();
+    expect(screen.queryByText(/‹|›/)).toBeNull();
+  });
 
+  it('omits the chevron for a missing neighbour at either end of the garden', () => {
+    const { rerender } = render(
+      <ExploreHud
+        onBack={() => {}}
+        hint={null}
+        progress={null}
+        month={{ prev: 'May', current: 'June 2026', next: null }}
+      />,
+    );
+    expect(screen.getByText('‹ May')).toBeTruthy();
+    expect(screen.queryByText(/›/)).toBeNull();
     rerender(
       <ExploreHud
         onBack={() => {}}
         hint={null}
         progress={null}
-        soundOn={false}
-        onToggleSound={onToggleSound}
+        month={{ prev: null, current: 'January 2026', next: 'Feb' }}
       />,
     );
-    expect(screen.getByRole('button', { name: /ambient sound/i }).getAttribute('aria-pressed')).toBe(
-      'false',
-    );
-  });
-
-  it('hides the sound toggle when no handler is wired', () => {
-    render(<ExploreHud onBack={() => {}} hint={null} progress={null} />);
-    expect(screen.queryByRole('button', { name: /ambient sound/i })).toBeNull();
-  });
-
-  it('shows the month pill only when a label is provided', () => {
-    const { rerender } = render(
-      <ExploreHud onBack={() => {}} hint={null} progress={null} monthLabel="June 2026" />,
-    );
-    expect(screen.getByText('June 2026')).toBeTruthy();
-    rerender(<ExploreHud onBack={() => {}} hint={null} progress={null} monthLabel={null} />);
-    expect(screen.queryByText('June 2026')).toBeNull();
+    expect(screen.getByText('Feb ›')).toBeTruthy();
+    expect(screen.queryByText(/‹/)).toBeNull();
   });
 });

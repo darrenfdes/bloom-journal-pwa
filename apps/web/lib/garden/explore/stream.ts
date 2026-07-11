@@ -114,22 +114,34 @@ export function pointAlongStream(
 }
 
 /**
- * Build the stream for a world: a gentle north→south S-curve centred on the month boundary nearest
- * mid-world, narrow at the off-map ends and broad through the pool near `POND_Z`. Deterministic; no
- * water below two months (matches the old pond threshold).
+ * Linear arc-length resample of the centerline polyline (view-only; stays exactly on the carved
+ * channel — terrain carving samples the raw polyline, so no spline smoothing here).
+ */
+export function resampleStream(stream: Stream, spacing = 1.5): StreamPoint[] {
+  const { total } = arcLengths(stream.points);
+  const steps = Math.max(1, Math.ceil(total / spacing));
+  const out: StreamPoint[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const p = pointAlongStream(stream, i / steps);
+    out.push({ x: p.x, z: p.z, halfWidth: p.halfWidth });
+  }
+  return out;
+}
+
+/**
+ * Build the stream for a world: a gentle north→south S-curve centred on the boundary between the
+ * newest month and its predecessor — a short walk west of spawn — narrow at the off-map ends and
+ * broad through the pool near `POND_Z`. Deterministic; no water below two months (matches the old
+ * pond threshold).
  */
 export function buildStream(world: {
   months: MonthRegion[];
   bounds: WorldBounds;
-  widthM: number;
 }): Stream | null {
-  const { months, bounds, widthM } = world;
+  const { months, bounds } = world;
   if (months.length < 2) return null;
 
-  const boundaries = months.slice(1).map((m) => m.xStart);
-  const nearestBoundary = (target: number) =>
-    boundaries.reduce((best, b) => (Math.abs(b - target) < Math.abs(best - target) ? b : best));
-  const cx = nearestBoundary(widthM / 2);
+  const cx = months[months.length - 1]!.xStart;
 
   const nb = bounds.minZ;
   const sb = bounds.maxZ;

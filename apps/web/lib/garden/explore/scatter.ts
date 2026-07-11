@@ -8,6 +8,7 @@
 import { mulberry32 } from '@/lib/garden/bloom/rng';
 
 import { closestOnStream, pointAlongStream, type Stream } from './stream';
+import { groundHeightAt } from './terrain';
 import type { ExploreWorld } from './world-layout';
 
 export interface ScatterItem {
@@ -189,6 +190,7 @@ export function streamBankScatter(
   offMax: number,
   minScale: number,
   maxScale: number,
+  requireDry = false,
 ): ScatterItem[] {
   const rng = mulberry32(seed);
   const out: ScatterItem[] = [];
@@ -206,6 +208,10 @@ export function streamBankScatter(
     const z = p.z + nz * side * off;
     const s = closestOnStream(x, z, stream);
     if (s.dist < s.halfWidth + offMin * 0.5) continue; // fell into the water on a bend — retry
+    // The carved bank stays below the water level for a stretch past the channel edge. Reeds and
+    // cattails are happy standing in the shallows, but decor that must read as dry land (pebbles,
+    // grass tufts) rejects submerged spots and gathers along the true waterline instead.
+    if (requireDry && groundHeightAt(x, z, stream) < stream.level) continue;
     out.push({ x, z, scale, rotation, variant: 0 });
   }
   return out;
@@ -213,13 +219,17 @@ export function streamBankScatter(
 
 /**
  * Stream dressing: floating lily pads + open blossoms in the pool, a reed fringe hugging both
- * banks, and tall cattails a little further out. Seeded deterministically off the pool position.
+ * banks, tall cattails a little further out, pebbles right at the waterline, and short grass
+ * tufts overhanging the edge. All bank decor keeps dry footing (the carved bank is submerged for
+ * a stretch past the channel edge). Seeded deterministically off the pool position.
  */
 export function streamDecorFor(stream: Stream): {
   pads: ScatterItem[];
   reeds: ScatterItem[];
   cattails: ScatterItem[];
   blossoms: ScatterItem[];
+  pebbles: ScatterItem[];
+  bankGrass: ScatterItem[];
 } {
   const pool = streamPool(stream);
   const seed = 600_000 + Math.round(pool.x) * 13;
@@ -246,8 +256,10 @@ export function streamDecorFor(stream: Stream): {
       maxScale: 1.2,
       variants: 2,
     }),
-    reeds: streamBankScatter(stream, seed + 7, 34, 0.05, 0.5, 0.8, 1.35),
-    cattails: streamBankScatter(stream, seed + 31, 16, 0.55, 1.1, 0.9, 1.4),
+    reeds: streamBankScatter(stream, seed + 7, 34, 0.05, 1.6, 0.8, 1.35, true),
+    cattails: streamBankScatter(stream, seed + 31, 16, 0.55, 2.2, 0.9, 1.4, true),
+    pebbles: streamBankScatter(stream, seed + 89, 70, 0.3, 2.4, 0.35, 0.9, true),
+    bankGrass: streamBankScatter(stream, seed + 97, 40, 0.3, 2.0, 0.8, 1.3, true),
   };
 }
 
