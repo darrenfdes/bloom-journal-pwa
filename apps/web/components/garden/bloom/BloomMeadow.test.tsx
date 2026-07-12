@@ -379,6 +379,134 @@ describe('BloomMeadow', () => {
     });
   });
 
+  describe('weather chip', () => {
+    const weather = {
+      category: 'drizzle',
+      windSpeed: 8,
+      cloudCover: 80,
+      visibility: 10000,
+      precipitation: 0.4,
+      temperature: 13.6,
+      coords: { lat: 51.5, lon: -0.1 },
+      locationName: 'London',
+    };
+
+    it('shows the live condition and rounded temperature', () => {
+      renderMeadow({ live: true, entries: buildSampleEntries().slice(0, 2), liveWeather: weather });
+      expect(screen.getByText('Light rain · 14°')).toBeInTheDocument();
+    });
+
+    it('is absent while live weather is still unknown', () => {
+      renderMeadow({ live: true, entries: buildSampleEntries().slice(0, 2), liveWeather: null });
+      expect(screen.queryByText(/· \d+°/)).not.toBeInTheDocument();
+    });
+
+    it('is absent in preview mode', () => {
+      renderMeadow({ preview: true, entries: buildSampleEntries().slice(0, 2), liveWeather: weather });
+      expect(screen.queryByText('Light rain · 14°')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('seasonal particles', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('renders falling leaves in autumn', () => {
+      vi.setSystemTime(new Date(2026, 9, 15, 12, 0, 0));
+      renderMeadow({ live: true, entries: [] });
+      expect(screen.getByTestId('season-particles')).toHaveAttribute('data-kind', 'leaves');
+    });
+
+    it('renders drifting petals in spring', () => {
+      vi.setSystemTime(new Date(2026, 3, 15, 12, 0, 0));
+      renderMeadow({ live: true, entries: [] });
+      expect(screen.getByTestId('season-particles')).toHaveAttribute('data-kind', 'petals');
+    });
+
+    it('renders no particles in winter or summer', () => {
+      vi.setSystemTime(new Date(2026, 0, 15, 12, 0, 0));
+      const { unmount } = renderMeadow({ live: true, entries: [] });
+      expect(screen.queryByTestId('season-particles')).not.toBeInTheDocument();
+      unmount();
+
+      vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0));
+      renderMeadow({ live: true, entries: [] });
+      expect(screen.queryByTestId('season-particles')).not.toBeInTheDocument();
+    });
+
+    it('clears the sky while it snows (snow wins over the season)', () => {
+      vi.setSystemTime(new Date(2026, 9, 15, 12, 0, 0));
+      renderMeadow({
+        live: true,
+        entries: [],
+        liveWeather: {
+          category: 'snow',
+          windSpeed: 5,
+          cloudCover: 100,
+          visibility: 4000,
+          precipitation: 1,
+          temperature: -1,
+          coords: { lat: 51.5, lon: -0.1 },
+          locationName: null,
+        },
+      });
+      expect(screen.getByTestId('season-particles')).toHaveStyle({ opacity: '0' });
+    });
+  });
+
+  describe('timeline scrubber', () => {
+    it('marks year boundaries and repeats the year suffix there', () => {
+      renderMeadow({
+        preview: true,
+        entries: [
+          entry({ id: 'dec', createdAt: new Date(2025, 11, 5) }),
+          entry({ id: 'jan', createdAt: new Date(2026, 0, 9) }),
+        ],
+      });
+      expect(screen.getByText("Dec '25")).toBeInTheDocument();
+      expect(screen.getByText("Jan '26")).toBeInTheDocument();
+    });
+
+    it('offers a Today jump that scrolls to the newest month', async () => {
+      const user = userEvent.setup();
+      const { container } = renderMeadow({
+        preview: true,
+        entries: [
+          entry({ id: 'jan', createdAt: new Date(2026, 0, 5) }),
+          entry({ id: 'mar', createdAt: new Date(2026, 2, 1) }),
+        ],
+      });
+      const scroller = container.querySelector('.bj-scroll') as HTMLDivElement;
+      const scrollTo = vi.fn();
+      scroller.scrollTo = scrollTo;
+
+      await user.click(screen.getByRole('button', { name: 'Jump to the newest memories' }));
+      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+    });
+
+    it('hides the Today jump on a single-month garden', () => {
+      renderMeadow({ preview: true, entries: [entry({ id: 'only', createdAt: new Date(2026, 0, 5) })] });
+      expect(screen.queryByRole('button', { name: 'Jump to the newest memories' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('memory card flower', () => {
+    it("shows the entry's own flower on the card", async () => {
+      const user = userEvent.setup();
+      const e = entry({ id: 'flower-card', title: 'Flower card', createdAt: new Date(2026, 1, 10) });
+      renderMeadow({ preview: true, entries: [e] });
+
+      await user.click(screen.getByRole('button', { name: /Flower card/ }));
+      const wrap = screen.getByTestId('memory-card-flower');
+      expect(wrap.querySelector('svg')).toBeTruthy();
+    });
+  });
+
   describe('revisit links', () => {
     it('shows parent revisit link and navigates between entries', async () => {
       const user = userEvent.setup();
