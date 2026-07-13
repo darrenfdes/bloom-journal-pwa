@@ -65,6 +65,7 @@ import {
 } from '@/lib/garden/bloom/phases';
 import { isDifficultMood, ramAppearanceChance, ramDayRoll, ramX } from '@/lib/garden/bloom/ram';
 import { mulberry32 } from '@/lib/garden/bloom/rng';
+import { seasonGrass, seasonHill, seasonLookForDate } from '@/lib/garden/bloom/season';
 import { readMemoryReplayDismiss, writeMemoryReplayDismiss } from '@/lib/memory-replay/dismiss';
 import { DUCK_FLIGHT, duckSessionChance, SOLO_BIRDS, soloBirdChance } from '@/lib/garden/bloom/ducks';
 import { SPECIAL_STAR } from '@/lib/garden/bloom/shooting-star';
@@ -86,19 +87,13 @@ import {
 import { EventEffectsLayer } from '@/components/garden/bloom/EventEffectsLayer';
 import { EventStepper } from '@/components/garden/bloom/EventStepper';
 import { PreviewRail } from '@/components/garden/bloom/PreviewRail';
+import { WeatherChip } from '@/components/garden/bloom/WeatherChip';
+import { SeasonalParticles, SEASON_PARTICLE_KEYFRAMES } from '@/components/garden/bloom/SeasonalParticles';
 import type { Rarity, SceneEffect, WorldEvent } from '@bloom/core/events';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
 
-const serif = "var(--font-display), Georgia, 'Times New Roman', serif";
-const sans = "var(--font-body), 'Segoe UI', sans-serif";
-const glass: React.CSSProperties = {
-  background: 'rgba(22,27,36,.38)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
-  border: '1px solid rgba(247,241,227,.16)',
-  color: '#f7f1e3',
-};
+import { glass, sans, serif } from '@/components/garden/bloom/chrome';
 
 /** Glow-dot colour for the live event label, by rarity (mirrors EventStepper's fg tones). */
 const RARITY_DOT: Record<Rarity, string> = {
@@ -288,6 +283,9 @@ export function BloomMeadow({
   }, []);
 
   const phase = PHASES[phaseKey];
+  /* month-aware seasonal look — composes over the phase palettes at render time
+     (PHASES stays untouched); winter is a no-op and storm snow always wins */
+  const seasonLook = useMemo(() => seasonLookForDate(liveNow), [liveNow]);
 
   /* live mode: sun/moon positions drift continuously with the clock; preview snaps to keyframes */
   const cel = live ? celestialAt(liveNow) : null;
@@ -1031,13 +1029,14 @@ export function BloomMeadow({
         @keyframes bj-rain{from{transform:translateY(-14vh)}to{transform:translateY(112vh)}}
         @keyframes bj-snow{0%{transform:translate(0,-6vh);opacity:0}10%{opacity:.95}90%{opacity:.9}100%{transform:translate(26px,108vh);opacity:0}}
         @keyframes bj-flash{0%{opacity:0}4%{opacity:.85}10%{opacity:.12}15%{opacity:.7}32%{opacity:0}100%{opacity:0}}
-        @keyframes bj-card{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:none}}
+        @keyframes bj-card{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
         @keyframes bj-spark{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
         @keyframes bj-replay{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
         @keyframes bj-confirm{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         ${creatures || live ? CREATURE_KEYFRAMES : ''}
         ${SHOOTING_STAR_KEYFRAMES}
         ${COMET_KEYFRAMES}
+        ${SEASON_PARTICLE_KEYFRAMES}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important;animation-iteration-count:1 !important;transition-duration:.01s !important}}
       `}</style>
 
@@ -1170,7 +1169,7 @@ export function BloomMeadow({
         {/* parallax hills */}
         {hills.map((h, i) => (
           <svg key={i} ref={hillRefs[i]} width={h.Wl} height="340" style={{ position: 'absolute', bottom: G - 16, left: 0, display: 'block', willChange: 'transform' }}>
-            <path d={h.d} fill={isSnow ? SNOW_HILLS[i] : phase.hills[i]} style={{ transition: 'fill 1.6s ease' }} />
+            <path d={h.d} fill={isSnow ? SNOW_HILLS[i] : seasonHill(phase.hills[i]!, i, seasonLook)} style={{ transition: 'fill 1.6s ease' }} />
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
@@ -1224,6 +1223,18 @@ export function BloomMeadow({
             <div key={f.id} style={{ position: 'absolute', left: `${f.x}%`, top: `${f.y}%`, width: 4, height: 4, borderRadius: '50%', background: '#ffe98a', boxShadow: '0 0 10px 3px rgba(255,228,130,.65)', animation: `bj-fire ${f.d}s ${f.dl}s ease-in-out infinite` }} />
           ))}
         </div>
+
+        {/* seasonal particles — autumn leaves / spring petals; day-gated like pollen,
+            cleared from the sky while precipitation owns it */}
+        {seasonLook.particles && (
+          <SeasonalParticles
+            kind={seasonLook.particles}
+            intensity={phase.pollen}
+            hidden={precip || isSnow}
+            dayIso={todayIso}
+            colors={seasonLook.particleColors}
+          />
+        )}
 
         {/* shooting stars */}
         {(creatures || live) &&
@@ -1285,6 +1296,19 @@ export function BloomMeadow({
             <div key={k} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: G, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
           ))}
 
+          {/* seasonal ground wash — a constant soft-light veil over the phase cross-fade
+              (never during snow; the settled-snow blanket below paints over it anyway) */}
+          {seasonLook.groundTint.opacity > 0 && (
+            <div
+              style={{
+                position: 'absolute', bottom: 0, left: 0, width: '100%', height: G,
+                background: seasonLook.groundTint.gradient, mixBlendMode: 'soft-light',
+                opacity: isSnow ? 0 : seasonLook.groundTint.opacity,
+                transition: 'opacity 1.2s ease', pointerEvents: 'none',
+              }}
+            />
+          )}
+
           {/* settled snow on the meadow floor — fades in while snowing and blankets the
               whole ground (grass hidden); flowers still rise through it */}
           <div
@@ -1308,7 +1332,7 @@ export function BloomMeadow({
           ))}
 
           {/* grass — hidden under the blanket of settled snow while it's snowing */}
-          <div style={{ position: 'absolute', inset: 0, color: phase.grass, opacity: isSnow ? 0 : 1, transition: 'color 1.6s ease, opacity 1s ease', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', inset: 0, color: seasonGrass(phase.grass, seasonLook), opacity: isSnow ? 0 : 1, transition: 'color 1.6s ease, opacity 1s ease', pointerEvents: 'none' }}>
             {tufts.map((t) => (
               <GrassTuft key={t.id} left={t.left} bottom={t.bottom} sc={t.sc} dur={t.dur} delay={t.dl} z={t.z} />
             ))}
@@ -1480,6 +1504,12 @@ export function BloomMeadow({
               ? 'sky & weather preview'
               : `${layout.entries.length} ${layout.entries.length === 1 ? 'memory' : 'memories'}`}
           </div>
+          {/* Live garden: the real weather driving the scene, so the sky reads as yours. */}
+          {live && liveWeather && (
+            <div style={{ marginTop: 10 }}>
+              <WeatherChip weather={liveWeather} />
+            </div>
+          )}
           {/* Live garden with flowers: walk the meadow in 3D (/garden/explore). A roomy labelled
               CTA on desktop; on phones it collapses to a small, subtle round ⌖ button so it stops
               dominating the header. Off the crowded event/badge cluster on the right. */}
@@ -1657,28 +1687,46 @@ export function BloomMeadow({
       <div style={{ position: 'absolute', bottom: 'calc(112px + var(--safe-bottom))', left: '50%', transform: 'translateX(-50%)', zIndex: 50, maxWidth: 'calc(100vw - 28px)' }}>
         <div style={{ ...glass, borderRadius: 999, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {layout.months.map((m, i) => (
-            <button
-              key={m.key}
-              onClick={() => scrollToX(m.cx)}
-              style={{
-                border: 'none',
-                cursor: 'pointer',
-                background: 'transparent',
-                padding: '3px 7px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 3,
-                color: activeMonth === i ? '#ffe1a0' : 'rgba(247,241,227,.62)',
-                transition: 'color .3s',
-              }}
-            >
-              <span style={{ width: activeMonth === i ? 7 : 5, height: activeMonth === i ? 7 : 5, borderRadius: '50%', background: 'currentColor', transition: 'all .3s' }} />
-              <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 1.1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                {MONTH_ABBR[m.m]}{m.m === 0 || i === 0 ? ` '${String(m.y).slice(2)}` : ''}
-              </span>
-            </button>
+            <React.Fragment key={m.key}>
+              {/* year divider — a thin rule wherever the year rolls over */}
+              {i > 0 && m.y !== layout.months[i - 1]!.y && (
+                <span aria-hidden style={{ width: 1, height: 16, background: 'rgba(247,241,227,.28)', margin: '0 4px', flexShrink: 0 }} />
+              )}
+              <button
+                onClick={() => scrollToX(m.cx)}
+                style={{
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  padding: '3px 7px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 3,
+                  color: activeMonth === i ? '#ffe1a0' : 'rgba(247,241,227,.62)',
+                  transition: 'color .3s',
+                }}
+              >
+                <span style={{ width: activeMonth === i ? 7 : 5, height: activeMonth === i ? 7 : 5, borderRadius: '50%', background: 'currentColor', transition: 'all .3s' }} />
+                <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 1.1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  {MONTH_ABBR[m.m]}{i === 0 || m.y !== layout.months[i - 1]!.y ? ` '${String(m.y).slice(2)}` : ''}
+                </span>
+              </button>
+            </React.Fragment>
           ))}
+          {/* jump back to the newest month */}
+          {layout.months.length > 1 && (
+            <>
+              <span aria-hidden style={{ width: 1, height: 16, background: 'rgba(247,241,227,.28)', margin: '0 4px', flexShrink: 0 }} />
+              <button
+                onClick={() => scrollToX(layout.months[layout.months.length - 1]!.cx)}
+                aria-label="Jump to the newest memories"
+                style={{ border: 'none', cursor: 'pointer', background: 'transparent', padding: '3px 7px', color: '#ffe1a0' }}
+              >
+                <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 800, letterSpacing: 1.1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Today</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
       )}
@@ -1693,15 +1741,27 @@ export function BloomMeadow({
       {/* ===== MEMORY CARD ===== */}
       {active && (
         <div onClick={() => setActive(null)} style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(12,16,24,.34)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px calc(28px + var(--safe-bottom))' }}>
-          <div onClick={(ev) => ev.stopPropagation()} style={{ width: 'min(440px, 100%)', maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto', background: '#fbf6ec', border: '1px solid #e6d9bf', borderRadius: 20, padding: '20px 22px 18px', boxShadow: '0 24px 70px rgba(15,22,20,.4)', animation: 'bj-card .45s cubic-bezier(.2,.8,.3,1) both' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div onClick={(ev) => ev.stopPropagation()} style={{ width: 'min(440px, 100%)', maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto', background: '#fbf6ec', border: '1px solid #e6d9bf', borderRadius: 20, padding: '20px 22px 18px', boxShadow: '0 24px 70px rgba(15,22,20,.4)', animation: 'bj-card .5s cubic-bezier(.2,.8,.3,1) both' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4 }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: moodMeta?.chip || '#999' }} />
                 <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: '#7d7561' }}>{moodMeta?.label || active.mood}</span>
                 {activeFav && <span style={{ color: '#d4a23c', fontSize: 13 }}>♥</span>}
-                {active.bloom === 'pumpkin' && <span style={{ fontSize: 12 }} title="rare bloom">🎃</span>}
               </div>
-              <button onClick={() => setActive(null)} aria-label="Close" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                {/* the tapped flower itself — same genome as the meadow, so it matches exactly */}
+                <div data-testid="memory-card-flower" style={{ width: 56, height: 56, flexShrink: 0, pointerEvents: 'none', animation: 'bj-bloom .7s .15s cubic-bezier(.2,.8,.3,1) both' }}>
+                  <Flower
+                    mood={active.genome.bloomMood}
+                    seed={active.genome.seed}
+                    size={56}
+                    wordCount={active.genome.wordCount}
+                    wiltDroop={active.genome.wiltFactor * 8}
+                    pumpkinStage={active.genome.specialBloom === 'pumpkin' ? active.genome.pumpkinStage : undefined}
+                  />
+                </div>
+                <button onClick={() => setActive(null)} aria-label="Close" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a9181', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
+              </div>
             </div>
 
             {active.title && (
