@@ -23,7 +23,7 @@ export interface ReferenceEntry {
   place: string | null;
 }
 
-const WEATHER_LABEL: Record<WeatherCategory, string> = {
+export const WEATHER_LABEL: Record<WeatherCategory, string> = {
   clear: 'Clear',
   partly_cloudy: 'Partly cloudy',
   overcast: 'Clouds',
