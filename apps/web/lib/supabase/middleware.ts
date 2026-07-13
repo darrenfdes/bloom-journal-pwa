@@ -4,11 +4,11 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { isAdminUser } from '@/lib/auth/admin';
 
 /**
- * Admin-only surfaces in production (always open in development): the `/preview*` playgrounds and
- * the `/garden/explore` 3D meadow. Exported for unit testing the path matcher.
+ * Admin-only surfaces in production (always open in development): the `/preview*` playgrounds.
+ * Exported for unit testing the path matcher.
  */
 export function isAdminOnlyPath(pathname: string): boolean {
-  return pathname.startsWith('/preview') || pathname.startsWith('/garden/explore');
+  return pathname.startsWith('/preview');
 }
 
 function isGatedRequest(request: NextRequest): boolean {
