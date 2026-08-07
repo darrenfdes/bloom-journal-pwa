@@ -27,6 +27,8 @@ npm run dev:web
 
 Open [http://localhost:3000](http://localhost:3000). Data is stored locally in IndexedDB; Supabase sync is wired but inactive until env vars are set (see `apps/web/.env.local.example`).
 
+**Self-host your own instance** (Vercel + optional Supabase sync / Google SSO): [docs/self-hosting.md](docs/self-hosting.md).
+
 **Scene previews:** [http://localhost:3000/preview](http://localhost:3000/preview) — fixed sky/weather scenes for dev (`apps/web/AGENTS.md`).
 
 ### Mobile (Expo) — development paused
@@ -51,10 +53,12 @@ bloom-journal-pwa/
 
 | Doc | Description |
 |-----|-------------|
+| [docs/self-hosting.md](docs/self-hosting.md) | Deploy your own instance (Vercel, Supabase, optional Google SSO) |
 | [docs/product-spec.md](docs/product-spec.md) | Product specification — features, flows, data model |
 | [docs/mobile-development-paused.md](docs/mobile-development-paused.md) | Mobile pause status + **unpause checklist** |
 | [docs/flower-decision-spec.md](docs/flower-decision-spec.md) | How entries become procedural flowers |
 | [apps/web/docs/sync.md](apps/web/docs/sync.md) | Supabase auth and LWW sync |
+| [LICENSE](LICENSE) | MIT License |
 
 ## Roadmap
 
