@@ -2,7 +2,7 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import type { EntryRecord } from '@bloom/core';
-import type { SceneEffect } from '@bloom/core/events';
+import type { SceneEffect, WorldEvent } from '@bloom/core/events';
 
 import { BloomMeadow } from '@/components/garden/bloom/BloomMeadow';
 
@@ -54,6 +54,7 @@ export type MeadowRenderProps = {
     locationName: string | null;
   } | null;
   liveSceneEffects?: SceneEffect[];
+  liveEvents?: WorldEvent[];
 };
 
 function buildMeadow(props: MeadowRenderProps) {
@@ -64,6 +65,7 @@ function buildMeadow(props: MeadowRenderProps) {
     creatures = false,
     liveWeather = null,
     liveSceneEffects = [],
+    liveEvents = [],
   } = props;
   return (
     <BloomMeadow
@@ -73,6 +75,7 @@ function buildMeadow(props: MeadowRenderProps) {
       creatures={creatures}
       liveWeather={liveWeather as never}
       liveSceneEffects={liveSceneEffects}
+      liveEvents={liveEvents}
     />
   );
 }

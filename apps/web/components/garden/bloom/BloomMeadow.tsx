@@ -73,6 +73,7 @@ import {
   apsisForEvent,
   effectsForEvent,
   filterEvents,
+  headlineForPhase,
   moonPresetForEvent,
   moonScaleForEvent,
   moonTintForEvent,
@@ -193,7 +194,7 @@ export function BloomMeadow({
   specialStar = false,
   liveSceneEffects = [],
   livePlanet = null,
-  liveEvent = null,
+  liveEvents = [],
 }: {
   entries: EntryRecord[];
   preview?: boolean;
@@ -213,8 +214,8 @@ export function BloomMeadow({
   liveSceneEffects?: SceneEffect[];
   /** Which planet (if any) is at opposition today, for the live bright-star look. */
   livePlanet?: Planet | null;
-  /** Today's headline world event (live /garden only), surfaced as a subtle named label. */
-  liveEvent?: WorldEvent | null;
+  /** Today's world events (live /garden only); the meadow picks a phase-matching headline. */
+  liveEvents?: WorldEvent[];
 }) {
   const router = useRouter();
   const refreshEntries = useBloomStore((s) => s.refreshEntries);
@@ -332,10 +333,19 @@ export function BloomMeadow({
   const eventsBrowser = preview && !live && layout.entries.length === 0;
   // Track the live clock so the "next event" hint and comet session key roll over at midnight on a
   // long-open garden (liveNow ticks each minute in live mode; in preview it's set once at mount).
-  const todayIso = useMemo(() => liveNow.toISOString().slice(0, 10), [liveNow]);
+  const todayIso = useMemo(() => {
+    const y = liveNow.getFullYear();
+    const m = String(liveNow.getMonth() + 1).padStart(2, '0');
+    const d = String(liveNow.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [liveNow]);
   // Subtle "what's coming" hint for the live garden: the next world event strictly after today
   // (today's event, if any, is already painted in the sky). Date only — no name, not interactive.
   const nextEvent = useMemo(() => (live ? nextWorldEvent(todayIso) : null), [live, todayIso]);
+  const liveEvent = useMemo(
+    () => (live ? headlineForPhase(liveEvents, phaseKey) : null),
+    [live, liveEvents, phaseKey],
+  );
   const filteredEvents = useMemo(() => filterEvents(evGroup, evRarity), [evGroup, evRarity]);
   const selectedEvent =
     filteredEvents.length > 0 ? filteredEvents[Math.min(evIndex, filteredEvents.length - 1)] ?? null : null;
@@ -344,14 +354,15 @@ export function BloomMeadow({
     [eventMode, selectedEvent],
   );
   // Live garden: render today's effects, but only the night-sky ones (fireworks, Christmas
-  // star, planet, comet) when the app is actually at dusk/night — those visuals read only
-  // after dark. Moon/sun/etc. tokens stay preview-only to keep their tuning unchanged in live
-  // mode. `phaseKey` itself always tracks the real clock (see the live-clock effect below) —
-  // a comet event only widens the sky's canvas, it never overrides what time it actually is.
+  // star, planet, comet, meteor shower) when the app is actually at dusk/night — those
+  // visuals read only after dark. Moon/sun/etc. tokens stay preview-only to keep their
+  // tuning unchanged in live mode. `phaseKey` itself always tracks the real clock (see the
+  // live-clock effect below) — a comet event only widens the sky's canvas, it never
+  // overrides what time it actually is.
   const atNight = phaseKey === 'night' || phaseKey === 'dusk';
   const liveRenderedEffects = useMemo(() => {
     if (!live) return [];
-    const NIGHT_ONLY: SceneEffect[] = ['fireworks', 'christmasStar', 'brightStar'];
+    const NIGHT_ONLY: SceneEffect[] = ['fireworks', 'christmasStar', 'brightStar', 'shootingStars'];
     return liveSceneEffects.filter((e) => (NIGHT_ONLY.includes(e) ? atNight : false));
   }, [live, liveSceneEffects, atNight]);
   const showComet =

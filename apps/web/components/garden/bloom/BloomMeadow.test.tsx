@@ -18,7 +18,11 @@ import {
 // synchronously, which recurses infinitely if the real component mounts under test.
 vi.mock('@/components/garden/bloom/shooting-star-visual', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/components/garden/bloom/shooting-star-visual')>();
-  return { ...actual, CometVisual: () => <div data-testid="comet-visual" /> };
+  return {
+    ...actual,
+    CometVisual: () => <div data-testid="comet-visual" />,
+    ShootingStar: () => <div data-testid="shooting-star" />,
+  };
 });
 
 describe('BloomMeadow', () => {
@@ -72,6 +76,77 @@ describe('BloomMeadow', () => {
       vi.setSystemTime(new Date(2026, 5, 14, 23, 0, 0));
       renderMeadow({ live: true, liveSceneEffects: ['cometArc'] });
       expect(screen.getByTestId('comet-visual')).toBeInTheDocument();
+    });
+  });
+
+  describe('meteor shower (live mode)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('does not render meteors during daytime hours even when a shower is active', () => {
+      vi.setSystemTime(new Date(2026, 7, 12, 12, 0, 0));
+      renderMeadow({ live: true, liveSceneEffects: ['shootingStars'] });
+      expect(screen.queryByTestId('shooting-star')).not.toBeInTheDocument();
+    });
+
+    it('renders meteors at night when a shower is active', () => {
+      vi.setSystemTime(new Date(2026, 7, 12, 23, 0, 0));
+      renderMeadow({ live: true, liveSceneEffects: ['shootingStars'] });
+      expect(screen.getAllByTestId('shooting-star').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('live event label', () => {
+    const aug12 = [
+      {
+        id: 'meteor-PER-2026',
+        type: 'meteorShower' as const,
+        date: '2026-08-12',
+        title: 'Perseids peak',
+        subtitle: '~100/hr at peak',
+        rarity: 'rare' as const,
+      },
+      {
+        id: 'newMoon-2026-08-12',
+        type: 'newMoon' as const,
+        date: '2026-08-12',
+        title: 'New Moon',
+        rarity: 'common' as const,
+      },
+      {
+        id: 'solarEclipse-2026-08-12',
+        type: 'solarEclipse' as const,
+        date: '2026-08-12',
+        title: 'Solar Eclipse',
+        rarity: 'epic' as const,
+      },
+    ];
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('names Perseids at night even when a rarer daytime eclipse shares the date', () => {
+      vi.setSystemTime(new Date(2026, 7, 12, 23, 0, 0));
+      renderMeadow({ live: true, liveEvents: aug12 });
+      expect(screen.getByText('Perseids peak')).toBeInTheDocument();
+      expect(screen.queryByText('Solar Eclipse')).not.toBeInTheDocument();
+    });
+
+    it('names the solar eclipse during the day', () => {
+      vi.setSystemTime(new Date(2026, 7, 12, 12, 0, 0));
+      renderMeadow({ live: true, liveEvents: aug12 });
+      expect(screen.getByText('Solar Eclipse')).toBeInTheDocument();
+      expect(screen.queryByText('Perseids peak')).not.toBeInTheDocument();
     });
   });
 

@@ -9,6 +9,7 @@
 
 import {
   eventsFileMeta,
+  primaryEvent,
   SCENE_EFFECT,
   type EventType,
   type Rarity,
@@ -112,6 +113,22 @@ export function phaseForEvent(event: WorldEvent): PhaseKey {
   if (DAY_TYPES.has(event.type)) return 'day';
   if (GOLDEN_TYPES.has(event.type)) return 'golden';
   return 'night';
+}
+
+/** Collapse the live clock phase into the buckets `phaseForEvent` uses. */
+function headlinePhase(phase: PhaseKey): PhaseKey {
+  if (phase === 'dusk' || phase === 'night') return 'night';
+  if (phase === 'golden') return 'golden';
+  return 'day';
+}
+
+/**
+ * Today's garden label: the most notable event that belongs to the current
+ * sky, so a night meteor shower isn't buried by a daytime eclipse.
+ */
+export function headlineForPhase(events: WorldEvent[], phase: PhaseKey): WorldEvent | null {
+  const wanted = headlinePhase(phase);
+  return primaryEvent(events.filter((e) => phaseForEvent(e) === wanted));
 }
 
 const FULL_MOON_TYPES = new Set<EventType>([
