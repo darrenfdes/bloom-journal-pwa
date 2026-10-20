@@ -41,7 +41,8 @@ export default function EntryPage() {
     setLoading(true);
     Promise.all([getEntry(id), countRevisits(id)])
       .then(([e, count]) => {
-        setEntry(e);
+        // A removed entry is gone from the garden, so its link shouldn't still open it.
+        setEntry(e && !e.isDeleted ? e : null);
         setRevisitCount(count);
       })
       .finally(() => setLoading(false));
