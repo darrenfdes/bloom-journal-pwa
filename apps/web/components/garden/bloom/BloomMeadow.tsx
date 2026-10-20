@@ -970,7 +970,6 @@ export function BloomMeadow({
     setPhaseKey(phaseForEvent(selectedEvent));
     const mp = moonPresetForEvent(selectedEvent);
     if (mp) setMoonPreset(mp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventsBrowser, eventMode, selectedEvent]);
 
   /* lightning: fire a flash at random intervals while the weather is stormy */

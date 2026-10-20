@@ -72,7 +72,6 @@ function GardenFlowerInner({
   const filters = [seasonFilter, nightFilter, rainDroop ? 'brightness(0.85)' : null]
     .filter(Boolean)
     .join(' ');
-  const favHalo = entry.isFavourited ? 14 : 0;
   const baseScale = position.scale;
   const baseRotate = position.rotation;
   const isRipePumpkin =

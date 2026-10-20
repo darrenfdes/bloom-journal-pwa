@@ -29,7 +29,6 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import sharp from 'sharp';
 import pngToIco from 'png-to-ico';
 

@@ -14,6 +14,12 @@ const eslintConfig = [
   {
     ignores: ['.next/**', 'out/**', 'build/**', 'next-env.d.ts'],
   },
+  {
+    rules: {
+      // Allow `const { dropped, ...rest } = obj` to omit fields without tripping the rule.
+      '@typescript-eslint/no-unused-vars': ['warn', { ignoreRestSiblings: true }],
+    },
+  },
 ];
 
 export default eslintConfig;
