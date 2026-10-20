@@ -29,6 +29,17 @@ const ERROR_TOAST_COOLDOWN_MS = 10_000;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let activeUserId: string | null = null;
 let lastErrorToastAt = 0;
+let syncChain: Promise<unknown> = Promise.resolve();
+
+/**
+ * Run sync operations one at a time. Sign-in, focus, reconnect and the debounced push can all fire
+ * together; interleaved pulls/pushes would race on the same rows.
+ */
+function runExclusive<T>(op: () => Promise<T>): Promise<T> {
+  const run = syncChain.then(op, op);
+  syncChain = run.catch(() => undefined);
+  return run;
+}
 
 function supabase() {
   return getSupabaseBrowserClient();
@@ -65,7 +76,11 @@ async function countPending(): Promise<number> {
   return entries + bouquets;
 }
 
-export async function pullForUser(userId: string): Promise<void> {
+export function pullForUser(userId: string): Promise<void> {
+  return runExclusive(() => pullUnlocked(userId));
+}
+
+async function pullUnlocked(userId: string): Promise<void> {
   const client = supabase();
   if (!client) return;
 
@@ -144,12 +159,8 @@ export async function pullForUser(userId: string): Promise<void> {
     if (remoteSettings) {
       const local = await getOrCreateSettings();
       const syncable = remoteToSyncableAppSettings(remoteSettings);
-      await db.app_settings.put({
-        id: 'default',
-        biometricLock: local.biometricLock,
-        pinEnabled: local.pinEnabled,
-        ...syncable,
-      });
+      // Only the reminder prefs sync; keep every client-only field (birthday, PIN, …) as is.
+      await db.app_settings.put({ ...local, ...syncable, id: 'default' });
     }
 
     const { data: remoteBouquets } = await client
@@ -201,7 +212,11 @@ export async function pullForUser(userId: string): Promise<void> {
   }
 }
 
-export async function pushPending(userId: string): Promise<void> {
+export function pushPending(userId: string): Promise<void> {
+  return runExclusive(() => pushUnlocked(userId));
+}
+
+async function pushUnlocked(userId: string): Promise<void> {
   const client = supabase();
   if (!client || !navigator.onLine) {
     setSyncStatus({ offline: true });
@@ -236,9 +251,18 @@ export async function pushPending(userId: string): Promise<void> {
       const { error } = await client.from('entries').upsert(payload);
       if (error) throw error;
 
+      // Only clear the flag if the row is still the version we uploaded: an edit made while the
+      // upsert was in flight must stay pending so the next push sends it.
       const now = new Date().toISOString();
       for (const entry of entriesForPush) {
-        await db.entries.update(entry.id, { syncedAt: now, pendingPush: false });
+        await db.entries
+          .where('id')
+          .equals(entry.id)
+          .modify((row) => {
+            if (row.updatedAt !== entry.updatedAt) return;
+            row.syncedAt = now;
+            row.pendingPush = false;
+          });
       }
     }
 
@@ -347,10 +371,12 @@ export async function syncNow(userId: string): Promise<{ merged: number }> {
   if (!supabase()) return { merged: 0 };
 
   activeUserId = userId;
-  const merged = await reparentLocalEntries(userId);
-  await pullForUser(userId);
-  await pushPending(userId);
-  return { merged };
+  return runExclusive(async () => {
+    const merged = await reparentLocalEntries(userId);
+    await pullUnlocked(userId);
+    await pushUnlocked(userId);
+    return { merged };
+  });
 }
 
 export async function refreshPendingCount() {
