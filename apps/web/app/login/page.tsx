@@ -15,7 +15,6 @@ import {
   signInWithPassword,
   signUpWithPassword,
 } from '@/lib/auth/session';
-import { syncNow } from '@/lib/sync/engine';
 
 function authErrorMessage(error: { message: string; code?: string }): string {
   switch (error.code) {
@@ -95,8 +94,7 @@ function LoginForm() {
         setMode('signin');
         return;
       }
-      const uid = data.user?.id ?? data.session?.user.id;
-      if (uid) await syncNow(uid);
+      // BloomProvider syncs (adopt local data → pull → push) as soon as the user changes.
       await refresh();
       toast.success(mode === 'signin' ? 'Signed in' : 'Account created');
       router.push('/settings');
