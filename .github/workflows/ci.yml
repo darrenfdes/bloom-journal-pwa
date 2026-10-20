@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-and-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint (web)
+        run: npm run lint -w @bloom/web
+
+      - name: Typecheck (core)
+        run: npm run typecheck -w @bloom/core
+
+      - name: Typecheck (web)
+        run: npm run typecheck -w @bloom/web
+
+      - name: Test (core)
+        run: npm test -w @bloom/core
+
+      - name: Test (web)
+        run: npm test -w @bloom/web
+
+      # No Supabase env: proves the app still builds in local-only mode.
+      - name: Build (web)
+        run: npm run build:web

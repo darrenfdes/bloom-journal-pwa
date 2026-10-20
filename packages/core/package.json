@@ -36,6 +36,7 @@
   "scripts": {
     "precompute:events": "tsx src/events/precompute-events.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   }
 }
