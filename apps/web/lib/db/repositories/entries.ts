@@ -29,10 +29,12 @@ export async function getEntry(id: string): Promise<EntryRecord | null> {
 export async function plantEntry(
   draft: WriteDraft,
   bounds: { width: number; height: number },
-  scene?: PlantSceneSnapshot
+  scene?: PlantSceneSnapshot,
+  /** Pre-chosen id, so a preview built from it (see `buildPlantPreviewEntry`) matches the bloom. */
+  options?: { id?: string }
 ): Promise<EntryRecord> {
   const db = getDb();
-  const id = createId();
+  const id = options?.id ?? createId();
   const now = new Date().toISOString();
   const createdAt = draft.createdAtOverride ?? now;
   const { mood, inferredSentiment } = resolveMood(draft.mood, draft.content);

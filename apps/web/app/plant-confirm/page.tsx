@@ -12,9 +12,10 @@ import { getMood } from '@/lib/constants/moods';
 import { plantEntry } from '@/lib/db/repositories/entries';
 import { getOrCreateGardenMeta } from '@/lib/db/repositories/garden';
 import { clearWriteDraft } from '@/lib/db/repositories/settings';
+import { createId } from '@/lib/id';
+import { buildPlantPreviewEntry } from '@/lib/plant/preview';
 import { buildPlantSceneSnapshot } from '@/lib/scene/plantSnapshot';
 import { useSceneContext } from '@/lib/scene/SceneContext';
-import { resolveMood } from '@/lib/sentiment/infer';
 import { buildFlowerGenome } from '@bloom/core/flowers/genome';
 import type { EntryRecord } from '@bloom/core';
 import { useBloomStore } from '@/stores/useBloomStore';
@@ -32,28 +33,12 @@ export default function PlantConfirmPage() {
   const [planting, setPlanting] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
 
-  const previewEntry: EntryRecord | null = useMemo(() => {
-    if (!pending) return null;
-    const { mood, inferredSentiment } = resolveMood(pending.mood, pending.content);
-    const now = new Date().toISOString();
-    return {
-      id: 'preview',
-      userId: 'local',
-      title: pending.title.trim() || null,
-      content: pending.content,
-      mood,
-      inferredSentiment,
-      tags: pending.tags,
-      createdAt: pending.createdAtOverride ?? now,
-      updatedAt: now,
-      flowerSeed: 42,
-      flowerStyle: '{}',
-      gardenPosition: null,
-      isFavourited: false,
-      revisitOf: pending.revisitOf,
-      isDeleted: false,
-    };
-  }, [pending]);
+  // The id the entry will be planted with, chosen up front so the preview shows the real bloom.
+  const plantId = useMemo(() => (pending ? createId() : null), [pending]);
+  const previewEntry: EntryRecord | null = useMemo(
+    () => (pending && plantId ? buildPlantPreviewEntry(pending, plantId) : null),
+    [pending, plantId]
+  );
 
   useEffect(() => {
     if (celebrating) return;
@@ -89,7 +74,9 @@ export default function PlantConfirmPage() {
         width: typeof window !== 'undefined' ? window.innerWidth : 390,
         height: typeof window !== 'undefined' ? window.innerHeight : 800,
       };
-      const entry = await plantEntry(pending, bounds, buildPlantSceneSnapshot(scene));
+      const entry = await plantEntry(pending, bounds, buildPlantSceneSnapshot(scene), {
+        id: plantId ?? undefined,
+      });
       await clearWriteDraft();
 
       const { listEntries } = await import('@/lib/db/repositories/entries');
