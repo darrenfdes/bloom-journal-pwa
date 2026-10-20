@@ -27,8 +27,9 @@ describe('getMoonPhase', () => {
     const moon = getMoonPhase(new Date('2026-05-29T12:00:00Z'));
     expect(moon.phase).toBeGreaterThan(0.4);
     expect(moon.phase).toBeLessThan(0.48);
-    expect(moon.illumination).toBeGreaterThan(0.85);
-    expect(moon.illumination).toBeLessThan(0.92);
+    // ~2 days before the 31 May full moon; astronomy-engine puts illumination at ~0.967.
+    expect(moon.illumination).toBeGreaterThan(0.93);
+    expect(moon.illumination).toBeLessThan(0.98);
     expect(moon.name).toBe('waxing_gibbous');
     expect(moon.waxing).toBe(true);
   });
