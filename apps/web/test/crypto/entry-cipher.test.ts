@@ -25,7 +25,7 @@ const sample: EntryPlainBundle = {
     visibility: 10000,
     precipitation: 0,
     temperature: 18,
-    coords: { latitude: 51.5, longitude: -0.12 },
+    coords: { lat: 51.5, lon: -0.12 },
     locationName: 'Home',
   },
 };
@@ -74,7 +74,8 @@ describe('entry-cipher', () => {
   it('fails to decrypt a tampered blob', async () => {
     const key = await makeKey();
     const bytes = Uint8Array.from(atob(await encryptBundle(sample, key)), (c) => c.charCodeAt(0));
-    bytes[bytes.length - 1] ^= 0xff; // flip a ciphertext byte
+    const last = bytes.length - 1;
+    bytes[last] = bytes[last]! ^ 0xff; // flip a ciphertext byte
     const tampered = btoa(String.fromCharCode(...bytes));
     await expect(decryptBundle(tampered, key)).rejects.toThrow();
   });

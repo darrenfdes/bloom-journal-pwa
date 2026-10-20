@@ -44,8 +44,8 @@ describe('selectNotifications — celestial windows', () => {
   it('sends a night-sky event at the night window (hour 20)', () => {
     const out = selectNotifications(input({ events: [fullMoon], localHour: 20 }));
     expect(out).toHaveLength(1);
-    expect(out[0].key).toBe('celestial:fm-2026-06-29');
-    expect(out[0].title).toContain('Strawberry Moon');
+    expect(out[0]!.key).toBe('celestial:fm-2026-06-29');
+    expect(out[0]!.title).toContain('Strawberry Moon');
   });
 
   it('does not send a night-sky event during the day', () => {
@@ -60,7 +60,7 @@ describe('selectNotifications — celestial windows', () => {
   it('sends a daytime event (solar eclipse) at hour 9', () => {
     const out = selectNotifications(input({ events: [solarEclipse], localHour: 9 }));
     expect(out).toHaveLength(1);
-    expect(out[0].key).toBe('celestial:se-2026-08-12');
+    expect(out[0]!.key).toBe('celestial:se-2026-08-12');
   });
 
   it('respects the celestial group toggle', () => {
@@ -75,7 +75,7 @@ describe('selectNotifications — festivities & milestones', () => {
   it('sends a holiday at the morning window (hour 9)', () => {
     const out = selectNotifications(input({ events: [diwali], localHour: 9 }));
     expect(out).toHaveLength(1);
-    expect(out[0].key).toBe('festivity:diwali-2026');
+    expect(out[0]!.key).toBe('festivity:diwali-2026');
   });
 
   it('does not send a holiday when festivities are off', () => {
@@ -108,8 +108,8 @@ describe('selectNotifications — revisit a memory', () => {
       input({ memoryYearsAgo: 2, localDate: '2026-06-24', localHour: 11 }),
     );
     expect(out).toHaveLength(1);
-    expect(out[0].key).toBe('memory:2026-06-24');
-    expect(out[0].body).toContain('2');
+    expect(out[0]!.key).toBe('memory:2026-06-24');
+    expect(out[0]!.body).toContain('2');
   });
 
   it('does not send a memory outside the midday window', () => {

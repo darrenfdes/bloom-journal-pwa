@@ -73,7 +73,7 @@ describe('BouquetBuilder', () => {
 
     expect(screen.queryByLabelText(/A bouquet of/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getAllByRole('button', { name: /select memory/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /select memory/i })[0]!);
     expect(screen.getByLabelText(/A bouquet of 1 flower/i)).toBeInTheDocument();
   });
 

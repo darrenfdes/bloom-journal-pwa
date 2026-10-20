@@ -46,10 +46,10 @@ describe('keepBouquet', () => {
 
     const kept = await listKeptBouquets();
     expect(kept).toHaveLength(1);
-    expect(kept[0].id).toBe(payload.id);
-    expect(kept[0].source).toBe('link');
-    expect(kept[0].payload).toEqual(payload);
-    expect(typeof kept[0].receivedAt).toBe('string');
+    expect(kept[0]!.id).toBe(payload.id);
+    expect(kept[0]!.source).toBe('link');
+    expect(kept[0]!.payload).toEqual(payload);
+    expect(typeof kept[0]!.receivedAt).toBe('string');
   });
 
   it('stamps the local owner and queues a push when signed out', async () => {
@@ -69,13 +69,13 @@ describe('keepBouquet', () => {
     // Only the signed-in user's keepsake shows on their shelf...
     const signedInShelf = await listKeptBouquets();
     expect(signedInShelf).toHaveLength(1);
-    expect(signedInShelf[0].userId).toBe('user-1');
+    expect(signedInShelf[0]!.userId).toBe('user-1');
 
     // ...and the local-only keepsake shows again when signed out.
     setActiveSyncUser(null);
     const localShelf = await listKeptBouquets();
     expect(localShelf).toHaveLength(1);
-    expect(localShelf[0].userId).toBe('local');
+    expect(localShelf[0]!.userId).toBe('local');
   });
 
   it('dedupes by bouquet id — keeping the same bouquet twice stays one row', async () => {

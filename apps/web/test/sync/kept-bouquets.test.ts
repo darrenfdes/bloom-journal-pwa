@@ -110,11 +110,11 @@ describe('kept bouquet sync — push', () => {
       received_at: string;
     }>;
     expect(rows).toHaveLength(1);
-    expect(rows[0].id).toBe('b1');
-    expect(rows[0].user_id).toBe('user-1');
-    expect(rows[0].enc_version).toBe(1);
-    expect(typeof rows[0].enc_blob).toBe('string');
-    expect(rows[0].received_at).toBe('2026-06-01T09:00:00.000Z');
+    expect(rows[0]!.id).toBe('b1');
+    expect(rows[0]!.user_id).toBe('user-1');
+    expect(rows[0]!.enc_version).toBe(1);
+    expect(typeof rows[0]!.enc_blob).toBe('string');
+    expect(rows[0]!.received_at).toBe('2026-06-01T09:00:00.000Z');
     // No plaintext payload leaves the device.
     expect(JSON.stringify(rows[0])).not.toContain('for you');
 

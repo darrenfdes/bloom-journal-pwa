@@ -30,7 +30,7 @@ describe('loadReleaseNotes', () => {
     const notes = await loadReleaseNotes();
 
     expect(notes.map((n) => n.version)).toEqual(['0.2.0', '0.1.0']);
-    expect(notes[0].items).toEqual(['b']);
+    expect(notes[0]!.items).toEqual(['b']);
   });
 
   it('replays the last successful fetch from cache on a query error', async () => {

@@ -9,7 +9,7 @@ const notes: ReleaseNote[] = [
   { version: '0.2.0', date: '2026-06-26', title: "What's new", items: ['Newest thing'] },
   { version: '0.1.0', date: '2026-06-26', title: "What's new in Bloom", items: ['Older thing'] },
 ];
-const latest = notes[0];
+const latest = notes[0]!;
 const CURRENT = latest.version;
 
 const { loadReleaseNotesMock } = vi.hoisted(() => ({ loadReleaseNotesMock: vi.fn() }));
@@ -34,7 +34,7 @@ describe('ReleaseNotesDialog', () => {
     render(<ReleaseNotesDialog />);
 
     await waitFor(() => expect(getLastSeenReleaseVersion()).toBe(CURRENT));
-    expect(screen.queryByText(latest.items[0])).not.toBeInTheDocument();
+    expect(screen.queryByText(latest.items[0]!)).not.toBeInTheDocument();
   });
 
   it('shows unseen notes to a returning user on an older version', async () => {
@@ -42,7 +42,7 @@ describe('ReleaseNotesDialog', () => {
     render(<ReleaseNotesDialog />);
 
     expect(await screen.findByText(latest.title)).toBeInTheDocument();
-    expect(screen.getByText(latest.items[0])).toBeInTheDocument();
+    expect(screen.getByText(latest.items[0]!)).toBeInTheDocument();
   });
 
   it('shows nothing when the user is already on the current version', async () => {
@@ -50,7 +50,7 @@ describe('ReleaseNotesDialog', () => {
     render(<ReleaseNotesDialog />);
 
     await waitFor(() => expect(loadReleaseNotesMock).toHaveBeenCalled());
-    expect(screen.queryByText(latest.items[0])).not.toBeInTheDocument();
+    expect(screen.queryByText(latest.items[0]!)).not.toBeInTheDocument();
   });
 
   it('marks the current version seen and closes when dismissed', async () => {

@@ -115,11 +115,11 @@ describe('sync encryption', () => {
 
     const payload = (store.upserts.entries?.[0] ?? []) as RemoteEntryRow[];
     expect(payload).toHaveLength(1);
-    expect(payload[0].enc_version).toBe(1);
-    expect(typeof payload[0].enc_blob).toBe('string');
-    expect(payload[0].content).toBeNull();
-    expect(payload[0].title).toBeNull();
-    expect(payload[0].mood).toBeNull();
+    expect(payload[0]!.enc_version).toBe(1);
+    expect(typeof payload[0]!.enc_blob).toBe('string');
+    expect(payload[0]!.content).toBeNull();
+    expect(payload[0]!.title).toBeNull();
+    expect(payload[0]!.mood).toBeNull();
 
     // The successful push clears the local pending marker.
     expect((await getDb().entries.get('e1'))?.pendingPush).toBe(false);

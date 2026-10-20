@@ -22,7 +22,10 @@
     "paths": {
       "@/*": ["./*"],
       "@bloom/core": ["../../packages/core/src/index.ts"],
-      "@bloom/core/*": ["../../packages/core/src/*"]
+      "@bloom/core/*": ["../../packages/core/src/*"],
+      // jest-dom (hoisted to the repo root) augments `vitest` for its matcher types, which would
+      // otherwise resolve to the root copy rather than this app's — pin it to ours.
+      "vitest": ["./node_modules/vitest"]
     },
     "module": "esnext"
   },
