@@ -8,6 +8,7 @@ import type { EventsUserContext } from '@bloom/core/events';
 
 import { getOrCreateSettings } from '@/lib/db/repositories/settings';
 import { isShootingStarSpecialDay } from '@/lib/garden/bloom/shooting-star';
+import { DEFAULT_BIRTHDAY } from '@/lib/garden/bloom/special-events.config';
 import { planetForEvent } from '@/lib/garden/bloom/event-catalog';
 import { useGeolocation } from '@/lib/scene/useGeolocation';
 import { useWeather } from '@/lib/scene/useWeather';
@@ -37,7 +38,7 @@ export function GardenContent() {
 
   // Whether today is a "special" day that should send a shooting star across the garden.
   const [specialStar, setSpecialStar] = useState(false);
-  const [birthday, setBirthday] = useState('0001-01-01');
+  const [birthday, setBirthday] = useState<string>();
   useEffect(() => {
     let cancelled = false;
     void getOrCreateSettings()
@@ -49,7 +50,7 @@ export function GardenContent() {
             useBirthday: s.useBirthdayForStars,
           })
         );
-        if (s.birthday) setBirthday(s.birthday);
+        setBirthday(s.birthday || DEFAULT_BIRTHDAY);
       })
       .catch(() => {
         /* settings unavailable → treat today as an ordinary day */
@@ -99,6 +100,7 @@ export function GardenContent() {
       liveWeather={weather}
       latitude={geo.coords.lat}
       specialStar={specialStar}
+      birthday={birthday}
       liveSceneEffects={liveSceneEffects}
       livePlanet={livePlanet}
       liveEvents={dayEvents}

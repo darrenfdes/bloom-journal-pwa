@@ -40,7 +40,7 @@ export interface Coords {
 
 /** Per-user context the app supplies from its own profile/store. */
 export interface EventsUserContext {
-  birthday: string;        // ISO date of birth, YYYY-MM-DD
+  birthday?: string;       // YYYY-MM-DD, or MM-DD for a birthday without a birth year
   appInstallDate: string;  // ISO date first opened, YYYY-MM-DD
 }
 

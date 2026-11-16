@@ -5,8 +5,8 @@
  * entries here; the scheduler in `shooting-star.ts` reads from this file. Months are
  * 0-indexed (0 = Jan, 5 = Jun, 11 = Dec) to match `Date.getMonth()`.
  *
- * Note: the user's birthday is NOT listed here — it's a per-user setting (see settings)
- * that, when enabled, replaces the annual Dec 1 day at runtime.
+ * A saved birthday overrides the garden's default birthday. The separate setting
+ * controls whether the ordinary annual shooting-star day is also observed.
  */
 
 /** A one-time special day, e.g. a notable comet or alignment on a specific date. */
@@ -40,3 +40,6 @@ export const SHOOTING_STAR_ANNUAL: AnnualSpecialDay = {
   day: 1,
   label: '1 Dec — annual',
 };
+
+/** Birthday celebration date when Settings has no date of birth. */
+export const DEFAULT_BIRTHDAY = '12-01';

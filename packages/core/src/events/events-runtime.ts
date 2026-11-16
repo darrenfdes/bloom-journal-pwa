@@ -86,8 +86,8 @@ export function personalEvents(
   const y = isoDate.slice(0, 4);
   const out: WorldEvent[] = [];
 
-  if (matchesAnnual(isoDate, user.birthday)) {
-    const age = +y - +user.birthday.slice(0, 4);
+  if (user.birthday && isBirthdayOn(isoDate, user.birthday)) {
+    const age = user.birthday.length === 10 ? +y - +user.birthday.slice(0, 4) : 0;
     out.push({
       id: `birthday-${isoDate}`, type: "birthday", date: isoDate,
       title: "Your Birthday", subtitle: age > 0 ? `Turning ${age}` : undefined,
@@ -108,13 +108,17 @@ export function personalEvents(
   return out;
 }
 
+export function isBirthdayOn(date: Date | string, birthday?: string): boolean {
+  return !!birthday && matchesAnnual(toLocalISODate(date), birthday);
+}
+
 /**
  * Annual MM-DD match with a leap-day fallback: a Feb-29 birthday/anniversary
  * is observed on Feb 28 in non-leap years. (Switch to Mar 1 if you prefer.)
  */
 function matchesAnnual(isoDate: string, sourceISO: string): boolean {
   const md = isoDate.slice(5);   // MM-DD of the day being checked
-  const src = sourceISO.slice(5); // MM-DD of the source date
+  const src = sourceISO.slice(-5); // MM-DD, with or without a birth year
   if (md === src) return true;
   if (src === "02-29" && md === "02-28") {
     const year = +isoDate.slice(0, 4);

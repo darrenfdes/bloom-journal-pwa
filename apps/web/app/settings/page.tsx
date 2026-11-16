@@ -254,7 +254,7 @@ export default function SettingsPage() {
             birthdaySaveState === 'error' ? (
               <span className="text-danger">Could not save your birthday.</span>
             ) : (
-              'Your garden may mark the occasion.'
+              'Your garden celebrates at night. Leave blank for December 1.'
             )
           }
           trailing={
@@ -269,20 +269,20 @@ export default function SettingsPage() {
         />
         <SettingsRow
           icon={Sparkles}
-          label="Use my birthday as my special day"
+          label="Skip the extra December 1 shooting-star day"
           secondary={
             !birthday
               ? 'Add a birthday to enable this.'
               : starsSaveState === 'error'
                 ? <span className="text-danger">Could not save this setting.</span>
-                : undefined
+                : 'Your birthday celebration still runs on your saved date.'
           }
           trailing={
             <Switch
               checked={useBirthdayForStars ?? false}
               disabled={!birthday}
               onCheckedChange={(v) => setUseBirthdayForStars(v)}
-              aria-label="Use my birthday as my special day"
+              aria-label="Skip the extra December 1 shooting-star day"
             />
           }
         />
