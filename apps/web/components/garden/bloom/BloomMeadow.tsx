@@ -114,11 +114,6 @@ const G = 150; // ground strip height
 // Snow-covered parallax hills (back → front). Hazy blue in the distance,
 // fading to near-white up close, so the back range reads as snowy peaks.
 const SNOW_HILLS: [string, string, string] = ['#b6cde7', '#d3e2f3', '#edf4fc'];
-const MEADOW_TEXTURE = [
-  'radial-gradient(ellipse 150px 26px at 36% 48%, rgba(247,237,178,.13), transparent)',
-  'radial-gradient(ellipse 190px 21px at 58% 38%, rgba(18,38,28,.12), transparent)',
-  'radial-gradient(ellipse 85px 12px at 60% 72%, rgba(221,230,166,.09), transparent)',
-].join(',');
 // Sheep coats: fleece + matching belly shade + point (face/leg) colour. Most sheep are cream with
 // charcoal points; the rarer grey (Gotland-style silver fleece, near-black points) and
 // chestnut-brown (warm tan-brown points) breeds mix in at about one in six each.
@@ -456,9 +451,8 @@ export function BloomMeadow({
     const r = mulberry32(212);
     const n = Math.floor(worldW / 46);
     return [...Array(n)].map((_, i) => {
-      const depth = r();
-      const bottom = depth * 62;
-      return { id: i, left: i * 46 + r() * 30, bottom, sc: (0.7 + r() * 0.75) * (1 - depth * 0.45), dur: 2.6 + r() * 2.4, dl: -r() * 4, z: 100 + Math.round((1 - depth) * 47) };
+      const bottom = r() * 26;
+      return { id: i, left: i * 46 + r() * 30, bottom, sc: 0.7 + r() * 0.75, dur: 2.6 + r() * 2.4, dl: -r() * 4, z: 100 + Math.round((26 - bottom) * 1.8) };
     });
   }, [worldW]);
 
@@ -1082,8 +1076,8 @@ export function BloomMeadow({
             marginLeft: -sunPos.size / 2,
             marginTop: -sunPos.size / 2,
             borderRadius: '50%',
-            background: `radial-gradient(circle at 42% 40%, #fff8e2, ${phase.sun.core} 64%, color-mix(in srgb, ${phase.sun.core}, #e99952 24%))`,
-            boxShadow: `0 0 42px 12px ${phase.sun.glow}, 0 0 135px 56px ${phase.sun.glow}`,
+            background: phase.sun.core,
+            boxShadow: `0 0 60px 30px ${phase.sun.glow}, 0 0 140px 80px ${phase.sun.glow}`,
             opacity: phase.sun.o,
             transform: evSunScale !== 1 ? `scale(${evSunScale})` : undefined,
             transition: 'all 1.8s ease',
@@ -1132,17 +1126,24 @@ export function BloomMeadow({
         {/* clouds */}
         {clouds.slice(0, visibleClouds).map((c) => (
           <div key={c.id} style={{ position: 'absolute', top: `${c.top}%`, left: 0, opacity: Math.min(1, c.o * cloudBoost), animation: `bj-drift ${c.d}s linear infinite`, animationDelay: `${c.dl}s`, pointerEvents: 'none', transition: 'opacity 1.2s ease, filter 1.2s ease', filter: isStormy ? 'brightness(.62) saturate(.85)' : undefined }}>
-            <div
-              style={{
-                width: c.w, height: 60, color: phase.clouds,
-                background: [
-                  'radial-gradient(ellipse 38% 38% at 37% 43%, currentColor, transparent)',
-                  'radial-gradient(ellipse 34% 49% at 60% 53%, currentColor, transparent)',
-                  'radial-gradient(ellipse 50% 28% at 52% 69%, currentColor, transparent)',
-                ].join(','),
-                filter: 'blur(6px)', transition: 'color 1.6s ease',
-              }}
-            />
+            <div style={{ position: 'relative', width: c.w, height: 54 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: `${i * 22}%`,
+                    top: i % 2 ? 12 : 0,
+                    width: c.w * 0.42,
+                    height: 38 + (i % 2) * 10,
+                    borderRadius: '50%',
+                    background: phase.clouds,
+                    filter: 'blur(11px)',
+                    transition: 'background 1.6s ease',
+                  }}
+                />
+              ))}
+            </div>
           </div>
         ))}
 
@@ -1177,22 +1178,14 @@ export function BloomMeadow({
           />
         )}
 
-        {/* Light scattered along the horizon behind the distant ridge. */}
-        <div aria-hidden style={{
-          position: 'absolute', inset: `0 0 ${G}px`, pointerEvents: 'none',
-          color: phase.clouds, opacity: atNight ? 0.18 : 0.42,
-          background: 'radial-gradient(ellipse 76% 24% at 50% 78%, currentColor, transparent)',
-          transition: 'color 1.6s ease, opacity 1.6s ease',
-        }} />
-
         {/* parallax hills */}
         {hills.map((h, i) => (
           <svg key={i} ref={hillRefs[i]} width={h.Wl} height="340" style={{ position: 'absolute', bottom: G - 16, left: 0, display: 'block', willChange: 'transform' }}>
             <defs>
               <linearGradient id={`${hillLightId}-${i}`} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={phase.clouds} stopOpacity={0.33 - i * 0.03} />
-                <stop offset="48%" stopColor={phase.clouds} stopOpacity="0.06" />
-                <stop offset="100%" stopColor="#121b29" stopOpacity={isSnow ? 0.04 : 0.12} />
+                <stop offset="0%" stopColor={phase.clouds} stopOpacity={0.19 - i * 0.025} />
+                <stop offset="48%" stopColor={phase.clouds} stopOpacity="0.02" />
+                <stop offset="100%" stopColor="#121b29" stopOpacity={isSnow ? 0.02 : 0.06} />
               </linearGradient>
             </defs>
             <path d={h.d} fill={isSnow ? SNOW_HILLS[i] : seasonHill(phase.hills[i]!, i, seasonLook)} style={{ transition: 'fill 1.6s ease' }} />
@@ -1317,50 +1310,44 @@ export function BloomMeadow({
         onPointerCancel={endDrag}
         style={{ position: 'absolute', inset: 0, zIndex: 10, overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', cursor: grabbing ? 'grabbing' : 'grab' }}
       >
-        <div style={{ position: 'relative', width: worldW, height: '100%', overflow: 'clip', filter: phase.filter, transition: 'filter 1.4s ease' }}>
-          {/* Fade the meadow floor into the foot of the nearest hill. */}
-          <div aria-hidden style={{ position: 'absolute', inset: 'auto 0 0', height: G, maskImage: 'linear-gradient(transparent, #000 16px)', pointerEvents: 'none' }}>
-            {PHASE_ORDER.map((k) => (
-              <div key={k} style={{ position: 'absolute', inset: 0, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
-            ))}
+        <div style={{ position: 'relative', width: worldW, minWidth: '100%', height: '100%', overflow: 'clip', filter: phase.filter, transition: 'filter 1.4s ease' }}>
+          {/* ground */}
+          {PHASE_ORDER.map((k) => (
+            <div key={k} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: G, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
+          ))}
 
-            {seasonLook.groundTint.opacity > 0 && (
-              <div
-                style={{
-                  position: 'absolute', inset: 0,
-                  background: seasonLook.groundTint.gradient, mixBlendMode: 'soft-light',
-                  opacity: isSnow ? 0 : seasonLook.groundTint.opacity, transition: 'opacity 1.2s ease',
-                }}
-              />
-            )}
-
-            <div style={{
-              position: 'absolute', inset: 0,
-              backgroundImage: MEADOW_TEXTURE,
-              backgroundSize: '340px 150px, 470px 150px, 270px 150px',
-              opacity: isSnow ? 0 : 1, transition: 'opacity 1.2s ease',
-            }} />
-
-            {/* Settled snow covers the ground while flowers still rise through it. */}
+          {/* seasonal ground wash — a constant soft-light veil over the phase cross-fade
+              (never during snow; the settled-snow blanket below paints over it anyway) */}
+          {seasonLook.groundTint.opacity > 0 && (
             <div
               style={{
-                position: 'absolute', inset: 0,
-                opacity: isSnow ? 1 : 0, transition: 'opacity 1.2s ease',
-                background:
-                  'radial-gradient(ellipse 170px 26px at 50% 66%, #fff, transparent) 0 0 / 430px 150px repeat-x,' +
-                  'radial-gradient(ellipse 125px 18px at 40% 30%, #cddff1, transparent) 0 0 / 360px 150px repeat-x,' +
-                  'linear-gradient(180deg, #dce8f5, #f5f9ff 48%, #fff)',
+                position: 'absolute', bottom: 0, left: 0, width: '100%', height: G,
+                background: seasonLook.groundTint.gradient, mixBlendMode: 'soft-light',
+                opacity: isSnow ? 0 : seasonLook.groundTint.opacity,
+                transition: 'opacity 1.2s ease', pointerEvents: 'none',
               }}
             />
-          </div>
+          )}
+
+          {/* settled snow on the meadow floor — fades in while snowing and blankets the
+              whole ground (grass hidden); flowers still rise through it */}
+          <div
+            style={{
+              position: 'absolute', left: 0, bottom: 0, width: '100%', height: G, zIndex: 1,
+              opacity: isSnow ? 1 : 0, transition: 'opacity 1.2s ease', pointerEvents: 'none',
+              background:
+                'radial-gradient(26px 13px at 50% 100%, #ffffff 60%, rgba(255,255,255,0) 72%) 0 4px / 52px 16px repeat-x,' +
+                'linear-gradient(180deg, rgba(208,224,243,.85) 0%, #e6f0fb 14%, #f5f9ff 38%, #ffffff 70%, #ffffff 100%)',
+            }}
+          />
 
           {/* month labels */}
           {layout.months.map((m, i) => (
             <div key={m.key} style={{ position: 'absolute', left: m.cx, bottom: G - 34, transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', opacity: activeMonth === i ? 1 : 0.55, transition: 'opacity .5s' }}>
-              <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase', color: isSnow ? '#334861' : 'rgba(250,246,232,.85)', textShadow: isSnow ? 'none' : '0 1px 8px rgba(20,30,25,.35)' }}>
+              <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase', color: 'rgba(250,246,232,.85)', textShadow: '0 1px 8px rgba(20,30,25,.35)' }}>
                 {MONTH_NAMES[m.m]}
               </div>
-              <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 13, color: isSnow ? '#445974' : 'rgba(250,246,232,.6)' }}>{m.y}</div>
+              <div style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 13, color: 'rgba(250,246,232,.6)' }}>{m.y}</div>
             </div>
           ))}
 
@@ -1396,8 +1383,7 @@ export function BloomMeadow({
                 }}
               >
                 {/* ground shadow */}
-                <div style={{ position: 'absolute', left: '50%', bottom: -5, width: 74, height: 15, transform: 'translateX(-44%) rotate(-5deg)', background: 'radial-gradient(ellipse, rgba(16,30,25,.28), transparent 70%)' }} />
-                <div style={{ position: 'absolute', left: '50%', bottom: -1, width: 23, height: 6, transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(17,26,22,.36), transparent 72%)' }} />
+                <div style={{ position: 'absolute', left: '50%', bottom: -4, width: 64, height: 14, transform: 'translateX(-50%)', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(15,35,20,.28), transparent 70%)' }} />
                 {/* favourite halo */}
                 {e.isFavourited && (
                   <div style={{ position: 'absolute', left: '50%', top: 22, width: 110, height: 110, transform: 'translateX(-50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,219,140,.4), transparent 68%)', pointerEvents: 'none' }} />
@@ -1405,7 +1391,7 @@ export function BloomMeadow({
                 <div style={{ position: 'absolute', inset: 0, animation: `bj-bloom .9s cubic-bezier(.18,.9,.32,1.2) both`, animationDelay: `${0.15 + i * 0.04}s`, transformOrigin: 'bottom center', pointerEvents: 'none' }}>
                   <div style={{ position: 'absolute', inset: 0, transition: 'transform .3s ease', transform: isHover ? 'translateY(-2px) scale(1.035)' : 'none', transformOrigin: 'bottom center' }}>
                     <div style={{ position: 'absolute', inset: 0, animation: `bj-sway ${e.sway}s ease-in-out infinite alternate`, animationDelay: `${e.delay}s`, transformOrigin: '60px 170px' }}>
-                      <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: FLOWER_SIZE, height: FLOWER_SIZE, filter: 'drop-shadow(0 1px 1.5px rgba(21,32,24,.28))', pointerEvents: 'none' }}>
+                      <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: FLOWER_SIZE, height: FLOWER_SIZE, pointerEvents: 'none' }}>
                         <Flower
                           mood={e.genome.bloomMood}
                           seed={e.genome.seed}
@@ -1767,7 +1753,7 @@ export function BloomMeadow({
 
       {/* hint — sits just above the timeline, also hidden while a memory is open */}
       {layout.entries.length > 0 && !active && (
-        <div style={{ position: 'absolute', bottom: 'calc(150px + var(--safe-bottom))', left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: isSnow ? '#334861' : 'rgba(250,246,233,.72)', textShadow: isSnow ? 'none' : '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', bottom: 'calc(150px + var(--safe-bottom))', left: 22, zIndex: 50, fontFamily: serif, fontStyle: 'italic', fontSize: 14, color: 'rgba(250,246,233,.72)', textShadow: '0 1px 10px rgba(15,25,35,.5)', pointerEvents: 'none' }}>
           drag to explore · tap a flower to open
         </div>
       )}

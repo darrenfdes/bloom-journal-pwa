@@ -200,8 +200,9 @@ export const GrassTuft = ({
         transformOrigin: '13px 34px',
       }}
     >
-      <path d="M12 34 C11 24 8 15 4 9 C10 13 13 23 14 34Z M12 34 C12 19 16 10 18 3 C18 14 15 24 14 34Z M13 34 C15 24 21 17 25 15 C21 21 17 27 15 34Z" fill="currentColor" />
-      <path d="M12 33 C8 27 4 24 1 23 C7 23 11 27 13 33Z M14 34 C17 29 21 27 25 27 C21 30 18 31 16 34Z" fill="currentColor" opacity=".65" />
+      <path d="M13 34 C 12 22 9 14 5 8" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <path d="M13 34 C 13.5 20 14 12 14.5 5" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <path d="M13 34 C 15 24 18 16 22 11" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" />
     </svg>
   </div>
 );
