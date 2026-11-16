@@ -12,7 +12,7 @@
  *   · The memory-card modal is extended with Open / Favourite / Revisit / Delete actions.
  */
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type { EntryRecord } from '@bloom/core';
 import { findMemoryReplay, formatMemoryReplayDismissKey, isMemoryReplayDismissed } from '@bloom/core';
@@ -264,6 +264,7 @@ export function BloomMeadow({
   const [evIndex, setEvIndex] = useState(0);
   const [cometLaunch, setCometLaunch] = useState(0);
 
+  const hillLightId = useId();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const hillRefs = [useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null), useRef<SVGSVGElement>(null)];
   const drag = useRef({ down: false, x: 0, sl: 0, moved: 0 });
@@ -1232,7 +1233,15 @@ export function BloomMeadow({
         {/* parallax hills */}
         {hills.map((h, i) => (
           <svg key={i} ref={hillRefs[i]} width={h.Wl} height="340" style={{ position: 'absolute', bottom: G - 16, left: 0, display: 'block', willChange: 'transform' }}>
+            <defs>
+              <linearGradient id={`${hillLightId}-${i}`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={phase.clouds} stopOpacity={0.19 - i * 0.025} />
+                <stop offset="48%" stopColor={phase.clouds} stopOpacity="0.02" />
+                <stop offset="100%" stopColor="#121b29" stopOpacity={isSnow ? 0.02 : 0.06} />
+              </linearGradient>
+            </defs>
             <path d={h.d} fill={isSnow ? SNOW_HILLS[i] : seasonHill(phase.hills[i]!, i, seasonLook)} style={{ transition: 'fill 1.6s ease' }} />
+            <path d={h.d} fill={`url(#${hillLightId}-${i})`} />
             {h.trees.map((t) => (
               <Tree key={t.id} x={t.x} y={t.y} sc={t.sc} fill={phase.tree} />
             ))}
@@ -1353,7 +1362,7 @@ export function BloomMeadow({
         onPointerCancel={endDrag}
         style={{ position: 'absolute', inset: 0, zIndex: 10, overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', cursor: grabbing ? 'grabbing' : 'grab' }}
       >
-        <div style={{ position: 'relative', width: worldW, height: '100%', filter: phase.filter, transition: 'filter 1.4s ease' }}>
+        <div style={{ position: 'relative', width: worldW, minWidth: '100%', height: '100%', overflow: 'clip', filter: phase.filter, transition: 'filter 1.4s ease' }}>
           {/* ground */}
           {PHASE_ORDER.map((k) => (
             <div key={k} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: G, background: PHASES[k].ground, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />

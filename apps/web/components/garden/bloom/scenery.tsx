@@ -34,11 +34,15 @@ export function makeHill(seed: number, W: number, H: number, base: number, amp: 
 }
 
 export const Tree = ({ x, y, sc, fill }: { x: number; y: number; sc: number; fill: string }) => (
-  <g transform={`translate(${x} ${y}) scale(${sc})`}>
-    <rect x="-1.6" y="-7" width="3.2" height="11" rx="1.4" fill={fill} opacity=".9" style={{ transition: 'fill 1.4s' }} />
-    <ellipse cx="0" cy="-16" rx="12.5" ry="14" fill={fill} style={{ transition: 'fill 1.4s' }} />
-    <ellipse cx="-8" cy="-8" rx="7.5" ry="8.5" fill={fill} style={{ transition: 'fill 1.4s' }} />
-    <ellipse cx="8" cy="-8" rx="7.5" ry="8.5" fill={fill} style={{ transition: 'fill 1.4s' }} />
+  <g transform={`translate(${x} ${y}) scale(${sc})`} style={{ color: fill, transition: 'color 1.4s' }}>
+    <ellipse cx="4" cy="2" rx="14" ry="2.5" fill="#15251e" opacity=".16" />
+    <path d="M-2 3 Q-1-4-2-14 L2-16 Q1-5 2 3Z" fill="currentColor" />
+    <path
+      d="M-12-7 C-19-10-16-19-12-21 C-13-28-5-32 0-29 C5-34 12-28 12-22 C18-20 17-12 13-9 C10-3 3-4 0-7 C-3-3-10-3-12-7Z"
+      fill="currentColor"
+    />
+    <path d="M-12-19 C-10-27-4-29 0-25 C-10-24-4-15-12-14Z" fill="#fff0c9" opacity=".18" />
+    <path d="M13-20 C18-12 9-2 1-7 C8-9 11-14 13-20Z" fill="#102320" opacity=".2" />
   </g>
 );
 
