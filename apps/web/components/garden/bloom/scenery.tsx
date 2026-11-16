@@ -34,11 +34,15 @@ export function makeHill(seed: number, W: number, H: number, base: number, amp: 
 }
 
 export const Tree = ({ x, y, sc, fill }: { x: number; y: number; sc: number; fill: string }) => (
-  <g transform={`translate(${x} ${y}) scale(${sc})`}>
-    <rect x="-1.6" y="-7" width="3.2" height="11" rx="1.4" fill={fill} opacity=".9" style={{ transition: 'fill 1.4s' }} />
-    <ellipse cx="0" cy="-16" rx="12.5" ry="14" fill={fill} style={{ transition: 'fill 1.4s' }} />
-    <ellipse cx="-8" cy="-8" rx="7.5" ry="8.5" fill={fill} style={{ transition: 'fill 1.4s' }} />
-    <ellipse cx="8" cy="-8" rx="7.5" ry="8.5" fill={fill} style={{ transition: 'fill 1.4s' }} />
+  <g transform={`translate(${x} ${y}) scale(${sc})`} style={{ color: fill, transition: 'color 1.4s' }}>
+    <ellipse cx="4" cy="2" rx="14" ry="2.5" fill="#15251e" opacity=".16" />
+    <path d="M-2 3 Q-1-4-2-14 L2-16 Q1-5 2 3Z" fill="currentColor" />
+    <path
+      d="M-12-7 C-19-10-16-19-12-21 C-13-28-5-32 0-29 C5-34 12-28 12-22 C18-20 17-12 13-9 C10-3 3-4 0-7 C-3-3-10-3-12-7Z"
+      fill="currentColor"
+    />
+    <path d="M-12-19 C-10-27-4-29 0-25 C-10-24-4-15-12-14Z" fill="#fff0c9" opacity=".18" />
+    <path d="M13-20 C18-12 9-2 1-7 C8-9 11-14 13-20Z" fill="#102320" opacity=".2" />
   </g>
 );
 
@@ -196,9 +200,8 @@ export const GrassTuft = ({
         transformOrigin: '13px 34px',
       }}
     >
-      <path d="M13 34 C 12 22 9 14 5 8" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-      <path d="M13 34 C 13.5 20 14 12 14.5 5" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-      <path d="M13 34 C 15 24 18 16 22 11" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <path d="M12 34 C11 24 8 15 4 9 C10 13 13 23 14 34Z M12 34 C12 19 16 10 18 3 C18 14 15 24 14 34Z M13 34 C15 24 21 17 25 15 C21 21 17 27 15 34Z" fill="currentColor" />
+      <path d="M12 33 C8 27 4 24 1 23 C7 23 11 27 13 33Z M14 34 C17 29 21 27 25 27 C21 30 18 31 16 34Z" fill="currentColor" opacity=".65" />
     </svg>
   </div>
 );
