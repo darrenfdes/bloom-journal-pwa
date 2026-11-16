@@ -25,6 +25,10 @@ vi.mock('@/components/garden/bloom/shooting-star-visual', async (importOriginal)
   };
 });
 
+vi.mock('@/components/garden/bloom/FireworksCanvas', () => ({
+  FireworksCanvas: () => <div data-testid="fireworks" />,
+}));
+
 describe('BloomMeadow', () => {
   beforeEach(() => {
     resetMeadowMocks();
@@ -54,6 +58,70 @@ describe('BloomMeadow', () => {
       });
       expect(screen.getByText("Jan '26")).toBeInTheDocument();
       expect(screen.getByText('Mar')).toBeInTheDocument();
+    });
+  });
+
+  describe('birthday night (live mode)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('shows fireworks and exactly one star after three seconds on the default birthday', () => {
+      vi.setSystemTime(new Date(2026, 11, 1, 21));
+      renderMeadow({ live: true, birthday: '12-01', specialStar: true, liveSceneEffects: ['shootingStars'] });
+
+      expect(screen.queryByTestId('fireworks')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(2999));
+      expect(screen.queryByTestId('shooting-star')).toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(screen.getAllByTestId('shooting-star')).toHaveLength(1);
+      act(() => vi.advanceTimersByTime(40_000));
+      expect(screen.queryByTestId('fireworks')).toBeNull();
+      expect(screen.queryByTestId('shooting-star')).toBeNull();
+    });
+
+    it('cancels a hidden session and replays the celebration on the saved birthday', () => {
+      vi.setSystemTime(new Date(2026, 6, 15, 23));
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+      renderMeadow({ live: true, birthday: '1990-07-15' });
+
+      act(() => vi.advanceTimersByTime(2000));
+      visibility.mockReturnValue('hidden');
+      fireEvent(document, new Event('visibilitychange'));
+      act(() => vi.advanceTimersByTime(5000));
+      expect(screen.queryByTestId('fireworks')).toBeNull();
+      expect(screen.queryByTestId('shooting-star')).toBeNull();
+
+      visibility.mockReturnValue('visible');
+      fireEvent(document, new Event('visibilitychange'));
+      expect(screen.queryByTestId('fireworks')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(3000));
+      expect(screen.getAllByTestId('shooting-star')).toHaveLength(1);
+
+      visibility.mockReturnValue('hidden');
+      fireEvent(document, new Event('visibilitychange'));
+      visibility.mockReturnValue('visible');
+      fireEvent(document, new Event('visibilitychange'));
+      act(() => vi.advanceTimersByTime(3000));
+      expect(screen.getAllByTestId('shooting-star')).toHaveLength(1);
+    });
+
+    it.each([
+      ['daytime on the birthday', new Date(2026, 11, 1, 12), '12-01'],
+      ['dusk on the birthday', new Date(2026, 11, 1, 19), '12-01'],
+      ['December 1 with a different saved birthday', new Date(2026, 11, 1, 21), '1990-07-15'],
+      ['the former January fallback', new Date(2027, 0, 1, 21), '12-01'],
+    ])('skips the birthday celebration during %s', (_, date, birthday) => {
+      vi.setSystemTime(date);
+      renderMeadow({ live: true, birthday });
+      act(() => vi.advanceTimersByTime(3000));
+      expect(screen.queryByTestId('fireworks')).toBeNull();
+      expect(screen.queryByTestId('shooting-star')).toBeNull();
     });
   });
 

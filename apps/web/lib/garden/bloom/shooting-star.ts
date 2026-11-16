@@ -5,6 +5,8 @@
  * a birthday set in settings with the override toggle replaces the annual day with the birthday.
  */
 
+import { isBirthdayOn } from '@bloom/core/events';
+
 import {
   SHOOTING_STAR_ONE_OFFS,
   SHOOTING_STAR_ANNUAL,
@@ -47,8 +49,7 @@ export function isShootingStarSpecialDay(
 
   if (cfg.useBirthday && cfg.birthday) {
     // Birthday replaces the annual day.
-    const b = new Date(cfg.birthday);
-    return b.getMonth() === m && b.getDate() === d;
+    return isBirthdayOn(now, cfg.birthday);
   }
 
   return m === SHOOTING_STAR_ANNUAL.month && d === SHOOTING_STAR_ANNUAL.day; // annual

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { GardenContent } from './GardenContent';
@@ -19,18 +19,26 @@ vi.mock('next/dynamic', () => ({
     function MeadowStub({
       live,
       entries,
+      birthday,
     }: {
       live?: boolean;
       entries: unknown[];
+      birthday?: string;
     }) {
       return (
         <div
           data-testid="bloom-meadow"
           data-live={String(!!live)}
           data-entry-count={entries.length}
+          data-birthday={birthday}
         />
       );
     },
+}));
+
+const mockGetOrCreateSettings = vi.fn().mockResolvedValue({ birthday: null, useBirthdayForStars: false });
+vi.mock('@/lib/db/repositories/settings', () => ({
+  getOrCreateSettings: () => mockGetOrCreateSettings(),
 }));
 
 const mockUseBloomStore = vi.fn();
@@ -72,7 +80,7 @@ describe('GardenContent', () => {
     expect(screen.getByText('Loading garden…')).toBeInTheDocument();
   });
 
-  it('renders live meadow with no entries', () => {
+  it('renders live meadow with no entries and defaults a blank birthday to December 1', async () => {
     mockStore({
       ready: true,
       gardenMeta: { hasPlantedFirst: false },
@@ -82,9 +90,11 @@ describe('GardenContent', () => {
     const meadow = screen.getByTestId('bloom-meadow');
     expect(meadow).toHaveAttribute('data-live', 'true');
     expect(meadow).toHaveAttribute('data-entry-count', '0');
+    await waitFor(() => expect(meadow.getAttribute('data-birthday')).toBe('12-01'));
   });
 
-  it('renders live meadow when garden has entries', () => {
+  it('renders live meadow with entries and keeps the saved birthday', async () => {
+    mockGetOrCreateSettings.mockResolvedValueOnce({ birthday: '1990-07-15', useBirthdayForStars: false });
     mockStore({
       ready: true,
       gardenMeta: { hasPlantedFirst: true },
@@ -94,5 +104,6 @@ describe('GardenContent', () => {
     const meadow = screen.getByTestId('bloom-meadow');
     expect(meadow).toHaveAttribute('data-live', 'true');
     expect(meadow).toHaveAttribute('data-entry-count', '1');
+    await waitFor(() => expect(meadow.getAttribute('data-birthday')).toBe('1990-07-15'));
   });
 });

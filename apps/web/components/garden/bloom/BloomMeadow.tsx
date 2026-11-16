@@ -90,7 +90,7 @@ import { EventStepper } from '@/components/garden/bloom/EventStepper';
 import { PreviewRail } from '@/components/garden/bloom/PreviewRail';
 import { WeatherChip } from '@/components/garden/bloom/WeatherChip';
 import { SeasonalParticles, SEASON_PARTICLE_KEYFRAMES } from '@/components/garden/bloom/SeasonalParticles';
-import type { Rarity, SceneEffect, WorldEvent } from '@bloom/core/events';
+import { isBirthdayOn, type Rarity, type SceneEffect, type WorldEvent } from '@bloom/core/events';
 import { softDelete, toggleFavourite } from '@/lib/db/repositories/entries';
 import { useBloomStore } from '@/stores/useBloomStore';
 
@@ -111,6 +111,8 @@ const fmtEventDate = (iso: string): string => {
 };
 
 const G = 150; // ground strip height
+const BIRTHDAY_STAR_DELAY_MS = 3_000;
+const BIRTHDAY_FIREWORKS_MS = 12_000;
 // Snow-covered parallax hills (back → front). Hazy blue in the distance,
 // fading to near-white up close, so the back range reads as snowy peaks.
 const SNOW_HILLS: [string, string, string] = ['#b6cde7', '#d3e2f3', '#edf4fc'];
@@ -192,6 +194,7 @@ export function BloomMeadow({
   liveWeather = null,
   latitude = 0,
   specialStar = false,
+  birthday,
   liveSceneEffects = [],
   livePlanet = null,
   liveEvents = [],
@@ -210,6 +213,8 @@ export function BloomMeadow({
   latitude?: number;
   /** Today is a special day: send a shooting star ~30s after open + occasional repeats (live only). */
   specialStar?: boolean;
+  /** Effective birthday (YYYY-MM-DD or MM-DD), once settings have loaded. */
+  birthday?: string;
   /** Scene effects for today's world events (live /garden only). */
   liveSceneEffects?: SceneEffect[];
   /** Which planet (if any) is at opposition today, for the live bright-star look. */
@@ -248,6 +253,7 @@ export function BloomMeadow({
   const [fox, setFox] = useState<FoxState | null>(null);
   const [cshadow, setCshadow] = useState<{ run: number } | null>(null);
   const [shoot, setShoot] = useState<ShootState | null>(null);
+  const [birthdayFireworks, setBirthdayFireworks] = useState(false);
   const [ducks, setDucks] = useState<DuckFlightState | null>(null);
   const [birds, setBirds] = useState<SoloBirdState | null>(null);
 
@@ -360,11 +366,17 @@ export function BloomMeadow({
   // live-clock effect below) — a comet event only widens the sky's canvas, it never
   // overrides what time it actually is.
   const atNight = phaseKey === 'night' || phaseKey === 'dusk';
+  const isBirthday = isBirthdayOn(liveNow, birthday);
+  const isBirthdayNight = isBirthday && phaseKey === 'night';
   const liveRenderedEffects = useMemo(() => {
     if (!live) return [];
     const NIGHT_ONLY: SceneEffect[] = ['fireworks', 'christmasStar', 'brightStar', 'shootingStars'];
-    return liveSceneEffects.filter((e) => (NIGHT_ONLY.includes(e) ? atNight : false));
-  }, [live, liveSceneEffects, atNight]);
+    const effects = atNight
+      ? liveSceneEffects.filter((e) => NIGHT_ONLY.includes(e) && (e !== 'shootingStars' || !isBirthdayNight))
+      : [];
+    if (birthdayFireworks && !effects.includes('fireworks')) effects.push('fireworks');
+    return effects;
+  }, [live, liveSceneEffects, atNight, isBirthdayNight, birthdayFireworks]);
   const showComet =
     (eventsBrowser && eventMode && eventEffects.includes('cometArc')) ||
     (live && liveSceneEffects.includes('cometArc') && atNight);
@@ -825,14 +837,14 @@ export function BloomMeadow({
     safeTimeout(go, shift ? 1500 : 100);
   };
 
-  const spawnShoot = (manual: boolean) => {
+  const spawnShoot = (manual: boolean, count = 2) => {
     const shift = manual && phaseKey !== 'night' && phaseKey !== 'dusk';
     if (shift) setPhaseKey('night');
     const go = () => {
       const r = mulberry32(Date.now() % 1000000);
-      // Same fixed direction for both streaks, starting above/left of the viewport so they
+      // Same fixed direction for all streaks, starting above/left of the viewport so they
       // streak in from off-screen rather than appearing mid-sky.
-      const streaks = [0, 1].map((i) => ({
+      const streaks = Array.from({ length: count }, (_, i) => ({
         id: i,
         x: -14 + r() * 44,
         y: -26 + r() * 14,
@@ -842,10 +854,12 @@ export function BloomMeadow({
         dur: 1.8 + r() * 0.6,
         delay: i === 0 ? 0.1 : 2.4 + r() * 1.4,
       }));
-      setShoot({ run: Date.now(), streaks });
-      safeTimeout(() => setShoot(null), 6500);
+      const shot = { run: Date.now(), streaks };
+      setShoot(shot);
+      safeTimeout(() => setShoot((current) => current === shot ? null : current), 6500);
     };
-    safeTimeout(go, shift ? 1500 : 100);
+    if (count === 1) go();
+    else safeTimeout(go, shift ? 1500 : 100);
   };
 
   /* ambient: a creature wanders through on its own every minute or two */
@@ -885,17 +899,55 @@ export function BloomMeadow({
   /* live mode: the sky phase follows the local clock and the bodies drift through the day */
   useEffect(() => {
     if (!live) return;
-    const id = setInterval(() => {
+    const updateClock = () => {
       const n = new Date();
       setPhaseKey(phaseFromHour(n.getHours()));
       setLiveNow(n);
-    }, 60_000);
-    return () => clearInterval(id);
+    };
+    const id = setInterval(updateClock, 60_000);
+    document.addEventListener('visibilitychange', updateClock);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', updateClock);
+    };
   }, [live]);
+
+  /* Birthday nights: replay the welcome each time the garden opens or returns to the foreground. */
+  useEffect(() => {
+    if (!live || !birthday) return;
+    let starTimer: ReturnType<typeof setTimeout> | undefined;
+    let fireworksTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearTimers = () => {
+      clearTimeout(starTimer);
+      clearTimeout(fireworksTimer);
+    };
+    const onVisibility = () => {
+      clearTimers();
+      const now = new Date();
+      if (
+        document.visibilityState === 'hidden' ||
+        phaseFromHour(now.getHours()) !== 'night' ||
+        !isBirthdayOn(now, birthday)
+      ) {
+        setBirthdayFireworks(false);
+        if (starTimer !== undefined) setShoot(null);
+        return;
+      }
+      setBirthdayFireworks(true);
+      starTimer = setTimeout(() => triggersRef.current.spawnShoot(false, 1), BIRTHDAY_STAR_DELAY_MS);
+      fireworksTimer = setTimeout(() => setBirthdayFireworks(false), BIRTHDAY_FIREWORKS_MS);
+    };
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearTimers();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [live, birthday]);
 
   /* special days: a shooting star ~30s after open (90%) + occasional repeats at night (live only) */
   useEffect(() => {
-    if (!live || !specialStar) return;
+    if (!live || !specialStar || isBirthday) return;
     let on = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
@@ -920,7 +972,7 @@ export function BloomMeadow({
       on = false;
       timers.forEach(clearTimeout);
     };
-  }, [live, specialStar]);
+  }, [live, specialStar, isBirthday]);
 
   /* live: ducks join 1 in 3 golden hours (1 in 6 dusks); when they do, a V crosses every
      2–3 min. Keyed on phaseKey so the roll happens exactly once per phase entry (mount in

@@ -43,6 +43,8 @@ export type MeadowRenderProps = {
   preview?: boolean;
   live?: boolean;
   creatures?: boolean;
+  birthday?: string;
+  specialStar?: boolean;
   liveWeather?: {
     category: string;
     windSpeed: number;
@@ -63,6 +65,8 @@ function buildMeadow(props: MeadowRenderProps) {
     preview = false,
     live = false,
     creatures = false,
+    birthday,
+    specialStar,
     liveWeather = null,
     liveSceneEffects = [],
     liveEvents = [],
@@ -73,6 +77,8 @@ function buildMeadow(props: MeadowRenderProps) {
       preview={preview}
       live={live}
       creatures={creatures}
+      birthday={birthday}
+      specialStar={specialStar}
       liveWeather={liveWeather as never}
       liveSceneEffects={liveSceneEffects}
       liveEvents={liveEvents}
