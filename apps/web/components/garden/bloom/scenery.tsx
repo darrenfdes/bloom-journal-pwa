@@ -20,15 +20,16 @@ export function makeHill(seed: number, W: number, H: number, base: number, amp: 
   for (let i = 1; i < pts.length; i++) {
     const [x0, y0] = pts[i - 1]!;
     const [x1, y1] = pts[i]!;
-    d += ` Q ${x0 + (x1 - x0) * 0.5 - step * 0.28} ${y0} ${(x0 + x1) / 2} ${(y0 + y1) / 2}`;
+    // Horizontal tangents round each crest. Equally spaced controls make x linear in t.
+    d += ` C ${x0 + step / 3} ${y0} ${x1 - step / 3} ${y1} ${x1} ${y1}`;
   }
-  d += ` L ${W + step} ${H} Z`;
+  d += ` L ${pts[pts.length - 1]![0]} ${H} L 0 ${H} Z`;
   const yAt = (x: number) => {
     const i = Math.min(pts.length - 2, Math.max(0, Math.floor(x / step)));
     const a = pts[i]!;
     const b = pts[i + 1]!;
-    const t = (x - a[0]) / step;
-    return a[1] * (1 - t) + b[1] * t;
+    const t = Math.max(0, Math.min(1, (x - a[0]) / step));
+    return a[1] + (b[1] - a[1]) * t * t * (3 - 2 * t);
   };
   return { d, yAt };
 }
