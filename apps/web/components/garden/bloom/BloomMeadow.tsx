@@ -309,6 +309,12 @@ export function BloomMeadow({
 
   /* effective weather: live → real API category; otherwise the manual selection */
   const cat: WeatherCategory = live ? liveWeather?.category ?? 'clear' : weatherCat;
+  const fairSky = cat === 'clear' || cat === 'partly_cloudy';
+  const lowSun = phaseKey === 'dawn' || phaseKey === 'golden' || phaseKey === 'dusk';
+  const winterDawn = seasonLook.season === 'winter' && phaseKey === 'dawn';
+  const horizonTint = winterDawn ? '#d9e6fa' : phase.sun.core;
+  const summerFireflies = seasonLook.season === 'summer' && cat === 'clear' &&
+    (phaseKey === 'dusk' || phaseKey === 'night');
   const windSpeed = live ? liveWeather?.windSpeed ?? 0 : 0;
   const precip = isPrecipitatingCategory(cat); // drizzle | rain | heavy_rain | thunderstorm
   const heavyRain = cat === 'heavy_rain'; // gates the lone ram's night-only 20% chance
@@ -1110,6 +1116,13 @@ export function BloomMeadow({
           <div key={k} style={{ position: 'absolute', inset: 0, background: PHASES[k].sky, opacity: k === phaseKey ? 1 : 0, transition: 'opacity 1.6s ease' }} />
         ))}
 
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: `radial-gradient(ellipse 52% 19% at ${sunPos.x}% calc(100% - ${G + 155}px), ${horizonTint}, transparent)`,
+          opacity: fairSky && lowSun ? (cat === 'clear' ? 0.26 : 0.14) : 0,
+          transition: 'opacity 1.6s ease',
+        }} />
+
         {/* stars */}
         <div style={{ position: 'absolute', inset: 0, opacity: phase.stars, transition: 'opacity 1.6s ease' }}>
           {stars.map((st) => (
@@ -1235,7 +1248,7 @@ export function BloomMeadow({
           <svg key={i} ref={hillRefs[i]} width={h.Wl} height="340" style={{ position: 'absolute', bottom: G - 16, left: 0, display: 'block', willChange: 'transform' }}>
             <defs>
               <linearGradient id={`${hillLightId}-${i}`} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={phase.clouds} stopOpacity={0.19 - i * 0.025} />
+                <stop offset="0%" stopColor={fairSky && lowSun ? horizonTint : phase.clouds} stopOpacity={(fairSky && lowSun ? 0.32 : 0.19) - i * 0.025} />
                 <stop offset="48%" stopColor={phase.clouds} stopOpacity="0.02" />
                 <stop offset="100%" stopColor="#121b29" stopOpacity={isSnow ? 0.02 : 0.06} />
               </linearGradient>
@@ -1290,7 +1303,7 @@ export function BloomMeadow({
             <div key={p.id} style={{ position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, width: p.s, height: p.s, borderRadius: '50%', background: 'rgba(255,250,225,.85)', filter: 'blur(.6px)', animation: `bj-pollen ${p.d}s ${p.dl}s linear infinite` }} />
           ))}
         </div>
-        <div style={{ position: 'absolute', inset: 0, opacity: phase.fire, transition: 'opacity 1.6s ease', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: summerFireflies ? 0 : phase.fire, transition: 'opacity 1.6s ease', pointerEvents: 'none' }}>
           {fireflies.map((f) => (
             <div key={f.id} style={{ position: 'absolute', left: `${f.x}%`, top: `${f.y}%`, width: 4, height: 4, borderRadius: '50%', background: '#ffe98a', boxShadow: '0 0 10px 3px rgba(255,228,130,.65)', animation: `bj-fire ${f.d}s ${f.dl}s ease-in-out infinite` }} />
           ))}
@@ -1504,6 +1517,18 @@ export function BloomMeadow({
           {creatures && bflies && bflies.flock.map((f) => <Butterfly key={`${bflies.run}-${f.id}`} f={f} />)}
         </div>
       </div>
+
+      {summerFireflies && (
+        <div aria-hidden="true" style={{ position: 'absolute', bottom: G - 22, width: '100%', zIndex: 11, pointerEvents: 'none' }}>
+          {fireflies.slice(0, 3).map((f) => (
+            <span key={f.id} style={{
+              position: 'absolute', left: `${f.x}%`, bottom: f.y - 48,
+              width: 3, height: 3, borderRadius: '50%', background: '#ffeaa0',
+              boxShadow: '0 0 5px 1px #edc96599', animation: `bj-fire ${f.d + 3}s ${f.dl}s ease-in-out infinite`,
+            }} />
+          ))}
+        </div>
+      )}
 
       {/* ===== CLOUD SHADOW SWEEP ===== */}
       {creatures && cshadow && (
