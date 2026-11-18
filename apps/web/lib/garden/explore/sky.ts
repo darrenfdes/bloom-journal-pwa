@@ -44,10 +44,10 @@ const PHASE_LIGHT: Record<
   dawn: { sun: 0.7, hemi: 0.55, moon: 0, flower: 0.97 },
   day: { sun: 1.0, hemi: 0.75, moon: 0, flower: 1 },
   golden: { sun: 0.85, hemi: 0.6, moon: 0, flower: 1.02 },
-  dusk: { sun: 0.25, hemi: 0.4, moon: 0.08, flower: 0.88 },
+  dusk: { sun: 0.25, hemi: 0.95, moon: 0.08, flower: 0.88 },
   // Night is lifted well above the 2D `filter: brightness(.74)` so the moonlit meadow, fox and
   // trees stay legible in 3D — an unlit ground under a dark sky just reads as "broken".
-  night: { sun: 0, hemi: 0.42, moon: 0.45, flower: 0.92 },
+  night: { sun: 0, hemi: 0.72, moon: 0.45, flower: 0.92 },
 };
 
 export const OVERCAST_GREY = '#9aa3ac';
@@ -70,8 +70,10 @@ export function lightingForPhase(phase: PhaseKey, cloudCover = 0): PhaseLighting
   const mid = stops[1] ?? stops[0]!;
   const horizon = stops[stops.length - 1]!;
   return {
-    hemiSky: mid.color,
-    hemiGround: palette.grass,
+    // The painted sky is a display color. Reusing its dark twilight stops as light
+    // multiplies darkness into the terrain and fox a second time.
+    hemiSky: phase === 'dusk' ? '#ecd9d7' : phase === 'night' ? '#c2d5f2' : mid.color,
+    hemiGround: phase === 'dusk' ? '#aa9e90' : phase === 'night' ? '#8395a7' : palette.grass,
     hemiIntensity: base.hemi,
     sunColor: palette.sun.core,
     sunIntensity: base.sun * (1 - 0.5 * cloudCover),
